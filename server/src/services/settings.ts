@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS = {
   restock_lead_time_days: '',
   /** Reserva de segurança em dias de venda (vazio = não configurada). */
   restock_safety_days: '',
+  /** Meta de acuracidade do inventário (% por item), definida pelo administrador. Vazio = sem meta. */
+  inventory_accuracy_target: '',
   /** Permitir venda com estoque insuficiente (estoque fica negativo e aparece nos alertas). */
   allow_negative_stock: 'true',
 } as const;

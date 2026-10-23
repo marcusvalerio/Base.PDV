@@ -98,4 +98,13 @@ describe('inventário e acuracidade', () => {
     expect(done.accuracy.itemAccuracy).toBe(0);
     expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(a) as any).s).toBe(10000);
   });
+
+  it('meta de acuracidade é definida pelo administrador', async () => {
+    const { admin, op } = await setup();
+    expect((await op.get('/api/inventory-target')).body.targetPct).toBeNull();
+    expect((await op.put('/api/settings', { inventory_accuracy_target: 98 })).status).toBe(403);
+    expect((await admin.put('/api/settings', { inventory_accuracy_target: 101 })).status).toBe(400);
+    expect((await admin.put('/api/settings', { inventory_accuracy_target: 97.5 })).status).toBe(200);
+    expect((await op.get('/api/inventory-target')).body.targetPct).toBe(97.5);
+  });
 });

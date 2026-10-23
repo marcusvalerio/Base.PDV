@@ -55,4 +55,4 @@ O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco
 - Contagem por coletor (cada leitura soma 1), câmera, ou digitando a quantidade (obrigatório para L/kg). “Somar” permite contar em vários locais; “Substituir” é recontagem.
 - Para cada item é guardado o saldo do sistema **no momento da contagem**: vendas posteriores não geram divergência falsa; o ajuste aplica só a diferença.
 - **Acuracidade por item** = itens sem divergência ÷ itens contados. **Acuracidade em valor** = 1 − Σ|divergência × custo| ÷ valor do sistema (itens com custo). Itens não contados ficam fora.
-- Operadores contam; somente admin cria, vê o sistema durante contagem cega, conclui (com ou sem ajuste) ou descarta. O histórico mostra a evolução da acuracidade.
+- Operadores contam; somente admin cria, vê o sistema durante contagem cega, conclui (com ou sem ajuste) ou descarta. O histórico mostra a evolução da acuracidade e se cada inventário atingiu a **meta definida pelo administrador** (`inventory_accuracy_target`, % por item, em Configurações).

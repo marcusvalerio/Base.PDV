@@ -343,6 +343,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       restock_lead_time_days: optDays.optional(),
       restock_safety_days: optDays.optional(),
       allow_negative_stock: z.enum(['true', 'false']).optional(),
+      inventory_accuracy_target: z.union([z.literal(''), z.coerce.number().min(0).max(100).transform(String)]).optional(),
     }).parse(req.body);
     for (const [k, v] of Object.entries(b)) if (v !== undefined) settings.setSetting(db, k, String(v), uid(req));
     res.json(settings.publicSettings(db));
@@ -370,6 +371,10 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
 
   // ---------- Inventário ----------
   r.get('/inventory', auth, (_req, res) => res.json(inventory.listSessions(db)));
+  r.get('/inventory-target', auth, (_req, res) => {
+    const v = settings.getSetting(db, 'inventory_accuracy_target');
+    res.json({ targetPct: v === '' ? null : Number(v) });
+  });
   r.post('/inventory', admin, (req, res) => {
     const b = z.object({ name: z.string().max(80).optional(), scope: z.enum(['FULL', 'CATEGORY', 'PARTIAL']), categoryId: id.nullish(), productIds: z.array(id).max(5000).optional(), blind: z.boolean().optional() }).parse(req.body);
     res.status(201).json(inventory.getSession(db, inventory.createSession(db, b, uid(req)), { revealSystem: true }));

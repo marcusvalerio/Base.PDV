@@ -205,7 +205,7 @@ export function Settings() {
     const s = parseMoney(v.surcharge);
     if (s == null) return toast('Acréscimo inválido.', 'error');
     try {
-      setData(await api('/settings', { method: 'PUT', body: { fiado_surcharge_cents: s, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock } }));
+      setData(await api('/settings', { method: 'PUT', body: { fiado_surcharge_cents: s, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
       setF(null); await refreshBoot(); toast('Configurações salvas.', 'success');
     } catch (e: any) { toast(e.message, 'error'); }
   });
@@ -248,6 +248,12 @@ export function Settings() {
           <Field label="Reserva de segurança (dias)" hint="Vazio = sem reserva."><input className="input num" inputMode="numeric" value={v.restock_safety_days} onChange={set('restock_safety_days')} /></Field>
         </div>
         <label className="check"><input type="checkbox" checked={v.allow_negative_stock === 'true'} onChange={set('allow_negative_stock')} /> Permitir vender mesmo sem estoque registrado (o estoque fica negativo e aparece nos alertas)</label>
+      </div>
+      <div className="card stack">
+        <h2>Inventário</h2>
+        <Field label="Meta de acuracidade por item (%)" hint="Ex.: 98. Cada inventário concluído é comparado com esta meta. Vazio = sem meta.">
+          <input className="input num" style={{ maxWidth: 160 }} inputMode="decimal" value={v.inventory_accuracy_target} onChange={set('inventory_accuracy_target')} />
+        </Field>
       </div>
       <div className="row"><span className="spacer" /><button className="btn primary" disabled={busy || !f} onClick={save}>Salvar configurações</button></div>
       <div className="card stack">

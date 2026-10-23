@@ -8,12 +8,21 @@ import { useSession } from '../components/session';
 import { useHidScanner, CameraButton } from '../components/scanner';
 
 const SCOPE: Record<string, string> = { FULL: 'Geral', CATEGORY: 'Por categoria', PARTIAL: 'Parcial' };
-const accClass = (v: number | null) => (v == null ? '' : v >= 0.98 ? 'success' : v >= 0.9 ? 'warning' : 'danger');
+/** Cor pela meta do administrador; sem meta, cor neutra. */
+const accClass = (v: number | null, target: number | null) => (v == null || target == null ? '' : v * 100 >= target ? 'success' : 'danger');
+const useTarget = () => useApi<{ targetPct: number | null }>('/inventory-target').data?.targetPct ?? null;
+function MetaText({ v, target }: { v: number | null; target: number | null }) {
+  if (target == null) return <>Meta não definida (Configurações)</>;
+  if (v == null) return <>Meta: {String(target).replace('.', ',')}%</>;
+  const d = v * 100 - target;
+  return <span className={d >= 0 ? 'up' : 'down'}>Meta {String(target).replace('.', ',')}% · {d >= 0 ? 'atingida' : `${Math.abs(d).toFixed(1).replace('.', ',')} p.p. abaixo`}</span>;
+}
 
 export function InventoryList() {
   const { user } = useSession();
   const isAdmin = user?.role === 'ADMIN';
   const { data, loading, error, reload } = useApi<any[]>('/inventory');
+  const target = useTarget();
   const [creating, setCreating] = useState(false);
   const open = (data ?? []).filter((s) => s.status === 'OPEN');
   const done = (data ?? []).filter((s) => s.status === 'FINISHED');
@@ -24,9 +33,9 @@ export function InventoryList() {
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : <>
         {isAdmin && (
           <div className="metrics">
-            <Metric label="Acuracidade (último, por item)" value={last?.item_accuracy == null ? '—' : pct(last.item_accuracy, 1)} sub={last ? `${last.name} · ${dateTime(last.finished_at)}` : 'Nenhum inventário concluído'} />
+            <Metric label="Acuracidade (último, por item)" value={last?.item_accuracy == null ? '—' : pct(last.item_accuracy, 1)} sub={<><MetaText v={last?.item_accuracy ?? null} target={target} />{last && <div>{last.name} · {dateTime(last.finished_at)}</div>}</>} />
             <Metric label="Acuracidade em valor (último)" value={last?.value_accuracy == null ? '—' : pct(last.value_accuracy, 1)} sub={last?.summary ? `Divergência ${money(last.summary.divergenceAbsCents)} de ${money(last.summary.systemValueCents)}` : 'Cadastre custos para medir em valor'} />
-            <Metric label="Média dos últimos 5 (por item)" value={done.length ? pct(done.slice(0, 5).reduce((a, s) => a + (s.item_accuracy ?? 0), 0) / Math.min(5, done.length), 1) : '—'} sub={`${done.length} inventário(s) concluído(s)`} />
+            <Metric label="Média dos últimos 5 (por item)" value={done.length ? pct(done.slice(0, 5).reduce((a, s) => a + (s.item_accuracy ?? 0), 0) / Math.min(5, done.length), 1) : '—'} sub={`${done.length} inventário(s) concluído(s)${target != null ? ` · ${done.filter((x) => x.item_accuracy != null && x.item_accuracy * 100 >= target).length} na meta` : ''}`} />
           </div>
         )}
         <div className="card flush">
@@ -42,15 +51,16 @@ export function InventoryList() {
           <div className="card flush">
             <div style={{ padding: '14px 16px' }}><h2>Histórico de acuracidade</h2></div>
             {!done.length ? <Empty>Nenhum inventário concluído.</Empty> : (
-              <table className="table responsive"><thead><tr><th>Inventário</th><th>Concluído</th><th className="r">Itens contados</th><th className="r">Divergentes</th><th className="r">Acuracidade (item)</th><th className="r">Acuracidade (valor)</th><th>Estoque</th></tr></thead><tbody>
+              <table className="table responsive"><thead><tr><th>Inventário</th><th>Concluído</th><th className="r">Itens contados</th><th className="r">Divergentes</th><th className="r">Acuracidade (item)</th><th className="r">Acuracidade (valor)</th><th>Meta</th><th>Estoque</th></tr></thead><tbody>
                 {done.map((s) => (
                   <tr key={s.id} className="click" onClick={() => location.assign(`/inventario/${s.id}`)}>
                     <td data-label="Inventário"><b>{s.name}</b><div className="faint">{SCOPE[s.scope]}{s.category ? `: ${s.category}` : ''}</div></td>
                     <td data-label="Concluído">{dateTime(s.finished_at)}</td>
                     <td data-label="Itens contados" className="r num">{s.summary?.countedItems ?? s.counted_items}</td>
                     <td data-label="Divergentes" className="r num">{s.summary?.divergentItems ?? '—'}</td>
-                    <td data-label="Acuracidade (item)" className="r"><span className={`badge ${accClass(s.item_accuracy)} num`}>{pct(s.item_accuracy, 1)}</span></td>
-                    <td data-label="Acuracidade (valor)" className="r"><span className={`badge ${accClass(s.value_accuracy)} num`}>{pct(s.value_accuracy, 1)}</span></td>
+                    <td data-label="Acuracidade (item)" className="r"><span className={`badge ${accClass(s.item_accuracy, target)} num`}>{pct(s.item_accuracy, 1)}</span></td>
+                    <td data-label="Acuracidade (valor)" className="r"><span className={`badge ${accClass(s.value_accuracy, target)} num`}>{pct(s.value_accuracy, 1)}</span></td>
+                    <td data-label="Meta">{target == null || s.item_accuracy == null ? '—' : s.item_accuracy * 100 >= target ? <span className="badge success">atingida</span> : <span className="badge danger">abaixo</span>}</td>
                     <td data-label="Estoque">{s.applied ? 'ajustado' : 'não ajustado'}</td>
                   </tr>
                 ))}
@@ -107,6 +117,7 @@ export function InventoryCount() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'diff'>('all');
   const [finishing, setFinishing] = useState(false);
   const [reveal, setReveal] = useState(false);
+  const target = useTarget();
   const input = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
@@ -175,7 +186,7 @@ export function InventoryCount() {
 
       {s.accuracy && showSystem && (
         <div className="metrics">
-          <Metric label="Acuracidade por item" value={pct(s.accuracy.itemAccuracy, 1)} sub={`${s.accuracy.matchedItems} de ${s.accuracy.countedItems} itens batendo`} />
+          <Metric label="Acuracidade por item" value={pct(s.accuracy.itemAccuracy, 1)} sub={<><div>{s.accuracy.matchedItems} de {s.accuracy.countedItems} itens batendo</div><MetaText v={s.accuracy.itemAccuracy} target={target} /></>} />
           <Metric label="Acuracidade em valor" value={pct(s.accuracy.valueAccuracy, 1)} sub={`Divergência ${money(s.accuracy.divergenceAbsCents)} de ${money(s.accuracy.systemValueCents)}`} />
           <Metric label="Saldo das divergências" value={money(s.accuracy.divergenceNetCents)} sub={s.accuracy.divergenceNetCents < 0 ? 'Falta mercadoria (custo)' : s.accuracy.divergenceNetCents > 0 ? 'Sobra mercadoria (custo)' : 'Sem diferença'} />
         </div>
@@ -203,7 +214,7 @@ export function InventoryCount() {
         )}
       </div>
       {typing && <QtyModal item={typing} onClose={() => { setTyping(null); input.current?.focus(); }} onSave={(m, mode) => { count(typing.productId, m, mode); setTyping(null); input.current?.focus(); }} />}
-      {finishing && <FinishModal s={s} onClose={() => setFinishing(false)} onDone={() => { setFinishing(false); reload(); toast('Inventário concluído.', 'success'); }} />}
+      {finishing && <FinishModal target={target} s={s} onClose={() => setFinishing(false)} onDone={() => { setFinishing(false); reload(); toast('Inventário concluído.', 'success'); }} />}
     </div>
   );
 }
@@ -226,7 +237,7 @@ function QtyModal({ item, onClose, onSave }: { item: any; onClose: () => void; o
   );
 }
 
-function FinishModal({ s, onClose, onDone }: { s: any; onClose: () => void; onDone: () => void }) {
+function FinishModal({ s, target, onClose, onDone }: { s: any; target: number | null; onClose: () => void; onDone: () => void }) {
   const [apply, setApply] = useState(true);
   const toast = useToast();
   const uncounted = s.totalItems - s.countedItems;
@@ -241,6 +252,7 @@ function FinishModal({ s, onClose, onDone }: { s: any; onClose: () => void; onDo
   return (
     <Modal title="Concluir inventário" onClose={onClose} footer={<><button className="btn danger" onClick={cancel}>Descartar</button><span className="spacer" /><button className="btn" onClick={onClose}>Voltar</button><button className="btn primary" disabled={busy || !s.countedItems} onClick={finish}>Concluir</button></>}>
       <div className="row"><span className="muted">Acuracidade por item</span><span className="spacer" /><b className="num">{pct(a?.itemAccuracy, 1)}</b></div>
+      <div className="faint"><MetaText v={a?.itemAccuracy ?? null} target={target} /></div>
       <div className="row"><span className="muted">Acuracidade em valor</span><span className="spacer" /><b className="num">{pct(a?.valueAccuracy, 1)}</b></div>
       <div className="row"><span className="muted">Itens divergentes</span><span className="spacer" /><b className="num">{a?.divergentItems ?? 0}</b></div>
       {uncounted > 0 && <div className="notice warning">{uncounted} produto(s) não foram contados e ficarão de fora (não serão ajustados nem entram na acuracidade).</div>}
