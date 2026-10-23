@@ -16,8 +16,8 @@ O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco
 - **Estoque só muda por `stock_movements`** (venda, cancelamento, entrada, ajuste, perda, inventário), com usuário, motivo, saldo e referência.
 - **Comanda ≠ dívida**: itens de mesa ficam `PENDING` sem gerar venda nem baixa de estoque; ao fechar (individual ou mesa inteira) viram venda. Itens pagos ficam ligados à venda e não podem ser cobrados de novo. Correções marcam o item como `VOIDED` com motivo.
 - **Fiado**: `receivables` (1 por venda, `UNIQUE(sale_id)`) guarda valor original, acréscimo aplicado e total; pagamentos abatem as dívidas mais antigas (`receivable_allocations`).
-- **Caixa**: um caixa aberto por vez (índice único parcial). Código validado no servidor (modo único ou individual, configurável). Fechamento grava o resumo congelado e não pode ser repetido. Faturamento, vendas a prazo e entradas de dinheiro são separados.
-- **Cancelamento** de venda: somente administrador, enquanto o caixa está aberto; preserva a venda como `CANCELLED`, devolve estoque, cancela o fiado (se não houver pagamento). Relatórios contam apenas `COMPLETED`.
+- **Caixa**: vários caixas abertos ao mesmo tempo, no máximo um por usuário (índice único parcial, migration 002). Vendas, recebimentos e movimentos vão para o caixa de quem registrou; relatórios somam todos. O administrador acompanha os caixas abertos no Painel e em Caixas (`GET /cash/active`). Só quem abriu (ou um administrador) fecha o caixa. Código validado no servidor (modo único ou individual, configurável). Fechamento grava o resumo congelado e não pode ser repetido. Faturamento, vendas a prazo e entradas de dinheiro são separados.
+- **Cancelamento** de venda: qualquer usuário com o **código único de cancelamento** (configurado pelo administrador, guardado com hash). Operador só cancela vendas do próprio caixa; o caixa da venda precisa estar aberto. Preserva a venda como `CANCELLED`, devolve estoque, cancela o fiado (se não houver pagamento). Venda de mesa: os itens voltam a `PENDING` na mesa, que é reaberta se estava encerrada. Relatórios contam apenas `COMPLETED`.
 - **Auditoria**: `audit_log` para login, falhas, alterações de usuários, configurações, produtos, estoque, caixa, vendas e comandas.
 
 ## Módulos (API em `server/src/app.ts`)
@@ -42,5 +42,5 @@ O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco
 
 ## Limitações conhecidas
 - Validade por lote é informativa: não há baixa por lote (FIFO).
-- Cancelamento de vendas de comanda e de caixas já fechados não está disponível (exige procedimento administrativo a definir).
+- Cancelamento de vendas de caixas já fechados não está disponível (exige procedimento administrativo a definir).
 - Ajuste de quantidade de chopp no estoque é feito em litros como qualquer produto; o método real de controle (barril, medidor) ainda será avaliado.

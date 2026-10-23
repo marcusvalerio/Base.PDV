@@ -4,6 +4,8 @@ import { assertQty, lineTotal, Unit } from '../money.js';
 import { moveStock } from './stock.js';
 import { requireOpenRegister } from './cash.js';
 import { getSetting } from './settings.js';
+import { verifySecret } from '../security.js';
+import { forbidden } from '../errors.js';
 
 export interface SaleLineInput { productId: number; qtyMilli: number }
 export interface CreateSaleInput {
@@ -54,7 +56,7 @@ export function persistSale(db: DB, input: Omit<CreateSaleInput, 'items'> & { li
   return tx(db, () => {
     const again = findByKey(db, input.idempotencyKey);
     if (again) return { ...getSale(db, again.id), replayed: true };
-    const registerId = requireOpenRegister(db);
+    const registerId = requireOpenRegister(db, userId);
     const pm = getPaymentMethod(db, input.paymentMethodCode);
     const subtotal = input.lines.reduce((a, l) => a + l.totalCents, 0);
     let surcharge = 0;
@@ -131,27 +133,48 @@ export function listSales(db: DB, opts: { registerId?: number; from?: string; to
   ).all(...args);
 }
 
+/** Valida o código único de cancelamento definido pelo administrador. */
+export function verifyCancelCode(db: DB, userId: number, code: string) {
+  const hash = getSetting(db, 'cancel_code_hash');
+  if (!hash) throw forbidden('O código de cancelamento ainda não foi configurado pelo administrador.');
+  if (!verifySecret(String(code ?? ''), hash)) {
+    audit(db, userId, 'sale.cancel_code_invalid', 'sale', null);
+    throw forbidden('Código de cancelamento incorreto.');
+  }
+}
+
 /**
- * Cancelamento (somente administrador): preserva a venda com status CANCELLED, devolve o estoque
- * e cancela o lançamento de fiado. Vendas fiado com pagamentos já registrados não podem ser canceladas aqui.
+ * Cancelamento autorizado pelo código de cancelamento: a venda fica preservada como CANCELLED,
+ * o estoque volta, o fiado é cancelado (se ainda sem pagamentos) e, se a venda veio de uma mesa,
+ * os itens voltam a ficar pendentes na mesa (reabrindo-a se necessário) para serem cobrados corretamente.
  */
-export function cancelSale(db: DB, id: number, reason: string, userId: number) {
+export function cancelSale(db: DB, id: number, reason: string, code: string, userId: number) {
   if (!reason?.trim()) throw badRequest('Informe o motivo do cancelamento.');
+  verifyCancelCode(db, userId, code);
   return tx(db, () => {
     const s = db.prepare('SELECT * FROM sales WHERE id = ?').get(id) as any;
     if (!s) throw notFound('Venda não encontrada.');
     if (s.status === 'CANCELLED') throw conflict('Esta venda já foi cancelada.');
     const reg = db.prepare('SELECT status FROM cash_registers WHERE id = ?').get(s.register_id) as any;
-    if (reg.status !== 'OPEN') throw conflict('A venda pertence a um caixa já fechado. Registre um ajuste administrativo.');
+    if (reg.status !== 'OPEN') throw conflict('A venda pertence a um caixa já fechado. Fale com o administrador.');
     const rec = db.prepare('SELECT * FROM receivables WHERE sale_id = ?').get(id) as any;
     if (rec && rec.paid_cents > 0) throw conflict('Esta venda a prazo já tem pagamentos registrados.');
     if (rec) db.prepare("UPDATE receivables SET status = 'CANCELLED' WHERE id = ?").run(rec.id);
-    if (s.tab_id) throw conflict('Vendas de comanda não podem ser canceladas por aqui nesta versão.');
+    if (s.tab_id) {
+      const tab = db.prepare('SELECT * FROM tabs WHERE id = ?').get(s.tab_id) as any;
+      if (tab.status !== 'OPEN') {
+        if (db.prepare("SELECT 1 FROM tabs WHERE label = ? AND status = 'OPEN'").get(tab.label)) {
+          throw conflict(`Já existe outra "${tab.label}" aberta. Feche-a antes de cancelar esta venda.`);
+        }
+        db.prepare("UPDATE tabs SET status = 'OPEN', closed_at = NULL WHERE id = ?").run(tab.id);
+      }
+      db.prepare("UPDATE tab_items SET status = 'PENDING', sale_id = NULL WHERE sale_id = ? AND status = 'PAID'").run(id);
+    }
     db.prepare("UPDATE sales SET status='CANCELLED', cancelled_at=?, cancelled_by=?, cancel_reason=? WHERE id=?").run(now(), userId, reason.trim(), id);
     for (const it of db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id) as any[]) {
       moveStock(db, { productId: it.product_id, type: 'SALE_CANCEL', qtyMilli: it.qty_milli, userId, refType: 'sale', refId: id, reason: 'Cancelamento de venda' });
     }
-    audit(db, userId, 'sale.cancel', 'sale', id, { reason });
+    audit(db, userId, 'sale.cancel', 'sale', id, { reason, tabId: s.tab_id });
     return getSale(db, id);
   });
 }

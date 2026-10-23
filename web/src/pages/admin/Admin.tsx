@@ -6,6 +6,7 @@ import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../../compon
 import { CustomerModal } from '../Fiado';
 import { CashSummary } from '../../components/CashSummary';
 import { useSession } from '../../components/session';
+import { SaleModal } from '../../components/CancelSale';
 
 export function Customers() {
   const [q, setQ] = useState('');
@@ -78,29 +79,22 @@ export function Sales() {
   );
 }
 
-function SaleModal({ id, onClose, onChanged }: { id: number; onClose: () => void; onChanged: () => void }) {
-  const { data: s, loading, setData } = useApi<any>(`/sales/${id}`);
-  const [reason, setReason] = useState('');
-  const toast = useToast();
-  const [cancel, busy] = useAction(async () => {
-    if (!window.confirm('Cancelar esta venda? O estoque será devolvido e a venda deixará de contar nos relatórios.')) return;
-    try { setData(await api(`/sales/${id}/cancel`, { body: { reason } })); onChanged(); toast('Venda cancelada.', 'success'); } catch (e: any) { toast(e.message, 'error'); }
-  });
+export function OpenRegisters({ onSelect }: { onSelect?: (id: number) => void }) {
+  const { data, loading } = useApi<any[]>('/cash/active');
+  if (loading && !data) return <Loading />;
   return (
-    <Modal wide title={`Venda nº ${id}`} onClose={onClose}>
-      {loading && !s ? <Loading /> : s && <>
-        <div className="row wrap"><span>{dateTime(s.created_at)} · {s.user_name} · {s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</span><span className="spacer" />{s.status === 'CANCELLED' && <span className="badge danger">cancelada</span>}</div>
-        <table className="table"><tbody>
-          {s.items.map((i: any) => <tr key={i.id}><td>{qty(i.qty_milli, i.unit)} {i.product_name}</td><td className="r num">{money(i.total_cents)}</td></tr>)}
-          {s.surcharge_cents > 0 && <tr><td>Acréscimo a prazo</td><td className="r num">{money(s.surcharge_cents)}</td></tr>}
-          <tr><td><b>Total</b></td><td className="r num"><b>{money(s.total_cents)}</b></td></tr>
-          {s.received_cents != null && <tr><td className="muted">Recebido / troco</td><td className="r num">{money(s.received_cents)} / {money(s.change_cents)}</td></tr>}
+    <div className="card flush">
+      <div style={{ padding: '14px 16px' }}><h2>Caixas abertos agora ({data?.length ?? 0})</h2></div>
+      {!data?.length ? <Empty>Nenhum caixa aberto.</Empty> : (
+        <table className="table responsive"><thead><tr><th>Operador</th><th>Aberto desde</th><th className="r">Vendas</th><th className="r">Faturamento</th><th className="r">Fiado recebido</th><th className="r">Dinheiro esperado</th></tr></thead><tbody>
+          {data.map((r) => (
+            <tr key={r.id} className={onSelect ? 'click' : ''} onClick={() => onSelect?.(r.id)}><td data-label="Operador"><b>{r.openedByName}</b></td><td data-label="Aberto desde">{dateTime(r.openedAt)}</td>
+              <td data-label="Vendas" className="r num">{r.salesCount}</td><td data-label="Faturamento" className="r num">{money(r.salesTotalCents)}</td>
+              <td data-label="Fiado recebido" className="r num">{money(r.receiptsTotalCents)}</td><td data-label="Dinheiro esperado" className="r num">{money(r.expectedCashCents)}</td></tr>
+          ))}
         </tbody></table>
-        {s.status === 'CANCELLED' ? <div className="notice">Cancelada em {dateTime(s.cancelled_at)}: {s.cancel_reason}</div> : (
-          <div className="row wrap"><input className="input" style={{ flex: 1, minWidth: 200 }} placeholder="Motivo do cancelamento" value={reason} onChange={(e) => setReason(e.target.value)} /><button className="btn danger" disabled={busy || reason.trim().length < 3} onClick={cancel}>Cancelar venda</button></div>
-        )}
-      </>}
-    </Modal>
+      )}
+    </div>
   );
 }
 
@@ -110,7 +104,9 @@ export function Registers() {
   const detail = useApi<any>(sel ? `/cash/${sel}/closing` : null, [sel]);
   return (
     <div className="stack">
-      <div className="page-head"><h1>Caixas</h1></div>
+      <div className="page-head"><h1>Caixas</h1><span className="spacer" /><button className="btn sm" onClick={reload}>Atualizar</button></div>
+      <OpenRegisters onSelect={setSel} />
+      <h2>Histórico</h2>
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
         <div className="card flush">{!data?.length ? <Empty>Nenhum caixa registrado.</Empty> : (
           <table className="table responsive"><thead><tr><th>Nº</th><th>Abertura</th><th>Fechamento</th><th className="r">Esperado</th><th className="r">Contado</th><th className="r">Diferença</th></tr></thead><tbody>
@@ -198,6 +194,7 @@ export function Settings() {
   const { refreshBoot } = useSession();
   const [f, setF] = useState<any>(null);
   const [codeOpen, setCodeOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [newCat, setNewCat] = useState('');
   const toast = useToast();
   const v = f ?? (data && { ...data, surcharge: centsToInput(Number(data.fiado_surcharge_cents)) });
@@ -236,6 +233,11 @@ export function Settings() {
         {v.cash_code_mode === 'INDIVIDUAL' && <div className="faint">Defina o código de cada pessoa em Usuários.</div>}
       </div>
       <div className="card stack">
+        <h2>Cancelamento de vendas</h2>
+        <div className="faint">Código único pedido para cancelar qualquer venda (inclusive de mesas, cujos itens voltam para a mesa). Use um código diferente do caixa se só pessoas de confiança puderem cancelar.</div>
+        <div className="row wrap"><span className={`badge ${data.cancel_code_configured ? 'success' : 'warning'}`}>{data.cancel_code_configured ? 'Código definido' : 'Código não definido'}</span><button className="btn sm" onClick={() => setCancelOpen(true)}>{data.cancel_code_configured ? 'Trocar código' : 'Definir código'}</button></div>
+      </div>
+      <div className="card stack">
         <h2>Estoque e reposição</h2>
         <div className="grid2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <Field label="Alertar validade com (dias)"><input className="input num" inputMode="numeric" value={v.expiry_alert_days} onChange={set('expiry_alert_days')} /></Field>
@@ -251,6 +253,7 @@ export function Settings() {
         <div className="row"><input className="input" placeholder="Nova categoria" value={newCat} onChange={(e) => setNewCat(e.target.value)} /><button className="btn" disabled={!newCat.trim()} onClick={addCat}>Adicionar</button></div>
         <div className="faint">Clique em uma categoria para ativar ou desativar.</div>
       </div>
+      {cancelOpen && <CodeModal title="Código de cancelamento" path="/settings/cancel-code" onClose={() => { setCancelOpen(false); reload(); }} />}
       {codeOpen && <CodeModal title="Código único do caixa" path="/settings/cash-code" onClose={() => { setCodeOpen(false); reload(); }} />}
     </div>
   );

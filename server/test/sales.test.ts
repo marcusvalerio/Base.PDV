@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setup, key, product, openCash } from './helpers.js';
+import { setup, key, product, openCash, CANCEL } from './helpers.js';
 import { lineTotal } from '../src/money.js';
 
 describe('produtos', () => {
@@ -89,14 +89,14 @@ describe('vendas no PDV', () => {
     expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(pid) as any).s).toBe(48000);
   });
 
-  it('cancelamento (admin) devolve estoque e sai dos relatórios', async () => {
+  it('cancelamento com código único devolve estoque e sai dos relatórios', async () => {
     const { admin, op } = await setup();
     const pid = await product(admin);
     await openCash(op);
     const s = (await op.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'PIX', items: [{ productId: pid, qtyMilli: 2000 }] })).body;
-    expect((await op.post(`/api/sales/${s.id}/cancel`, { reason: 'erro' })).status).toBe(403);
-    expect((await admin.post(`/api/sales/${s.id}/cancel`, { reason: 'lançado errado' })).status).toBe(200);
-    expect((await admin.post(`/api/sales/${s.id}/cancel`, { reason: 'de novo' })).status).toBe(409);
+    expect((await op.post(`/api/sales/${s.id}/cancel`, { reason: 'erro', code: '1111' })).status).toBe(403);
+    expect((await op.post(`/api/sales/${s.id}/cancel`, { reason: 'lançado errado', code: CANCEL })).status).toBe(200);
+    expect((await admin.post(`/api/sales/${s.id}/cancel`, { reason: 'de novo', code: CANCEL })).status).toBe(409);
     const p = (await admin.get('/api/products')).body.find((x: any) => x.id === pid);
     expect(p.stock_milli).toBe(50000);
     const a = (await admin.get('/api/analytics?preset=today')).body;

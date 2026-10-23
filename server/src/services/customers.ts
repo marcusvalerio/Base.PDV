@@ -63,7 +63,7 @@ export function receivePayment(db: DB, input: { idempotencyKey: string; customer
   if (prev) return { paymentId: prev.id, balanceCents: customerBalance(db, input.customerId), replayed: true };
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) throw badRequest('Valor inválido.');
   return tx(db, () => {
-    const registerId = requireOpenRegister(db);
+    const registerId = requireOpenRegister(db, userId);
     const pm = getPaymentMethod(db, input.paymentMethodCode);
     if (pm.kind === 'CREDIT') throw badRequest('Escolha como o cliente está pagando (dinheiro, Pix ou cartão).');
     const balance = customerBalance(db, input.customerId);

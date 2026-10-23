@@ -23,14 +23,26 @@ export function verifyCashCode(db: DB, userId: number, code: string) {
   }
 }
 
-export function currentRegister(db: DB) {
+/** Caixa aberto do usuário (cada pessoa opera o seu próprio caixa). */
+export function currentRegister(db: DB, userId: number) {
   return db.prepare(
-    `SELECT r.*, u.name AS opened_by_name FROM cash_registers r JOIN users u ON u.id = r.opened_by WHERE r.status = 'OPEN'`,
-  ).get() as any | undefined;
+    `SELECT r.*, u.name AS opened_by_name FROM cash_registers r JOIN users u ON u.id = r.opened_by WHERE r.status = 'OPEN' AND r.opened_by = ?`,
+  ).get(userId) as any | undefined;
 }
 
-export function requireOpenRegister(db: DB): number {
-  const r = currentRegister(db);
+/** Todos os caixas abertos agora, para acompanhamento do administrador. */
+export function openRegisters(db: DB) {
+  const rows = db.prepare(
+    `SELECT r.id, r.opened_at, u.name AS opened_by_name FROM cash_registers r JOIN users u ON u.id = r.opened_by WHERE r.status = 'OPEN' ORDER BY r.opened_at`,
+  ).all() as any[];
+  return rows.map((r) => {
+    const s = registerSummary(db, r.id);
+    return { id: r.id, openedAt: r.opened_at, openedByName: r.opened_by_name, salesCount: s.salesCount, salesTotalCents: s.salesTotalCents, receiptsTotalCents: s.receiptsTotalCents, expectedCashCents: s.expectedCashCents };
+  });
+}
+
+export function requireOpenRegister(db: DB, userId: number): number {
+  const r = currentRegister(db, userId);
   if (!r) throw conflict('O caixa está fechado. Abra o caixa para registrar operações.', 'REGISTER_CLOSED');
   return r.id;
 }
@@ -39,7 +51,7 @@ export function openRegister(db: DB, input: { code: string; openingFloatCents: n
   verifyCashCode(db, userId, input.code);
   if (!Number.isInteger(input.openingFloatCents) || input.openingFloatCents < 0) throw badRequest('Valor inicial inválido.');
   return tx(db, () => {
-    if (currentRegister(db)) throw conflict('Já existe um caixa aberto.');
+    if (currentRegister(db, userId)) throw conflict('Você já tem um caixa aberto.');
     const r = db.prepare('INSERT INTO cash_registers (status, opened_by, opened_at, opening_float_cents) VALUES (?,?,?,?)')
       .run('OPEN', userId, now(), input.openingFloatCents);
     audit(db, userId, 'cash.open', 'cash_register', r.lastInsertRowid, { openingFloatCents: input.openingFloatCents });
@@ -50,7 +62,7 @@ export function openRegister(db: DB, input: { code: string; openingFloatCents: n
 export function addCashMovement(db: DB, input: { type: 'SUPRIMENTO' | 'SANGRIA'; amountCents: number; reason?: string }, userId: number) {
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) throw badRequest('Valor inválido.');
   return tx(db, () => {
-    const regId = requireOpenRegister(db);
+    const regId = requireOpenRegister(db, userId);
     if (input.type === 'SANGRIA') {
       const s = registerSummary(db, regId);
       if (input.amountCents > s.expectedCashCents) throw badRequest('A retirada é maior que o dinheiro esperado no caixa.');
@@ -117,6 +129,8 @@ export function closeRegister(db: DB, input: { code: string; countedCashCents: n
     const reg = db.prepare('SELECT * FROM cash_registers WHERE id = ?').get(input.registerId) as any;
     if (!reg) throw notFound('Caixa não encontrado.');
     if (reg.status !== 'OPEN') throw conflict('Este caixa já foi fechado.', 'ALREADY_CLOSED');
+    const role = (db.prepare('SELECT role FROM users WHERE id = ?').get(userId) as any)?.role;
+    if (reg.opened_by !== userId && role !== 'ADMIN') throw forbidden('Só quem abriu o caixa (ou um administrador) pode fechá-lo.');
     const s = registerSummary(db, reg.id);
     const t = now();
     const summary = { ...s, status: 'CLOSED', closedAt: t, countedCashCents: input.countedCashCents, differenceCents: input.countedCashCents - s.expectedCashCents };

@@ -8,6 +8,7 @@ import { hashSecret } from '../src/security.js';
 
 export const PASS = 'senha-de-teste-123';
 export const CODE = '4321';
+export const CANCEL = '9090';
 
 export async function setup() {
   const db = openDb(':memory:');
@@ -15,6 +16,7 @@ export async function setup() {
   const adminId = createUser(db, { name: 'Admin Teste', username: 'admin', password: PASS, role: 'ADMIN' }, null);
   const opId = createUser(db, { name: 'Operadora Teste', username: 'op', password: PASS, role: 'OPERADOR' }, adminId);
   setSetting(db, 'shared_cash_code_hash', hashSecret(CODE), adminId);
+  setSetting(db, 'cancel_code_hash', hashSecret(CANCEL), adminId);
   const admin = await agent(app, 'admin');
   const op = await agent(app, 'op');
   return { db, app, admin, op, adminId, opId };

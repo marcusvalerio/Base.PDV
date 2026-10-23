@@ -26,6 +26,7 @@ const db = openDb(path);
 const admin = createUser(db, { name: 'Admin Demo', username: 'admin', password: pass, role: 'ADMIN' }, null);
 createUser(db, { name: 'Operadora Demo', username: 'caixa', password: pass, role: 'OPERADOR' }, admin);
 setSetting(db, 'shared_cash_code_hash', hashSecret(code), admin);
+setSetting(db, 'cancel_code_hash', hashSecret(process.env.PDV_DEMO_CANCEL_CODE || code), admin);
 
 const cat = (n: string) => (db.prepare('SELECT id FROM categories WHERE name = ?').get(n) as any).id;
 const P = [

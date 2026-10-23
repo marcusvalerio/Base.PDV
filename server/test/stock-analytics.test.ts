@@ -71,6 +71,6 @@ describe('análise', () => {
     const d = (await admin.get('/api/dashboard')).body;
     expect(d.today.salesCount).toBe(0);
     expect(d.today.avgTicketCents).toBeNull();
-    expect(d.register).toBeNull();
+    expect(d.openRegisters).toEqual([]);
   });
 });

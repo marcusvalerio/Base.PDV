@@ -3,7 +3,7 @@ import { addDays, daysBetween, localDate, rangeToUtc } from '../tz.js';
 import { badRequest } from '../errors.js';
 import { getNumberSetting } from './settings.js';
 import { lowStock, expiringSoon } from './stock.js';
-import { currentRegister, registerSummary } from './cash.js';
+import { openRegisters } from './cash.js';
 import { FRACTIONAL_UNITS, Unit } from '../money.js';
 
 export type Preset = 'today' | '7d' | '15d' | '30d' | 'month' | 'custom';
@@ -211,7 +211,6 @@ export function restockSuggestions(db: DB, opts: { windowDays?: number; category
 export function dashboard(db: DB) {
   const today = analysis(db, { preset: 'today' });
   const week = analysis(db, { preset: '7d' });
-  const reg = currentRegister(db);
   const fiado = db.prepare(
     `SELECT COALESCE(SUM(total_cents - paid_cents),0) AS total, COUNT(DISTINCT customer_id) AS customers FROM receivables WHERE status = 'OPEN'`,
   ).get() as any;
@@ -223,6 +222,6 @@ export function dashboard(db: DB) {
     lowStock: lowStock(db),
     expiring: expiringSoon(db),
     fiado: { pendingCents: fiado.total, customers: fiado.customers },
-    register: reg ? { ...registerSummary(db, reg.id), openedByName: reg.opened_by_name } : null,
+    openRegisters: openRegisters(db),
   };
 }

@@ -1,12 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { setup, key, product, openCash, CODE } from './helpers.js';
+import { setup, key, product, openCash, CODE, agent, PASS } from './helpers.js';
+import { createUser } from '../src/services/users.js';
 
 describe('caixa', () => {
-  it('recusa código incorreto e não abre dois caixas', async () => {
-    const { op, admin } = await setup();
+  it('recusa código incorreto e não abre dois caixas para a mesma pessoa', async () => {
+    const { op } = await setup();
     expect((await op.post('/api/cash/open', { code: '0000', openingFloatCents: 0 })).status).toBe(403);
     await openCash(op);
-    expect((await admin.post('/api/cash/open', { code: CODE, openingFloatCents: 0 })).status).toBe(409);
+    expect((await op.post('/api/cash/open', { code: CODE, openingFloatCents: 0 })).status).toBe(409);
+  });
+
+  it('vários caixas abertos ao mesmo tempo, separados, somando no mesmo relatório', async () => {
+    const { app, admin, db, adminId } = await setup();
+    const pid = await product(admin);
+    const ops = [];
+    for (let i = 1; i <= 5; i++) {
+      createUser(db, { name: `Op ${i}`, username: `op${i}`, password: PASS, role: 'OPERADOR' }, adminId);
+      const c = await agent(app, `op${i}`);
+      await openCash(c, 1000 * i);
+      await c.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'DINHEIRO', items: [{ productId: pid, qtyMilli: i * 1000 }] });
+      ops.push(c);
+    }
+    const active = (await admin.get('/api/cash/active')).body;
+    expect(active).toHaveLength(5);
+    expect(active.map((r: any) => r.openedByName)).toEqual(['Op 1', 'Op 2', 'Op 3', 'Op 4', 'Op 5']);
+    const s3 = (await ops[2].get('/api/cash/current')).body;
+    expect(s3.salesTotalCents).toBe(1800);
+    expect(s3.expectedCashCents).toBe(3000 + 1800);
+    expect((await ops[2].get('/api/sales')).body).toHaveLength(1);
+    expect((await ops[0].get(`/api/cash/${s3.registerId}/summary`)).status).toBe(403);
+    expect((await ops[0].post(`/api/cash/${s3.registerId}/close`, { code: CODE, countedCashCents: 0 })).status).toBe(403);
+    expect((await admin.get('/api/analytics?preset=today')).body.summary.productRevenueCents).toBe(600 * 15);
+    expect((await admin.get('/api/dashboard')).body.openRegisters).toHaveLength(5);
   });
 
   it('resumo separa faturamento, fiado e dinheiro esperado; fecha uma única vez', async () => {

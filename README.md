@@ -17,7 +17,7 @@ cp .env.example .env            # ajuste se necessário
 npm run create-admin -- --name "Seu Nome" --username seu.login   # pede a senha no terminal
 npm run dev                     # API :3001 + interface :5173
 ```
-Depois de entrar como administrador: **Administração → Configurações → Definir código** do caixa, cadastre produtos e crie as contas das funcionárias (perfil Operador).
+Depois de entrar como administrador: **Administração → Configurações**, defina o código do caixa e o código de cancelamento, cadastre produtos e crie as contas das funcionárias (perfil Operador).
 
 Produção: `npm run build && npm start` (a API serve a interface em `dist/`). Use HTTPS e `COOKIE_SECURE=true`.
 

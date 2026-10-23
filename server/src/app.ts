@@ -163,18 +163,20 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       const registerId = req.query.registerId ? Number(req.query.registerId) : undefined;
       return res.json(sales.listSales(db, { registerId, limit: 200 }));
     }
-    const reg = cash.currentRegister(db);
+    const reg = cash.currentRegister(db, uid(req));
     res.json(reg ? sales.listSales(db, { registerId: reg.id, limit: 50 }) : []);
   });
   r.get('/sales/:id', auth, (req, res) => {
     const s = sales.getSale(db, id.parse(req.params.id));
-    if (!isAdmin(req) && cash.currentRegister(db)?.id !== s.register_id) throw forbidden();
+    if (!isAdmin(req) && cash.currentRegister(db, uid(req))?.id !== s.register_id) throw forbidden();
     if (!isAdmin(req)) s.items = s.items.map(({ unit_cost_cents, ...x }: any) => x);
     res.json(s);
   });
-  r.post('/sales/:id/cancel', admin, (req, res) => {
-    const b = z.object({ reason: z.string().trim().min(3).max(300) }).parse(req.body);
-    res.json(sales.cancelSale(db, id.parse(req.params.id), b.reason, uid(req)));
+  r.post('/sales/:id/cancel', auth, (req, res) => {
+    const b = z.object({ reason: z.string().trim().min(3).max(300), code: z.string().max(20) }).parse(req.body);
+    const sid = id.parse(req.params.id);
+    if (!isAdmin(req) && cash.currentRegister(db, uid(req))?.id !== sales.getSale(db, sid).register_id) throw forbidden('Você só pode cancelar vendas do seu caixa.');
+    res.json(sales.cancelSale(db, sid, b.reason, b.code, uid(req)));
   });
 
   // ---------- Clientes e fiado ----------
@@ -197,8 +199,8 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   });
 
   // ---------- Caixa ----------
-  r.get('/cash/current', auth, (_req, res) => {
-    const reg = cash.currentRegister(db);
+  r.get('/cash/current', auth, (req, res) => {
+    const reg = cash.currentRegister(db, uid(req));
     res.json(reg ? { ...cash.registerSummary(db, reg.id), openedByName: reg.opened_by_name } : null);
   });
   r.post('/cash/open', auth, (req, res) => {
@@ -211,13 +213,14 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   });
   r.get('/cash/:id/summary', auth, (req, res) => {
     const rid = id.parse(req.params.id);
-    if (!isAdmin(req) && cash.currentRegister(db)?.id !== rid) throw forbidden();
+    if (!isAdmin(req) && cash.currentRegister(db, uid(req))?.id !== rid) throw forbidden();
     res.json(cash.registerSummary(db, rid));
   });
   r.post('/cash/:id/close', auth, (req, res) => {
     const b = z.object({ code: z.string().max(20), countedCashCents: cents }).parse(req.body);
     res.json(cash.closeRegister(db, { ...b, registerId: id.parse(req.params.id) }, uid(req)));
   });
+  r.get('/cash/active', admin, (_req, res) => res.json(cash.openRegisters(db)));
   r.get('/cash', admin, (_req, res) => res.json(cash.listRegisters(db)));
   r.get('/cash/:id/closing', admin, (req, res) => {
     const reg = db.prepare('SELECT summary_json FROM cash_registers WHERE id = ?').get(id.parse(req.params.id)) as any;
@@ -318,6 +321,11 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   r.put('/settings/cash-code', admin, (req, res) => {
     const b = z.object({ code: z.string().regex(/^\d{4,8}$/, 'O código deve ter de 4 a 8 dígitos.') }).parse(req.body);
     settings.setSetting(db, 'shared_cash_code_hash', hashSecret(b.code), uid(req));
+    res.json({ ok: true });
+  });
+  r.put('/settings/cancel-code', admin, (req, res) => {
+    const b = z.object({ code: z.string().regex(/^\d{4,8}$/, 'O código deve ter de 4 a 8 dígitos.') }).parse(req.body);
+    settings.setSetting(db, 'cancel_code_hash', hashSecret(b.code), uid(req));
     res.json({ ok: true });
   });
   r.get('/audit', admin, (_req, res) => res.json(db.prepare(

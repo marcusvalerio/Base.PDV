@@ -4,6 +4,7 @@ import { useApi, useAction } from '../lib/hooks';
 import { money, parseMoney, dateTime } from '../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../components/ui';
 import { CashSummary } from '../components/CashSummary';
+import { SaleModal } from '../components/CancelSale';
 
 export default function Cash() {
   const { data: reg, loading, error, reload } = useApi<any>('/cash/current');
@@ -38,6 +39,7 @@ function OpenRegister({ reg, reload }: { reg: any; reload: () => void }) {
   const [mov, setMov] = useState<'SUPRIMENTO' | 'SANGRIA' | null>(null);
   const [closing, setClosing] = useState(false);
   const sales = useApi<any[]>('/sales');
+  const [sel, setSel] = useState<number | null>(null);
   return (
     <div className="stack">
       <div className="page-head">
@@ -49,16 +51,17 @@ function OpenRegister({ reg, reload }: { reg: any; reload: () => void }) {
       </div>
       <CashSummary s={reg} />
       <div className="card flush">
-        <div style={{ padding: '14px 16px' }}><h2>Vendas deste caixa</h2></div>
+        <div style={{ padding: '14px 16px' }}><h2>Vendas deste caixa</h2><div className="faint">Toque em uma venda para ver os itens ou cancelar.</div></div>
         {sales.loading && !sales.data ? <Loading /> : !sales.data?.length ? <Empty>Nenhuma venda ainda.</Empty> : (
           <table className="table responsive"><thead><tr><th>Nº</th><th>Hora</th><th>Forma</th><th>Origem</th><th className="r">Total</th></tr></thead><tbody>
             {sales.data.map((s) => (
-              <tr key={s.id}><td data-label="Nº">{s.id}</td><td data-label="Hora">{dateTime(s.created_at)}</td><td data-label="Forma">{s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</td>
+              <tr key={s.id} className="click" onClick={() => setSel(s.id)}><td data-label="Nº">{s.id}</td><td data-label="Hora">{dateTime(s.created_at)}</td><td data-label="Forma">{s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</td>
                 <td data-label="Origem">{s.tab_label ?? 'Balcão'}</td><td data-label="Total" className="r num">{s.status === 'CANCELLED' ? <span className="badge danger">cancelada</span> : money(s.total_cents)}</td></tr>
             ))}
           </tbody></table>
         )}
       </div>
+      {sel && <SaleModal id={sel} onClose={() => setSel(null)} onChanged={() => { sales.reload(); reload(); }} />}
       {mov && <MovementModal type={mov} onClose={() => setMov(null)} onDone={() => { setMov(null); reload(); }} />}
       {closing && <CloseModal reg={reg} onClose={() => setClosing(false)} onDone={reload} />}
     </div>

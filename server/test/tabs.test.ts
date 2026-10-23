@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { setup, key, product, openCash } from './helpers.js';
+import { setup, key, product, openCash, CANCEL } from './helpers.js';
 
 async function ctx() {
   const s = await setup();
@@ -62,5 +62,19 @@ describe('mesas e comandas', () => {
     expect((await op.get(`/api/customers/${cid}`)).body.balanceCents).toBe(0);
     await op.post(`/api/tabs/${tabId}/close`, { idempotencyKey: key(), personId: rodrigo, paymentMethodCode: 'FIADO', customerId: cid });
     expect((await op.get(`/api/customers/${cid}`)).body.balanceCents).toBe(1250);
+  });
+
+  it('cancelar a venda de uma mesa devolve os itens para a mesa (reabrindo-a)', async () => {
+    const { op, tabId, db, chopp } = await ctx();
+    const r = (await op.post(`/api/tabs/${tabId}/close`, { idempotencyKey: key(), personId: null, paymentMethodCode: 'PIX' })).body;
+    expect(r.tab.status).toBe('CLOSED');
+    const c = await op.post(`/api/sales/${r.sale.id}/cancel`, { reason: 'fechou a mesa errada', code: CANCEL });
+    expect(c.status).toBe(200);
+    const t = (await op.get(`/api/tabs/${tabId}`)).body;
+    expect(t.status).toBe('OPEN');
+    expect(t.pending_cents).toBe(3000);
+    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(chopp) as any).s).toBe(30000);
+    const again = (await op.post(`/api/tabs/${tabId}/close`, { idempotencyKey: key(), personId: null, paymentMethodCode: 'CARTAO' })).body;
+    expect(again.sale.total_cents).toBe(3000);
   });
 });

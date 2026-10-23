@@ -18,9 +18,9 @@ export const DEFAULT_SETTINGS = {
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;
 /** Chaves internas que nunca são enviadas ao navegador. */
-const SECRET_KEYS = new Set(['shared_cash_code_hash']);
+const SECRET_KEYS = new Set(['shared_cash_code_hash', 'cancel_code_hash']);
 
-export function getSetting(db: DB, key: SettingKey | 'shared_cash_code_hash'): string {
+export function getSetting(db: DB, key: SettingKey | 'shared_cash_code_hash' | 'cancel_code_hash'): string {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
   if (row) return row.value;
   return (DEFAULT_SETTINGS as Record<string, string>)[key] ?? '';
@@ -44,5 +44,5 @@ export function setSetting(db: DB, key: string, value: string, userId: number) {
 export function publicSettings(db: DB) {
   const out: Record<string, string> = {};
   for (const k of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) out[k] = getSetting(db, k);
-  return { ...out, shared_cash_code_configured: getSetting(db, 'shared_cash_code_hash') !== '' };
+  return { ...out, shared_cash_code_configured: getSetting(db, 'shared_cash_code_hash') !== '', cancel_code_configured: getSetting(db, 'cancel_code_hash') !== '' };
 }

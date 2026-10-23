@@ -7,5 +7,5 @@
 5. **Controle de estoque do chopp** — por litro vendido; definir se haverá controle por barril/perdas de espuma.
 6. **Prazo de reposição e reserva de segurança** — não configurados; a reposição usa 7 dias como referência até serem informados.
 7. **Cancelamentos após fechamento do caixa e estornos de fiado pago** — definir o procedimento administrativo.
-8. **Vários caixas simultâneos** — o modelo atual assume um caixa por vez.
-9. **Emissão fiscal** — fora do escopo; nenhuma integração foi feita.
+8. **Código de cancelamento** — implementado como código próprio (separado do código do caixa). Se preferirem usar o mesmo, basta cadastrar o mesmo número nos dois.
+10. **Emissão fiscal** — fora do escopo; nenhuma integração foi feita.

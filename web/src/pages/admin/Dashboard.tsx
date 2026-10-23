@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useApi } from '../../lib/hooks';
 import { money, pct, qty, date } from '../../lib/format';
 import { Loading, ErrorState, Empty, Metric, Change } from '../../components/ui';
+import { OpenRegisters } from './Admin';
 
 export default function Dashboard() {
   const { data: d, loading, error, reload } = useApi<any>('/dashboard');
@@ -17,8 +18,9 @@ export default function Dashboard() {
         <Metric label="Vendas hoje" value={t.salesCount} sub={t.salesCount ? `Ticket médio ${money(t.avgTicketCents)}` : 'Nenhuma venda ainda'} />
         <Metric label="Margem bruta hoje" value={t.grossMarginPct == null ? '—' : pct(t.grossMarginPct)} sub={t.costCoverage == null ? 'Sem vendas' : t.costCoverage < 1 ? `Estimativa: ${pct(t.costCoverage)} do faturamento tem custo` : 'Todos os itens com custo'} />
         <Metric label="Fiado pendente" value={money(d.fiado.pendingCents)} sub={`${d.fiado.customers} cliente(s)`} />
-        <Metric label="Caixa" value={d.register ? 'Aberto' : 'Fechado'} sub={d.register ? `Esperado em dinheiro: ${money(d.register.expectedCashCents)}` : 'Nenhum caixa aberto'} />
+        <Metric label="Caixas abertos" value={d.openRegisters.length} sub={d.openRegisters.length ? d.openRegisters.map((r: any) => r.openedByName).join(', ') : 'Nenhum caixa aberto'} />
       </div>
+      <OpenRegisters />
       <div className="grid2">
         <div className="card flush">
           <div className="row" style={{ padding: '14px 16px' }}><h2>Mais vendidos (7 dias)</h2><span className="spacer" /><Link to="/admin/analise">Ver análise</Link></div>
