@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useApi } from '../../lib/hooks';
+import { useSession } from '../../components/session';
 import { money, pct, qty, date } from '../../lib/format';
 import { Loading, ErrorState, Empty, Metric, Change } from '../../components/ui';
 import { OpenRegisters } from './Admin';
 
 export default function Dashboard() {
   const { data: d, loading, error, reload } = useApi<any>('/dashboard');
+  const { boot } = useSession();
   if (error) return <ErrorState message={error} onRetry={reload} />;
   if (loading && !d) return <Loading />;
   if (!d) return null;
@@ -23,13 +25,13 @@ export default function Dashboard() {
       <OpenRegisters />
       <div className="grid2">
         <div className="card flush">
-          <div className="row" style={{ padding: '14px 16px' }}><h2>Mais vendidos (7 dias)</h2><span className="spacer" /><Link to="/admin/analise">Ver análise</Link></div>
+          <div className="row" style={{ padding: '14px 16px' }}><h2>Mais vendidos (7 dias)</h2><span className="spacer" />{boot?.modules.analise && <Link to="/admin/analise">Ver análise</Link>}</div>
           {!d.topProducts.length ? <Empty>Sem vendas nos últimos 7 dias.</Empty> : d.topProducts.map((p: any) => (
             <div key={p.productId} className="list-item" style={{ cursor: 'default' }}><span>{p.name}<div className="faint">{p.category}</div></span><span className="spacer" /><span className="num">{qty(p.qtyMilli, p.unit)}</span></div>
           ))}
         </div>
         <div className="card flush">
-          <div className="row" style={{ padding: '14px 16px' }}><h2>Estoque baixo</h2><span className="spacer" /><Link to="/admin/reposicao">Reposição</Link></div>
+          <div className="row" style={{ padding: '14px 16px' }}><h2>Estoque baixo</h2><span className="spacer" />{boot?.modules.reposicao && <Link to="/admin/reposicao">Reposição</Link>}</div>
           {!d.lowStock.length ? <Empty>Nenhum produto abaixo do mínimo.</Empty> : d.lowStock.slice(0, 8).map((p: any) => (
             <div key={p.id} className="list-item" style={{ cursor: 'default' }}><span>{p.name}<div className="faint">mínimo {qty(p.min_stock_milli, p.unit)}</div></span><span className="spacer" /><span className={`badge ${p.stock_milli <= 0 ? 'danger' : 'warning'} num`}>{qty(p.stock_milli, p.unit)}</span></div>
           ))}

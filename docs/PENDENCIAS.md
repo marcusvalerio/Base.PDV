@@ -8,4 +8,5 @@
 6. **Prazo de reposição e reserva de segurança** — não configurados; a reposição usa 7 dias como referência até serem informados.
 7. **Cancelamentos após fechamento do caixa e estornos de fiado pago** — definir o procedimento administrativo.
 8. **Código de cancelamento** — implementado como código próprio (separado do código do caixa). Se preferirem usar o mesmo, basta cadastrar o mesmo número nos dois.
-10. **Emissão fiscal** — fora do escopo; nenhuma integração foi feita.
+10. **Emissão fiscal** — em espera (stand by) por decisão dos proprietários; nenhuma integração foi feita.
+11. **Meta de acuracidade** — definir a meta (ex.: 98% por item) e a frequência das contagens por categoria.

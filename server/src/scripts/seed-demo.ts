@@ -9,6 +9,7 @@ import { createProduct } from '../services/products.js';
 import { createCustomer } from '../services/customers.js';
 import { setSetting } from '../services/settings.js';
 import { hashSecret } from '../security.js';
+import { setModules, MODULES } from '../services/modules.js';
 import { openRegister } from '../services/cash.js';
 import { createSale } from '../services/sales.js';
 import { registerEntry } from '../services/stock.js';
@@ -25,6 +26,8 @@ if (!/demo/i.test(path)) { console.error('Por segurança, o DATABASE_PATH do see
 const db = openDb(path);
 const admin = createUser(db, { name: 'Admin Demo', username: 'admin', password: pass, role: 'ADMIN' }, null);
 createUser(db, { name: 'Operadora Demo', username: 'caixa', password: pass, role: 'OPERADOR' }, admin);
+const sup = createUser(db, { name: 'Super Demo', username: 'super', password: pass, role: 'ADMIN', superAdmin: true }, null);
+setModules(db, Object.fromEntries(Object.keys(MODULES).map((k) => [k, true])), sup);
 setSetting(db, 'shared_cash_code_hash', hashSecret(code), admin);
 setSetting(db, 'cancel_code_hash', hashSecret(process.env.PDV_DEMO_CANCEL_CODE || code), admin);
 
@@ -39,7 +42,7 @@ const P = [
 ] as const;
 const ids = P.map(([name, c, unit, price, cost, stock], i) => createProduct(db, {
   name, category_id: cat(c), unit, price_cents: price, cost_cents: cost, internal_code: String(100 + i),
-  min_stock_milli: unit === 'L' ? 20000 : 10000, initial_stock_milli: (stock as number) * (unit === 'L' ? 1 : 1000) * 10,
+  min_stock_milli: unit === 'L' ? 20000 : 10000, barcode: `78900000${String(100 + i)}`, initial_stock_milli: (stock as number) * (unit === 'L' ? 1 : 1000) * 10,
 }, admin));
 registerEntry(db, { productId: ids[7], qtyMilli: 20000, expiryDate: addDays(localDate(new Date()), 9) }, admin);
 const customers = ['Cliente A', 'Cliente B', 'Cliente C'].map((n) => createCustomer(db, { name: n }, admin));
@@ -62,4 +65,4 @@ for (let d = 29; d >= 0; d--) {
     db.prepare('UPDATE sales SET created_at = ? WHERE id = ?').run(at, sale.id);
   }
 }
-console.log('Banco de demonstração criado em', path, '— usuários: admin / caixa');
+console.log('Banco de demonstração criado em', path, '— usuários: super / admin / caixa');

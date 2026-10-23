@@ -4,6 +4,7 @@ import { useApi, useAction, useDebounced } from '../../lib/hooks';
 import { money, qty, parseMoney, centsToInput, parseQty, UNIT_LABEL, Unit, dateTime } from '../../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../../components/ui';
 import { useSession } from '../../components/session';
+import { CameraButton } from '../../components/scanner';
 
 const FIELD_LABEL: Record<string, string> = { name: 'Nome', price_cents: 'Preço', cost_cents: 'Custo', active: 'Ativo', category_id: 'Categoria', min_stock_milli: 'Estoque mínimo', barcode: 'Código de barras', internal_code: 'Código interno', unit: 'Unidade', track_expiry: 'Controla validade' };
 
@@ -89,7 +90,7 @@ function ProductForm({ p, onClose, onSaved }: { p: any; onClose: () => void; onS
         <Field label={`Preço de venda${f.unit === 'L' ? ' (por litro)' : f.unit === 'KG' ? ' (por kg)' : ''}`}><input className="input num" inputMode="decimal" value={f.price} onChange={set('price')} placeholder="0,00" /></Field>
         <Field label="Custo de aquisição" hint="Opcional, mas necessário para margem."><input className="input num" inputMode="decimal" value={f.cost} onChange={set('cost')} placeholder="0,00" /></Field>
         <Field label="Código interno"><input className="input" value={f.internal_code} onChange={set('internal_code')} /></Field>
-        <Field label="Código de barras"><input className="input" value={f.barcode} onChange={set('barcode')} inputMode="numeric" /></Field>
+        <Field label="Código de barras"><div className="row"><input className="input" value={f.barcode} onChange={set('barcode')} inputMode="numeric" placeholder="Leia com o coletor ou a câmera" /><CameraButton label="" onScan={(c) => setF((x) => ({ ...x, barcode: c }))} /></div></Field>
         <Field label="Estoque mínimo" hint={unitHint}><input className="input num" inputMode="decimal" value={f.min} onChange={set('min')} /></Field>
         {isNew && <Field label="Estoque inicial" hint={unitHint}><input className="input num" inputMode="decimal" value={f.initial} onChange={set('initial')} /></Field>}
       </div>

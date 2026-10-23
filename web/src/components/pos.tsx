@@ -4,6 +4,7 @@ import { useApi, useDebounced, useAction } from '../lib/hooks';
 import { money, qty, parseQty, isFractional, Unit, parseMoney, UNIT_SHORT } from '../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from './ui';
 import { useSession } from './session';
+import { useHidScanner, CameraButton } from './scanner';
 
 export interface Product { id: number; name: string; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null }
 
@@ -22,16 +23,31 @@ export function ProductPicker({ onPick }: { onPick: (p: Product, qtyMilli: numbe
     if (isFractional(p.unit)) setVolumeFor(p);
     else onPick(p, 1000);
   };
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key !== 'Enter' || !data?.length) return;
-    const exact = data.find((p) => p.barcode === q.trim() || p.internal_code === q.trim());
-    const target = exact ?? (data.length === 1 ? data[0] : null);
-    if (target) { pick(target); setQ(''); }
+  const toast = useToast();
+  /** Leitura de código (coletor, câmera ou Enter no campo): busca exata no servidor. */
+  const byCode = async (code: string) => {
+    try {
+      const p = await api<Product>(`/products/by-code/${encodeURIComponent(code.trim())}`);
+      if (!(p as any).active) return toast(`"${p.name}" está inativo.`, 'error');
+      pick(p);
+      setQ('');
+      return true;
+    } catch (e: any) { return false; }
+  };
+  useHidScanner((code) => { byCode(code).then((ok) => ok === false && toast(`Código ${code} não cadastrado.`, 'error')); });
+  const onKey = async (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' || !q.trim()) return;
+    if (await byCode(q)) return;
+    if (data?.length === 1) { pick(data[0]); setQ(''); }
+    else if (/^\d{6,}$/.test(q.trim())) toast(`Código ${q.trim()} não cadastrado.`, 'error');
   };
 
   return (
     <div className="stack">
-      <input ref={input} className="input lg" placeholder="Buscar produto ou código de barras" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} aria-label="Buscar produto" />
+      <div className="row">
+        <input ref={input} className="input lg" placeholder="Buscar produto ou código de barras" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} aria-label="Buscar produto" />
+        <CameraButton onScan={(c) => { byCode(c).then((ok) => ok === false && toast(`Código ${c} não cadastrado.`, 'error')); }} />
+      </div>
       <div className="chips">
         <button className={`chip ${cat === null ? 'active' : ''}`} onClick={() => setCat(null)}>Todos</button>
         {boot?.categories.map((c) => <button key={c.id} className={`chip ${cat === c.id ? 'active' : ''}`} onClick={() => setCat(c.id)}>{c.name}</button>)}

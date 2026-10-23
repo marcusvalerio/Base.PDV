@@ -14,17 +14,18 @@ PDV operacional (vendas, mesas/comandas, fiado, caixa) e administração (produt
 ```bash
 npm install
 cp .env.example .env            # ajuste se necessário
-npm run create-admin -- --name "Seu Nome" --username seu.login   # pede a senha no terminal
+npm run create-admin -- --name "Dono" --username dono --super   # super admin (pede a senha no terminal)
+npm run create-admin -- --name "Gerente" --username gerente     # admin comum (opcional)
 npm run dev                     # API :3001 + interface :5173
 ```
-Depois de entrar como administrador: **Administração → Configurações**, defina o código do caixa e o código de cancelamento, cadastre produtos e crie as contas das funcionárias (perfil Operador).
+Entre com o **super admin** e libere os módulos em **Administração → Liberações** (Mesas, Fiado, Estoque, Inventário, Análise, Reposição, Auditoria vêm bloqueados). Depois: **Administração → Configurações**, defina o código do caixa e o código de cancelamento, cadastre produtos e crie as contas das funcionárias (perfil Operador).
 
 Produção: `npm run build && npm start` (a API serve a interface em `dist/`). Use HTTPS e `COOKIE_SECURE=true`.
 
 Demonstração com dados fictícios:
 ```bash
 PDV_DEMO_PASSWORD=uma-senha-qualquer PDV_DEMO_CASH_CODE=2468 DATABASE_PATH=./data/demo.db npm run seed:demo
-DATABASE_PATH=./data/demo.db npm run dev:api   # usuários: admin / caixa
+DATABASE_PATH=./data/demo.db npm run dev:api   # usuários: super / admin / caixa
 ```
 
 ## Testes
@@ -44,3 +45,7 @@ npm run typecheck
 Nenhum segredo é necessário em código. Senhas e códigos de caixa são guardados com hash scrypt.
 
 Mais detalhes: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) e [docs/PENDENCIAS.md](docs/PENDENCIAS.md).
+
+## Leitura de código de barras
+- **Coletor / pistola USB ou Bluetooth (modo teclado):** basta ler — funciona no PDV, nas mesas, no inventário e no cadastro de produtos, mesmo sem clicar no campo.
+- **Câmera do celular/tablet:** botão “Câmera”. Usa o leitor nativo do navegador (Chrome/Android) e, se não houver, a biblioteca ZXing (iPhone/Safari). **Requer HTTPS** (ou `localhost`).

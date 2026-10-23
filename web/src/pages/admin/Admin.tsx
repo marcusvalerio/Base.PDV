@@ -136,12 +136,12 @@ export function Users() {
         <div className="card flush"><table className="table responsive"><thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Situação</th>{boot?.cashCodeMode === 'INDIVIDUAL' && <th>Código de caixa</th>}<th /></tr></thead><tbody>
           {data!.map((u) => (
             <tr key={u.id}><td data-label="Nome"><b>{u.name}</b>{u.id === user?.id && <span className="faint"> (você)</span>}</td><td data-label="Login">{u.username}</td>
-              <td data-label="Perfil">{u.role === 'ADMIN' ? <span className="badge accent">Administrador</span> : 'Operador'}</td>
+              <td data-label="Perfil">{u.is_super_admin ? <span className="badge accent">Super admin</span> : u.role === 'ADMIN' ? <span className="badge accent">Administrador</span> : 'Operador'}</td>
               <td data-label="Situação">{u.active ? <span className="badge success">ativo</span> : <span className="badge danger">bloqueado</span>}</td>
               {boot?.cashCodeMode === 'INDIVIDUAL' && <td data-label="Código de caixa">{u.has_cash_code ? 'definido' : <span className="badge warning">não definido</span>}</td>}
               <td className="r"><div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
                 {boot?.cashCodeMode === 'INDIVIDUAL' && <button className="btn sm" onClick={() => setCodeFor(u)}>Código</button>}
-                <button className="btn sm" onClick={() => setEdit(u)}>Editar</button></div></td></tr>
+                {(!u.is_super_admin || user?.superAdmin) && <button className="btn sm" onClick={() => setEdit(u)}>Editar</button>}</div></td></tr>
           ))}
         </tbody></table></div>
       )}
@@ -153,12 +153,14 @@ export function Users() {
 
 function UserForm({ u, onClose, onSaved }: { u: any; onClose: () => void; onSaved: () => void }) {
   const isNew = !u.id;
+  const { user } = useSession();
+  const [superAdmin, setSuper] = useState(false);
   const [f, setF] = useState({ name: u.name ?? '', username: u.username ?? '', password: '', role: u.role ?? 'OPERADOR', active: u.active === undefined ? true : !!u.active });
   const [err, setErr] = useState<string | null>(null);
   const [save, busy] = useAction(async () => {
     setErr(null);
     try {
-      if (isNew) await api('/users', { body: f });
+      if (isNew) await api('/users', { body: { ...f, superAdmin } });
       else await api(`/users/${u.id}`, { method: 'PATCH', body: { name: f.name, role: f.role, active: f.active, ...(f.password ? { password: f.password } : {}) } });
       onSaved();
     } catch (e: any) { setErr(e.message); }
@@ -169,6 +171,7 @@ function UserForm({ u, onClose, onSaved }: { u: any; onClose: () => void; onSave
       {isNew && <Field label="Login" hint="Letras, números, ponto, hífen ou sublinhado."><input className="input" autoCapitalize="none" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>}
       <Field label={isNew ? 'Senha' : 'Nova senha (deixe em branco para manter)'} hint="Mínimo de 8 caracteres. Trocar a senha encerra as sessões abertas."><input className="input" type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
       <Field label="Perfil"><select className="input" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}><option value="OPERADOR">Operador (PDV)</option><option value="ADMIN">Administrador</option></select></Field>
+      {isNew && user?.superAdmin && f.role === 'ADMIN' && <label className="check"><input type="checkbox" checked={superAdmin} onChange={(e) => setSuper(e.target.checked)} /> Super administrador (libera módulos)</label>}
       {!isNew && <label className="check"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativo (desmarque para bloquear o acesso)</label>}
       {err && <div className="notice danger">{err}</div>}
     </Modal>
@@ -269,6 +272,33 @@ export function Audit() {
           {data.map((a) => <tr key={a.id}><td data-label="Quando">{dateTime(a.at)}</td><td data-label="Usuário">{a.user_name ?? '—'}</td><td data-label="Ação"><code>{a.action}</code>{a.entity_id ? ` #${a.entity_id}` : ''}</td><td data-label="Detalhes" className="faint" style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.details_json}</td></tr>)}
         </tbody></table>
       )}</div>}
+    </div>
+  );
+}
+
+export function Modules() {
+  const { user, refreshBoot } = useSession();
+  const { data, loading, error, reload, setData } = useApi<any>('/modules');
+  const toast = useToast();
+  const [toggle] = useAction(async (k: string, v: boolean) => {
+    try { setData(await api('/modules', { method: 'PUT', body: { [k]: v } })); await refreshBoot(); toast(v ? 'Módulo liberado.' : 'Módulo bloqueado.', 'success'); } catch (e: any) { toast(e.message, 'error'); }
+  });
+  if (!user?.superAdmin) return <div className="notice">Somente o super administrador acessa esta tela.</div>;
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+  if (loading && !data) return <Loading />;
+  return (
+    <div className="stack" style={{ maxWidth: 680 }}>
+      <div className="page-head"><h1>Liberações</h1></div>
+      <div className="faint">Os módulos abaixo só aparecem e funcionam (inclusive pela API) depois de liberados aqui. Vender, Caixa, Produtos, Vendas, Caixas, Usuários e Configurações estão sempre disponíveis.</div>
+      <div className="card flush">
+        {Object.entries(data.labels as Record<string, string>).map(([k, label]) => (
+          <label key={k} className="list-item" style={{ cursor: 'pointer' }}>
+            <span><b>{label}</b></span><span className="spacer" />
+            <span className={`badge ${data.modules[k] ? 'success' : ''}`}>{data.modules[k] ? 'liberado' : 'bloqueado'}</span>
+            <input type="checkbox" style={{ width: 22, height: 22 }} checked={!!data.modules[k]} onChange={(e) => toggle(k, e.target.checked)} aria-label={`Liberar ${label}`} />
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

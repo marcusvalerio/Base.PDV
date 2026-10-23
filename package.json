@@ -19,6 +19,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "cookie-parser": "^1.4.7",
     "express": "^4.22.3",
     "zod": "^3.25.76"

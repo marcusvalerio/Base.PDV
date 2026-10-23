@@ -44,3 +44,15 @@ O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco
 - Validade por lote é informativa: não há baixa por lote (FIFO).
 - Cancelamento de vendas de caixas já fechados não está disponível (exige procedimento administrativo a definir).
 - Ajuste de quantidade de chopp no estoque é feito em litros como qualquer produto; o método real de controle (barril, medidor) ainda será avaliado.
+
+## Super administrador e liberação de módulos
+- `users.is_super_admin` (migration 003). Criado pela linha de comando (`--super`) ou por outro super admin. Admin comum não altera, bloqueia nem cria super admin.
+- Módulos liberáveis (`services/modules.ts`): mesas, fiado, estoque, inventario, analise, reposicao, auditoria. Começam **bloqueados**. O bloqueio é aplicado no servidor (middleware `mod()` por rota; venda/fechamento a prazo exigem `fiado`) e a interface esconde menus e telas.
+- Sempre disponíveis: Vender, Caixa, Produtos, Vendas, Caixas, Usuários, Configurações, Painel.
+
+## Inventário e acuracidade
+- Sessões (`inventory_sessions` / `inventory_session_items`): **Geral**, **Por categoria** ou **Parcial (cíclico)**; **contagem cega** opcional (padrão).
+- Contagem por coletor (cada leitura soma 1), câmera, ou digitando a quantidade (obrigatório para L/kg). “Somar” permite contar em vários locais; “Substituir” é recontagem.
+- Para cada item é guardado o saldo do sistema **no momento da contagem**: vendas posteriores não geram divergência falsa; o ajuste aplica só a diferença.
+- **Acuracidade por item** = itens sem divergência ÷ itens contados. **Acuracidade em valor** = 1 − Σ|divergência × custo| ÷ valor do sistema (itens com custo). Itens não contados ficam fora.
+- Operadores contam; somente admin cria, vê o sistema durante contagem cega, conclui (com ou sem ajuste) ou descarta. O histórico mostra a evolução da acuracidade.
