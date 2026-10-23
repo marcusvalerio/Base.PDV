@@ -57,6 +57,6 @@ describe('fiado', () => {
   it('uma venda só gera um lançamento de fiado (restrição única)', async () => {
     const { op, pid, cid, db } = await ctx();
     const s = (await op.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'FIADO', customerId: cid, items: [{ productId: pid, qtyMilli: 1000 }] })).body;
-    expect(() => db.prepare("INSERT INTO receivables (customer_id, sale_id, original_cents, surcharge_cents, total_cents, status, created_at) VALUES (?,?,1,0,1,'OPEN','x')").run(cid, s.id)).toThrow();
+    await expect(db.run("INSERT INTO receivables (customer_id, sale_id, original_cents, surcharge_cents, total_cents, status, created_at) VALUES (?,?,1,0,1,'OPEN','x')", [cid, s.id])).rejects.toThrow();
   });
 });

@@ -27,23 +27,24 @@ export function resolvePeriod(preset: Preset, from?: string, to?: string, today 
 
 interface Filter { categoryId?: number; productId?: number }
 
-function itemRows(db: DB, from: string, to: string, f: Filter) {
+async function itemRows(db: DB, from: string, to: string, f: Filter): Promise<any[]> {
   const { start, end } = rangeToUtc(from, to);
   const where = ["s.status = 'COMPLETED'", 's.created_at >= ?', 's.created_at < ?'];
   const args: any[] = [start, end];
   if (f.categoryId) { where.push('si.category_id = ?'); args.push(f.categoryId); }
   if (f.productId) { where.push('si.product_id = ?'); args.push(f.productId); }
-  return db.prepare(
+  return db.all(
     `SELECT si.sale_id, si.product_id, si.product_name, si.category_id, c.name AS category, si.unit, si.qty_milli,
             si.total_cents, si.unit_cost_cents, s.created_at
      FROM sale_items si JOIN sales s ON s.id = si.sale_id JOIN categories c ON c.id = si.category_id
      WHERE ${where.join(' AND ')}`,
-  ).all(...args) as any[];
+    args,
+  );
 }
 
-function surchargeTotal(db: DB, from: string, to: string) {
+async function surchargeTotal(db: DB, from: string, to: string): Promise<number> {
   const { start, end } = rangeToUtc(from, to);
-  return (db.prepare("SELECT COALESCE(SUM(surcharge_cents),0) AS t FROM sales WHERE status='COMPLETED' AND created_at >= ? AND created_at < ?").get(start, end) as any).t as number;
+  return (await db.one("SELECT COALESCE(SUM(surcharge_cents),0)::bigint AS t FROM sales WHERE status='COMPLETED' AND created_at >= ? AND created_at < ?", [start, end])).t;
 }
 
 function summarize(rows: any[]) {
@@ -65,16 +66,16 @@ function summarize(rows: any[]) {
   };
 }
 
-export function analysis(db: DB, q: { preset: Preset; from?: string; to?: string } & Filter) {
+export async function analysis(db: DB, q: { preset: Preset; from?: string; to?: string } & Filter) {
   const period = resolvePeriod(q.preset, q.from, q.to);
   const len = daysBetween(period.from, period.to) + 1;
   const prev = { from: addDays(period.from, -len), to: addDays(period.from, -1) };
   const f: Filter = { categoryId: q.categoryId, productId: q.productId };
-  const rows = itemRows(db, period.from, period.to, f);
-  const prevRows = itemRows(db, prev.from, prev.to, f);
+  const rows = await itemRows(db, period.from, period.to, f);
+  const prevRows = await itemRows(db, prev.from, prev.to, f);
   const summary = summarize(rows);
   const prevSummary = summarize(prevRows);
-  const surcharge = !f.categoryId && !f.productId ? surchargeTotal(db, period.from, period.to) : 0;
+  const surcharge = !f.categoryId && !f.productId ? await surchargeTotal(db, period.from, period.to) : 0;
 
   const daily: Record<string, { day: string; revenueCents: number; sales: Set<number>; qty: number }> = {};
   for (let i = 0; i < len; i++) { const d = addDays(period.from, i); daily[d] = { day: d, revenueCents: 0, sales: new Set(), qty: 0 }; }
@@ -116,10 +117,10 @@ export function analysis(db: DB, q: { preset: Preset; from?: string; to?: string
     byRevenue.slice(0, topCut).filter((p) => p.marginPct != null && (p.marginPct as number) < medianMargin);
 
   // Menor giro: produtos ativos (respeitando filtro) com menos saída, incluindo os que não venderam nada.
-  const catalog = db.prepare(
+  const catalog = await db.all(
     `SELECT p.id, p.name, p.unit, p.stock_milli, c.name AS category FROM products p JOIN categories c ON c.id = p.category_id
      WHERE p.active = 1 ${f.categoryId ? 'AND p.category_id = ' + Number(f.categoryId) : ''} ${f.productId ? 'AND p.id = ' + Number(f.productId) : ''}`,
-  ).all() as any[];
+  );
   const lowRotation = catalog
     .map((c) => ({ productId: c.id, name: c.name, category: c.category, unit: c.unit, stockMilli: c.stock_milli, qtyMilli: byProduct.get(c.id)?.qtyMilli ?? 0, revenueCents: byProduct.get(c.id)?.revenueCents ?? 0 }))
     .sort((a, b) => a.revenueCents - b.revenueCents || a.qtyMilli - b.qtyMilli)
@@ -158,25 +159,25 @@ export function analysis(db: DB, q: { preset: Preset; from?: string; to?: string
  * Sugestão de reposição explicável. Não cria pedidos. Usa média diária dos últimos `windowDays` dias,
  * prazo de reposição e reserva de segurança configurados; sinaliza quando o histórico é insuficiente.
  */
-export function restockSuggestions(db: DB, opts: { windowDays?: number; categoryId?: number; today?: string } = {}) {
+export async function restockSuggestions(db: DB, opts: { windowDays?: number; categoryId?: number; today?: string } = {}) {
   const windowDays = Math.min(Math.max(opts.windowDays ?? 30, 7), 120);
   const today = opts.today ?? localDate(new Date());
   const from = addDays(today, -(windowDays - 1));
-  const lead = getNumberSetting(db, 'restock_lead_time_days');
-  const safety = getNumberSetting(db, 'restock_safety_days');
+  const lead = await getNumberSetting(db, 'restock_lead_time_days');
+  const safety = await getNumberSetting(db, 'restock_safety_days');
   const targetDays = (lead ?? 7) + (safety ?? 0);
-  const rows = itemRows(db, from, today, { categoryId: opts.categoryId });
+  const rows = await itemRows(db, from, today, { categoryId: opts.categoryId });
   const sold = new Map<number, number>();
   for (const r of rows) sold.set(r.product_id, (sold.get(r.product_id) ?? 0) + r.qty_milli);
-  const products = db.prepare(
+  const products = await db.all(
     `SELECT p.id, p.name, p.unit, p.stock_milli, p.min_stock_milli, p.cost_cents, p.created_at, c.name AS category
      FROM products p JOIN categories c ON c.id = p.category_id WHERE p.active = 1 ${opts.categoryId ? 'AND p.category_id = ' + Number(opts.categoryId) : ''}`,
-  ).all() as any[];
-  const firstSale = db.prepare("SELECT MIN(s.created_at) AS f FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE si.product_id = ? AND s.status='COMPLETED'");
+  );
+  const firstSales = new Map<number, string>((await db.all("SELECT si.product_id, MIN(s.created_at) AS f FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE s.status='COMPLETED' GROUP BY si.product_id")).map((r) => [r.product_id, r.f]));
 
   const items = products.map((p) => {
     const q = sold.get(p.id) ?? 0;
-    const first = (firstSale.get(p.id) as any).f as string | null;
+    const first = firstSales.get(p.id) ?? null;
     const historyDays = first ? Math.min(windowDays, daysBetween(localDate(first), today) + 1) : 0;
     const limited = historyDays < 7;
     const avgDaily = historyDays > 0 ? q / historyDays : 0;
@@ -208,20 +209,20 @@ export function restockSuggestions(db: DB, opts: { windowDays?: number; category
   };
 }
 
-export function dashboard(db: DB) {
-  const today = analysis(db, { preset: 'today' });
-  const week = analysis(db, { preset: '7d' });
-  const fiado = db.prepare(
-    `SELECT COALESCE(SUM(total_cents - paid_cents),0) AS total, COUNT(DISTINCT customer_id) AS customers FROM receivables WHERE status = 'OPEN'`,
-  ).get() as any;
+export async function dashboard(db: DB) {
+  const today = await analysis(db, { preset: 'today' });
+  const week = await analysis(db, { preset: '7d' });
+  const fiado = await db.one(
+    `SELECT COALESCE(SUM(total_cents - paid_cents),0)::bigint AS total, COUNT(DISTINCT customer_id)::int AS customers FROM receivables WHERE status = 'OPEN'`,
+  );
   return {
     today: today.summary,
     todayChangePct: today.revenueChangePct,
     week: week.summary,
     topProducts: week.topByQty.slice(0, 5),
-    lowStock: lowStock(db),
-    expiring: expiringSoon(db),
+    lowStock: await lowStock(db),
+    expiring: await expiringSoon(db),
     fiado: { pendingCents: fiado.total, customers: fiado.customers },
-    openRegisters: openRegisters(db),
+    openRegisters: await openRegisters(db),
   };
 }

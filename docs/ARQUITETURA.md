@@ -4,9 +4,12 @@
 O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco, autenticação ou testes. Não havia nada a preservar; a stack foi escolhida do zero.
 
 ## Decisões
-- **SQLite embutido**: um único estabelecimento, zero operação de servidor, backups por cópia de arquivo, transações ACID. Os serviços usam SQL padrão; migrar para PostgreSQL exige trocar `db.ts` e ajustar SQL pontual.
+- **PostgreSQL no Neon** (projeto `central-pdv`, branch `main`, banco `pdv`, sa-east-1). `db.ts` expõe uma interface assíncrona (`all/one/run/tx`) sobre um pool `pg`; transações aninhadas viram SAVEPOINT. Nos testes e no modo demo, o mesmo SQL roda no **PGlite** (Postgres em WASM, em memória).
+- **Concorrência** (vários caixas simultâneos): estoque atualizado com `UPDATE ... SET stock_milli = stock_milli + ? RETURNING`; caixa, mesa, cliente e venda travados com `SELECT ... FOR UPDATE` nas operações críticas; idempotência garantida por `UNIQUE` (corrida resolvida devolvendo a operação vencedora); contagem de inventário somada com `ON CONFLICT DO UPDATE`.
+- **Migrations**: `server/src/migrations/*.sql`, aplicadas em transação com `pg_advisory_xact_lock` (seguro com mais de uma instância). Registro em `schema_migrations`.
 - **Dinheiro em centavos (INTEGER)** e **quantidades em milésimos da unidade** (`qty_milli`): 1 L de chopp = 1000, 300 mL = 300; 1 unidade = 1000. Valor da linha = `round(preço × qtd / 1000)`. Sem ponto flutuante.
 - **Datas** em UTC (ISO); dias e períodos são calculados no fuso `BUSINESS_TZ`.
+- **Datas** em texto ISO-8601 UTC (ordenáveis).
 - **Sessões** em cookie `HttpOnly; SameSite=Strict`, token aleatório armazenado como SHA-256. Bloqueio, troca de perfil ou de senha encerram as sessões. Limite de 5 tentativas de login (bloqueio de 5 min).
 - **CSRF**: toda escrita exige o cabeçalho `X-Requested-With: pdv`.
 - **Autorização no servidor**: middleware `admin` em todas as rotas administrativas; operador não recebe custo de produtos.

@@ -85,8 +85,8 @@ describe('vendas no PDV', () => {
     expect(a.body.id).toBe(b.body.id);
     expect(c.body.id).toBe(a.body.id);
     expect(c.status).toBe(200);
-    expect((db.prepare('SELECT COUNT(*) n FROM sales').get() as any).n).toBe(1);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(pid) as any).s).toBe(48000);
+    expect((await db.one('SELECT COUNT(*)::int AS n FROM sales', [])).n).toBe(1);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [pid])).s).toBe(48000);
   });
 
   it('cancelamento com código único devolve estoque e sai dos relatórios', async () => {

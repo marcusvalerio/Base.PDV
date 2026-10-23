@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
-import { openDb } from '../src/db.js';
+import { memoryDb, migrate } from '../src/db.js';
 import { createApp } from '../src/app.js';
 import { createUser } from '../src/services/users.js';
 import { setSetting } from '../src/services/settings.js';
@@ -12,14 +12,15 @@ export const CODE = '4321';
 export const CANCEL = '9090';
 
 export async function setup(opts: { modules?: boolean } = {}) {
-  const db = openDb(':memory:');
+  const db = await memoryDb();
+  await migrate(db);
   const app = createApp(db);
-  const adminId = createUser(db, { name: 'Admin Teste', username: 'admin', password: PASS, role: 'ADMIN' }, null);
-  const opId = createUser(db, { name: 'Operadora Teste', username: 'op', password: PASS, role: 'OPERADOR' }, adminId);
-  setSetting(db, 'shared_cash_code_hash', hashSecret(CODE), adminId);
-  setSetting(db, 'cancel_code_hash', hashSecret(CANCEL), adminId);
-  const superId = createUser(db, { name: 'Super Teste', username: 'super', password: PASS, role: 'ADMIN', superAdmin: true }, null);
-  if (opts.modules !== false) setModules(db, Object.fromEntries(Object.keys(MODULES).map((k) => [k, true])), superId);
+  const adminId = await createUser(db, { name: 'Admin Teste', username: 'admin', password: PASS, role: 'ADMIN' }, null);
+  const opId = await createUser(db, { name: 'Operadora Teste', username: 'op', password: PASS, role: 'OPERADOR' }, adminId);
+  await setSetting(db, 'shared_cash_code_hash', hashSecret(CODE), adminId);
+  await setSetting(db, 'cancel_code_hash', hashSecret(CANCEL), adminId);
+  const superId = await createUser(db, { name: 'Super Teste', username: 'super', password: PASS, role: 'ADMIN', superAdmin: true }, null);
+  if (opts.modules !== false) await setModules(db, Object.fromEntries(Object.keys(MODULES).map((k) => [k, true])), superId);
   const admin = await agent(app, 'admin');
   const op = await agent(app, 'op');
   return { db, app, admin, op, adminId, opId, superId };

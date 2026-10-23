@@ -9,4 +9,6 @@
 7. **Cancelamentos após fechamento do caixa e estornos de fiado pago** — definir o procedimento administrativo.
 8. **Código de cancelamento** — implementado como código próprio (separado do código do caixa). Se preferirem usar o mesmo, basta cadastrar o mesmo número nos dois.
 10. **Emissão fiscal** — em espera (stand by) por decisão dos proprietários; nenhuma integração foi feita.
-11. **Frequência das contagens** — a meta de acuracidade já é definida pelo administrador em Configurações; falta combinar a rotina de contagens (ex.: categoria por semana, geral por mês).
+
+## Próxima etapa combinada (ainda não implementada)
+- **Contas dos colaboradores pelo administrador:** login no formato `nome.sobrenome`, celular opcional, envio das credenciais pelo WhatsApp, revogar acesso e redefinir senha pelo admin, senha somente com letras. Será tratado junto com a revisão da autenticação principal (hoje a senha exige 8+ caracteres de qualquer tipo).

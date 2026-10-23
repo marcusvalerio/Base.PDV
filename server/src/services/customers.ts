@@ -1,90 +1,98 @@
-import { DB, now, audit, tx } from '../db.js';
+import { DB, now, audit, tx, isUniqueViolation } from '../db.js';
 import { badRequest, conflict, notFound } from '../errors.js';
 import { requireOpenRegister } from './cash.js';
 import { getPaymentMethod } from './sales.js';
 
-export function createCustomer(db: DB, input: { name: string; phone?: string | null; notes?: string | null }, userId: number) {
+export async function createCustomer(db: DB, input: { name: string; phone?: string | null; notes?: string | null }, userId: number) {
   if (!input.name?.trim()) throw badRequest('Informe o nome do cliente.');
-  const r = db.prepare('INSERT INTO customers (name, phone, notes, created_at) VALUES (?,?,?,?)')
-    .run(input.name.trim(), input.phone?.trim() || null, input.notes?.trim() || null, now());
-  audit(db, userId, 'customer.create', 'customer', r.lastInsertRowid, { name: input.name });
-  return Number(r.lastInsertRowid);
+  const r = await db.one<{ id: number }>('INSERT INTO customers (name, phone, notes, created_at) VALUES (?,?,?,?) RETURNING id',
+    [input.name.trim(), input.phone?.trim() || null, input.notes?.trim() || null, now()]);
+  await audit(db, userId, 'customer.create', 'customer', r!.id, { name: input.name });
+  return r!.id;
 }
 
-export function updateCustomer(db: DB, id: number, patch: { name?: string; phone?: string | null; notes?: string | null; active?: boolean }, userId: number) {
-  const c = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as any;
+export async function updateCustomer(db: DB, id: number, patch: { name?: string; phone?: string | null; notes?: string | null; active?: boolean }, userId: number) {
+  const c = await db.one('SELECT * FROM customers WHERE id = ?', [id]);
   if (!c) throw notFound('Cliente não encontrado.');
-  db.prepare('UPDATE customers SET name=?, phone=?, notes=?, active=? WHERE id=?').run(
+  await db.run('UPDATE customers SET name=?, phone=?, notes=?, active=? WHERE id=?', [
     patch.name?.trim() || c.name, patch.phone === undefined ? c.phone : patch.phone, patch.notes === undefined ? c.notes : patch.notes,
     patch.active === undefined ? c.active : patch.active ? 1 : 0, id,
-  );
-  audit(db, userId, 'customer.update', 'customer', id, patch);
+  ]);
+  await audit(db, userId, 'customer.update', 'customer', id, patch);
 }
 
 export function listCustomers(db: DB, opts: { q?: string; includeInactive?: boolean } = {}) {
   const where = [];
   const args: any[] = [];
   if (!opts.includeInactive) where.push('c.active = 1');
-  if (opts.q) { where.push('(c.name LIKE ? OR c.phone LIKE ?)'); args.push(`%${opts.q}%`, `%${opts.q}%`); }
-  return db.prepare(
-    `SELECT c.*, COALESCE((SELECT SUM(total_cents - paid_cents) FROM receivables r WHERE r.customer_id = c.id AND r.status = 'OPEN'),0) AS balance_cents
+  if (opts.q) { where.push('(c.name ILIKE ? OR c.phone ILIKE ?)'); args.push(`%${opts.q}%`, `%${opts.q}%`); }
+  return db.all(
+    `SELECT c.*, COALESCE((SELECT SUM(total_cents - paid_cents) FROM receivables r WHERE r.customer_id = c.id AND r.status = 'OPEN'),0)::bigint AS balance_cents
      FROM customers c ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY c.name`,
-  ).all(...args);
+    args,
+  );
 }
 
-export function customerBalance(db: DB, id: number): number {
-  return (db.prepare(`SELECT COALESCE(SUM(total_cents - paid_cents),0) AS b FROM receivables WHERE customer_id = ? AND status = 'OPEN'`).get(id) as any).b;
+export async function customerBalance(db: DB, id: number): Promise<number> {
+  return (await db.one(`SELECT COALESCE(SUM(total_cents - paid_cents),0)::bigint AS b FROM receivables WHERE customer_id = ? AND status = 'OPEN'`, [id])).b;
 }
 
-export function customerStatement(db: DB, id: number) {
-  const c = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as any;
+export async function customerStatement(db: DB, id: number) {
+  const c = await db.one('SELECT * FROM customers WHERE id = ?', [id]);
   if (!c) throw notFound('Cliente não encontrado.');
-  const receivables = db.prepare(
-    `SELECT r.*, s.created_at AS sale_at FROM receivables r JOIN sales s ON s.id = r.sale_id WHERE r.customer_id = ? ORDER BY r.id DESC`,
-  ).all(id) as any[];
+  const receivables = await db.all(
+    `SELECT r.*, s.created_at AS sale_at FROM receivables r JOIN sales s ON s.id = r.sale_id WHERE r.customer_id = ? ORDER BY r.id DESC`, [id]);
   for (const r of receivables) {
-    r.items = db.prepare('SELECT product_name, unit, qty_milli, total_cents FROM sale_items WHERE sale_id = ?').all(r.sale_id);
+    r.items = await db.all('SELECT product_name, unit, qty_milli, total_cents FROM sale_items WHERE sale_id = ?', [r.sale_id]);
   }
-  const payments = db.prepare(
+  const payments = await db.all(
     `SELECT rp.id, rp.amount_cents, rp.at, pm.name AS payment_method, u.name AS user_name FROM receivable_payments rp
-     JOIN payment_methods pm ON pm.id = rp.payment_method_id JOIN users u ON u.id = rp.user_id WHERE rp.customer_id = ? ORDER BY rp.id DESC`,
-  ).all(id) as any[];
-  for (const p of payments) p.allocations = db.prepare('SELECT receivable_id, amount_cents FROM receivable_allocations WHERE payment_id = ?').all(p.id);
-  return { customer: c, balanceCents: customerBalance(db, id), receivables, payments };
+     JOIN payment_methods pm ON pm.id = rp.payment_method_id JOIN users u ON u.id = rp.user_id WHERE rp.customer_id = ? ORDER BY rp.id DESC`, [id]);
+  for (const p of payments) p.allocations = await db.all('SELECT receivable_id, amount_cents FROM receivable_allocations WHERE payment_id = ?', [p.id]);
+  return { customer: c, balanceCents: await customerBalance(db, id), receivables, payments };
 }
 
 /**
  * Recebimento de fiado (total ou parcial). Abate as dívidas em aberto da mais antiga para a mais nova.
- * Idempotente pela chave; não aceita valor acima do saldo devedor.
+ * Idempotente pela chave; trava o cliente para não aceitar valor acima do saldo em pagamentos simultâneos.
  */
-export function receivePayment(db: DB, input: { idempotencyKey: string; customerId: number; amountCents: number; paymentMethodCode: string }, userId: number) {
+export async function receivePayment(db: DB, input: { idempotencyKey: string; customerId: number; amountCents: number; paymentMethodCode: string }, userId: number) {
   if (!input.idempotencyKey || input.idempotencyKey.length < 8) throw badRequest('Chave de operação ausente.');
-  const prev = db.prepare('SELECT id FROM receivable_payments WHERE idempotency_key = ?').get(input.idempotencyKey) as any;
-  if (prev) return { paymentId: prev.id, balanceCents: customerBalance(db, input.customerId), replayed: true };
+  const replay = async () => {
+    const prev = await db.one('SELECT id FROM receivable_payments WHERE idempotency_key = ?', [input.idempotencyKey]);
+    return prev ? { paymentId: prev.id, balanceCents: await customerBalance(db, input.customerId), replayed: true } : null;
+  };
+  const prev = await replay();
+  if (prev) return prev;
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) throw badRequest('Valor inválido.');
-  return tx(db, () => {
-    const registerId = requireOpenRegister(db, userId);
-    const pm = getPaymentMethod(db, input.paymentMethodCode);
-    if (pm.kind === 'CREDIT') throw badRequest('Escolha como o cliente está pagando (dinheiro, Pix ou cartão).');
-    const balance = customerBalance(db, input.customerId);
-    if (balance <= 0) throw conflict('Este cliente não tem saldo em aberto.');
-    if (input.amountCents > balance) throw badRequest('O valor é maior que o saldo devedor do cliente.', 'AMOUNT_EXCEEDS_BALANCE');
-    const r = db.prepare(
-      'INSERT INTO receivable_payments (idempotency_key, customer_id, register_id, payment_method_id, amount_cents, user_id, at) VALUES (?,?,?,?,?,?,?)',
-    ).run(input.idempotencyKey, input.customerId, registerId, pm.id, input.amountCents, userId, now());
-    const paymentId = Number(r.lastInsertRowid);
-    let remaining = input.amountCents;
-    const open = db.prepare(`SELECT * FROM receivables WHERE customer_id = ? AND status = 'OPEN' ORDER BY id`).all(input.customerId) as any[];
-    for (const rec of open) {
-      if (remaining <= 0) break;
-      const due = rec.total_cents - rec.paid_cents;
-      const pay = Math.min(due, remaining);
-      remaining -= pay;
-      db.prepare('INSERT INTO receivable_allocations (payment_id, receivable_id, amount_cents) VALUES (?,?,?)').run(paymentId, rec.id, pay);
-      db.prepare(`UPDATE receivables SET paid_cents = paid_cents + ?, status = CASE WHEN paid_cents + ? >= total_cents THEN 'PAID' ELSE 'OPEN' END WHERE id = ?`)
-        .run(pay, pay, rec.id);
-    }
-    audit(db, userId, 'receivable.payment', 'customer', input.customerId, { amount: input.amountCents, method: pm.code });
-    return { paymentId, balanceCents: customerBalance(db, input.customerId), replayed: false };
-  });
+  try {
+    return await tx(db, async (t) => {
+      if (!(await t.one('SELECT id FROM customers WHERE id = ? FOR UPDATE', [input.customerId]))) throw notFound('Cliente não encontrado.');
+      const registerId = await requireOpenRegister(t, userId);
+      const pm = await getPaymentMethod(t, input.paymentMethodCode);
+      if (pm.kind === 'CREDIT') throw badRequest('Escolha como o cliente está pagando (dinheiro, Pix ou cartão).');
+      const balance = await customerBalance(t, input.customerId);
+      if (balance <= 0) throw conflict('Este cliente não tem saldo em aberto.');
+      if (input.amountCents > balance) throw badRequest('O valor é maior que o saldo devedor do cliente.', 'AMOUNT_EXCEEDS_BALANCE');
+      const r = await t.one<{ id: number }>(
+        'INSERT INTO receivable_payments (idempotency_key, customer_id, register_id, payment_method_id, amount_cents, user_id, at) VALUES (?,?,?,?,?,?,?) RETURNING id',
+        [input.idempotencyKey, input.customerId, registerId, pm.id, input.amountCents, userId, now()],
+      );
+      const paymentId = r!.id;
+      let remaining = input.amountCents;
+      for (const rec of await t.all(`SELECT * FROM receivables WHERE customer_id = ? AND status = 'OPEN' ORDER BY id`, [input.customerId])) {
+        if (remaining <= 0) break;
+        const pay = Math.min(rec.total_cents - rec.paid_cents, remaining);
+        remaining -= pay;
+        await t.run('INSERT INTO receivable_allocations (payment_id, receivable_id, amount_cents) VALUES (?,?,?)', [paymentId, rec.id, pay]);
+        await t.run(`UPDATE receivables SET paid_cents = paid_cents + ?, status = CASE WHEN paid_cents + ? >= total_cents THEN 'PAID' ELSE 'OPEN' END WHERE id = ?`,
+          [pay, pay, rec.id]);
+      }
+      await audit(t, userId, 'receivable.payment', 'customer', input.customerId, { amount: input.amountCents, method: pm.code });
+      return { paymentId, balanceCents: await customerBalance(t, input.customerId), replayed: false };
+    });
+  } catch (e) {
+    if (isUniqueViolation(e, 'idempotency_key')) { const won = await replay(); if (won) return won; }
+    throw e;
+  }
 }

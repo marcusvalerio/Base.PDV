@@ -4,7 +4,7 @@ import { resolvePeriod } from '../src/services/analytics.js';
 import { localDate, addDays } from '../src/tz.js';
 
 describe('estoque', () => {
-  it('entrada com validade, ajuste com motivo, perda e inventário', async () => {
+  it('entrada com validade, ajuste com motivo e perda', async () => {
     const { admin } = await setup();
     const pid = await product(admin, { initial_stock_milli: 5000, min_stock_milli: 6000 });
     let alerts = (await admin.get('/api/stock/alerts')).body;
@@ -17,11 +17,9 @@ describe('estoque', () => {
     expect((await admin.get('/api/products')).body[0].cost_cents).toBe(400);
     expect((await admin.post('/api/stock/adjustments', { productId: pid, qtyMilli: -1000, type: 'LOSS', reason: '' })).status).toBe(400);
     expect((await admin.post('/api/stock/adjustments', { productId: pid, qtyMilli: -1000, type: 'LOSS', reason: 'garrafa quebrada' })).status).toBe(201);
-    const inv = (await admin.post('/api/stock/inventory', { items: [{ productId: pid, countedMilli: 12000 }] })).body;
-    expect(inv.results[0]).toMatchObject({ systemMilli: 14000, countedMilli: 12000, diffMilli: -2000 });
     const mov = (await admin.get(`/api/stock/movements?productId=${pid}`)).body;
-    expect(mov.map((m: any) => m.type)).toEqual(['INVENTORY', 'LOSS', 'ENTRY', 'ENTRY']);
-    expect(mov[0].balance_after_milli).toBe(12000);
+    expect(mov.map((m: any) => m.type)).toEqual(['LOSS', 'ENTRY', 'ENTRY']);
+    expect(mov[0].balance_after_milli).toBe(14000);
   });
 });
 

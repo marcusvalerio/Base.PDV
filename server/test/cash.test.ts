@@ -15,7 +15,7 @@ describe('caixa', () => {
     const pid = await product(admin);
     const ops = [];
     for (let i = 1; i <= 5; i++) {
-      createUser(db, { name: `Op ${i}`, username: `op${i}`, password: PASS, role: 'OPERADOR' }, adminId);
+      await createUser(db, { name: `Op ${i}`, username: `op${i}`, password: PASS, role: 'OPERADOR' }, adminId);
       const c = await agent(app, `op${i}`);
       await openCash(c, 1000 * i);
       await c.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'DINHEIRO', items: [{ productId: pid, qtyMilli: i * 1000 }] });

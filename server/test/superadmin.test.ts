@@ -22,7 +22,7 @@ describe('super administrador e liberação de módulos', () => {
     const { admin, op, db } = await setup({ modules: false });
     const pid = await product(admin);
     await openCash(op);
-    const cid = Number(db.prepare("INSERT INTO customers (name, created_at) VALUES ('X', 'x')").run().lastInsertRowid);
+    const cid = (await db.one("INSERT INTO customers (name, created_at) VALUES ('X', 'x') RETURNING id")).id;
     const r = await op.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'FIADO', customerId: cid, items: [{ productId: pid, qtyMilli: 1000 }] });
     expect(r.status).toBe(403);
   });
@@ -69,8 +69,8 @@ describe('inventário e acuracidade', () => {
     expect(done.accuracy.divergenceAbsCents).toBe(700);
     expect(done.accuracy.valueAccuracy).toBeCloseTo(1 - 700 / 24000);
     expect(done.accuracy.itemAccuracy).toBeCloseTo(1 / 3);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(b) as any).s).toBe(4000);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(c) as any).s).toBe(19500);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [b])).s).toBe(4000);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [c])).s).toBe(19500);
     expect((await op.post(`/api/inventory/${inv.id}/count`, { productId: a, qtyMilli: 1000, mode: 'add' })).status).toBe(409);
     const list = (await admin.get('/api/inventory')).body;
     expect(list[0].item_accuracy).toBeCloseTo(1 / 3);
@@ -84,7 +84,7 @@ describe('inventário e acuracidade', () => {
     await op.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'PIX', items: [{ productId: a, qtyMilli: 3000 }] });
     const done = (await admin.post(`/api/inventory/${inv.id}/finish`, { apply: true })).body;
     expect(done.accuracy.itemAccuracy).toBe(1);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(a) as any).s).toBe(7000);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [a])).s).toBe(7000);
   });
 
   it('inventário por categoria recusa produto de outra categoria; encerrar sem ajustar não mexe no estoque', async () => {
@@ -96,7 +96,7 @@ describe('inventário e acuracidade', () => {
     const done = (await admin.post(`/api/inventory/${inv.id}/finish`, { apply: false })).body;
     expect(done.applied).toBe(false);
     expect(done.accuracy.itemAccuracy).toBe(0);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(a) as any).s).toBe(10000);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [a])).s).toBe(10000);
   });
 
   it('meta de acuracidade é definida pelo administrador', async () => {

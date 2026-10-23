@@ -19,6 +19,8 @@ if (!password) {
   password = await rl.question('Senha (mín. 8 caracteres): ');
   rl.close();
 }
-const db = openDb(process.env.DATABASE_PATH || './data/pdv.db');
-const id = createUser(db, { name: values.name, username: values.username, password, role: values.role as Role, superAdmin: values.super }, null);
+if (!process.env.DATABASE_URL) { console.error('Defina DATABASE_URL (string de conexão do Neon).'); process.exit(1); }
+const db = await openDb();
+const id = await createUser(db, { name: values.name, username: values.username, password, role: values.role as Role, superAdmin: values.super }, null);
 console.log(`Usuário #${id} (${values.super ? 'SUPER ADMIN' : values.role}) criado.`);
+await db.close();

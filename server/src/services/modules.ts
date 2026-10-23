@@ -14,25 +14,23 @@ export const MODULES = {
 } as const;
 export type ModuleKey = keyof typeof MODULES;
 
-export function getModules(db: DB): Record<ModuleKey, boolean> {
+export async function getModules(db: DB): Promise<Record<ModuleKey, boolean>> {
   let saved: Record<string, boolean> = {};
-  try { saved = JSON.parse(getSetting(db, 'modules' as any) || '{}'); } catch { /* padrão */ }
+  try { saved = JSON.parse((await getSetting(db, 'modules')) || '{}'); } catch { /* padrão: tudo bloqueado */ }
   return Object.fromEntries((Object.keys(MODULES) as ModuleKey[]).map((k) => [k, saved[k] === true])) as Record<ModuleKey, boolean>;
 }
 
-export const isModuleOn = (db: DB, k: ModuleKey) => getModules(db)[k];
-
-export function requireModule(db: DB, k: ModuleKey) {
-  if (!isModuleOn(db, k)) throw forbidden(`O módulo "${MODULES[k]}" não está liberado. Fale com o super administrador.`);
+export async function requireModule(db: DB, k: ModuleKey) {
+  if (!(await getModules(db))[k]) throw forbidden(`O módulo "${MODULES[k]}" não está liberado. Fale com o super administrador.`);
 }
 
-export function setModules(db: DB, patch: Partial<Record<string, boolean>>, userId: number) {
-  const cur = getModules(db);
+export async function setModules(db: DB, patch: Partial<Record<string, boolean>>, userId: number) {
+  const cur = await getModules(db);
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in MODULES)) throw badRequest(`Módulo desconhecido: ${k}`);
     cur[k as ModuleKey] = !!v;
   }
-  setSetting(db, 'modules', JSON.stringify(cur), userId);
-  audit(db, userId, 'modules.update', 'settings', null, patch);
+  await setSetting(db, 'modules', JSON.stringify(cur), userId);
+  await audit(db, userId, 'modules.update', 'settings', null, patch);
   return cur;
 }

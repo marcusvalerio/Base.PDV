@@ -19,8 +19,8 @@ describe('mesas e comandas', () => {
     const { tab, db, chopp } = await ctx();
     expect(tab.people.map((p: any) => p.pending_cents)).toEqual([1200, 1200, 600]);
     expect(tab.pending_cents).toBe(3000);
-    expect((db.prepare('SELECT COUNT(*) n FROM sales').get() as any).n).toBe(0);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(chopp) as any).s).toBe(30000);
+    expect((await db.one('SELECT COUNT(*)::int AS n FROM sales', [])).n).toBe(0);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [chopp])).s).toBe(30000);
   });
 
   it('não permite abrir a mesma mesa duas vezes', async () => {
@@ -43,8 +43,8 @@ describe('mesas e comandas', () => {
     expect(r2.body.sale.change_cents).toBe(200);
     expect(r2.body.tab.status).toBe('CLOSED');
     expect(r2.body.sale.items.every((i: any) => i.tab_person_id)).toBe(true);
-    expect((db.prepare("SELECT SUM(total_cents) t FROM sales WHERE status='COMPLETED'").get() as any).t).toBe(3000);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(chopp) as any).s).toBe(29500);
+    expect((await db.one("SELECT SUM(total_cents)::bigint AS t FROM sales WHERE status='COMPLETED'", [])).t).toBe(3000);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [chopp])).s).toBe(29500);
   });
 
   it('corrige lançamento indevido preservando histórico', async () => {
@@ -73,7 +73,7 @@ describe('mesas e comandas', () => {
     const t = (await op.get(`/api/tabs/${tabId}`)).body;
     expect(t.status).toBe('OPEN');
     expect(t.pending_cents).toBe(3000);
-    expect((db.prepare('SELECT stock_milli s FROM products WHERE id = ?').get(chopp) as any).s).toBe(30000);
+    expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [chopp])).s).toBe(30000);
     const again = (await op.post(`/api/tabs/${tabId}/close`, { idempotencyKey: key(), personId: null, paymentMethodCode: 'CARTAO' })).body;
     expect(again.sale.total_cents).toBe(3000);
   });
