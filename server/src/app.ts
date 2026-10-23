@@ -16,6 +16,8 @@ import * as cash from './services/cash.js';
 import * as tabs from './services/tabs.js';
 import * as analytics from './services/analytics.js';
 import { hashSecret } from './security.js';
+import * as modules from './services/modules.js';
+import * as inventory from './services/inventory.js';
 
 declare global {
   namespace Express { interface Request { user?: users.SessionUser; token?: string } }
@@ -80,9 +82,26 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     }
     next();
   };
+  const sup = (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) return next(unauthorized());
+    if (!req.user.superAdmin) return next(forbidden('Somente o super administrador pode fazer isso.'));
+    next();
+  };
+  /** Bloqueia no servidor rotas de módulos não liberados pelo super administrador. */
+  const mod = (k: modules.ModuleKey) => (_req: Request, _res: Response, next: NextFunction) => {
+    try { modules.requireModule(db, k); next(); } catch (e) { next(e); }
+  };
   const uid = (req: Request) => req.user!.id;
   const isAdmin = (req: Request) => req.user?.role === 'ADMIN';
   const r = express.Router();
+
+  r.use('/tabs', mod('mesas'));
+  r.use('/customers', mod('fiado'));
+  r.use('/stock', mod('estoque'));
+  r.use('/inventory', mod('inventario'));
+  r.use('/analytics', mod('analise'));
+  r.use('/restock', mod('reposicao'));
+  r.use('/audit', mod('auditoria'));
 
   // ---------- Autenticação ----------
   r.post('/auth/login', (req, res) => {
@@ -109,8 +128,10 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
 
   // ---------- Dados básicos para o PDV ----------
   r.get('/bootstrap', auth, (_req, res) => {
+    const mods = modules.getModules(db);
     res.json({
-      paymentMethods: db.prepare('SELECT code, name, kind FROM payment_methods WHERE active = 1 ORDER BY sort').all(),
+      modules: mods,
+      paymentMethods: (db.prepare('SELECT code, name, kind FROM payment_methods WHERE active = 1 ORDER BY sort').all() as any[]).filter((m) => m.kind !== 'CREDIT' || mods.fiado),
       categories: db.prepare('SELECT * FROM categories WHERE active = 1 ORDER BY name').all(),
       fiadoSurchargeCents: Number(settings.getSetting(db, 'fiado_surcharge_cents') || 0),
       cashCodeMode: settings.getSetting(db, 'cash_code_mode'),
@@ -118,6 +139,12 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   });
 
   // ---------- Produtos e categorias ----------
+  r.get('/products/by-code/:code', auth, (req, res) => {
+    const code = String(req.params.code).trim().slice(0, 60);
+    const p = db.prepare('SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.id = p.category_id WHERE p.barcode = ? OR p.internal_code = ?').get(code, code) as any;
+    if (!p) throw new AppError(404, 'NOT_FOUND', `Código ${code} não cadastrado.`);
+    res.json(isAdmin(req) ? p : products.publicProduct(p));
+  });
   r.get('/products', auth, (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 60) : undefined;
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
@@ -155,6 +182,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       idempotencyKey: idemKey, paymentMethodCode: z.string().max(20), items: lines,
       customerId: id.nullish(), receivedCents: cents.nullish(),
     }).parse(req.body);
+    if (sales.getPaymentMethod(db, b.paymentMethodCode).kind === 'CREDIT') modules.requireModule(db, 'fiado');
     const sale = sales.createSale(db, b, uid(req));
     res.status(sale.replayed ? 200 : 201).json(sale);
   });
@@ -251,6 +279,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   });
   r.post('/tabs/:id/close', auth, (req, res) => {
     const b = z.object({ idempotencyKey: idemKey, personId: id.nullable(), paymentMethodCode: z.string().max(20), customerId: id.nullish(), receivedCents: cents.nullish() }).parse(req.body);
+    if (sales.getPaymentMethod(db, b.paymentMethodCode).kind === 'CREDIT') modules.requireModule(db, 'fiado');
     res.json(tabs.closeTabBill(db, id.parse(req.params.id), b, uid(req)));
   });
   r.post('/tabs/:id/finish', auth, (req, res) => res.json(tabs.finishTab(db, id.parse(req.params.id), uid(req))));
@@ -291,7 +320,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   const roleSchema = z.enum(['ADMIN', 'OPERADOR']);
   r.get('/users', admin, (_req, res) => res.json(users.listUsers(db)));
   r.post('/users', admin, (req, res) => {
-    const b = z.object({ name: z.string().trim().min(2).max(80), username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/), password: z.string().min(8).max(200), role: roleSchema }).parse(req.body);
+    const b = z.object({ name: z.string().trim().min(2).max(80), username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/), password: z.string().min(8).max(200), role: roleSchema, superAdmin: z.boolean().optional() }).parse(req.body);
     res.status(201).json({ id: users.createUser(db, b, uid(req)) });
   });
   r.patch('/users/:id', admin, (req, res) => {
@@ -331,6 +360,34 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   r.get('/audit', admin, (_req, res) => res.json(db.prepare(
     'SELECT a.*, u.name AS user_name FROM audit_log a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 300',
   ).all()));
+
+  // ---------- Super administrador: liberação de módulos ----------
+  r.get('/modules', admin, (_req, res) => res.json({ modules: modules.getModules(db), labels: modules.MODULES }));
+  r.put('/modules', sup, (req, res) => {
+    const b = z.record(z.boolean()).parse(req.body);
+    res.json({ modules: modules.setModules(db, b, uid(req)), labels: modules.MODULES });
+  });
+
+  // ---------- Inventário ----------
+  r.get('/inventory', auth, (_req, res) => res.json(inventory.listSessions(db)));
+  r.post('/inventory', admin, (req, res) => {
+    const b = z.object({ name: z.string().max(80).optional(), scope: z.enum(['FULL', 'CATEGORY', 'PARTIAL']), categoryId: id.nullish(), productIds: z.array(id).max(5000).optional(), blind: z.boolean().optional() }).parse(req.body);
+    res.status(201).json(inventory.getSession(db, inventory.createSession(db, b, uid(req)), { revealSystem: true }));
+  });
+  r.get('/inventory/:id', auth, (req, res) => res.json(inventory.getSession(db, id.parse(req.params.id), { revealSystem: isAdmin(req) })));
+  r.post('/inventory/:id/count', auth, (req, res) => {
+    const b = z.object({ productId: id, qtyMilli: z.number().int().min(0).max(1_000_000_000), mode: z.enum(['add', 'set']) }).parse(req.body);
+    res.json(inventory.countItem(db, id.parse(req.params.id), b, uid(req)));
+  });
+  r.delete('/inventory/:id/count/:productId', auth, (req, res) => {
+    inventory.clearCount(db, id.parse(req.params.id), id.parse(req.params.productId), uid(req));
+    res.json({ ok: true });
+  });
+  r.post('/inventory/:id/finish', admin, (req, res) => {
+    const b = z.object({ apply: z.boolean() }).parse(req.body);
+    res.json(inventory.finishSession(db, id.parse(req.params.id), b, uid(req)));
+  });
+  r.post('/inventory/:id/cancel', admin, (req, res) => { inventory.cancelSession(db, id.parse(req.params.id), uid(req)); res.json({ ok: true }); });
 
   app.use('/api', r);
   app.use('/api', (_req, _res, next) => next(new AppError(404, 'NOT_FOUND', 'Rota não encontrada.')));
