@@ -97,7 +97,7 @@ function ProductForm({ p, catalog, onClose, onSaved }: { p: any; catalog: any[];
   return (
     <Modal wide title={isNew ? 'Novo produto' : `Editar ${p.name}`} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={!valid || busy} onClick={save}>Salvar</button></>}>
       <Field label="Nome"><input className="input" value={f.name} onChange={set('name')} autoFocus /></Field>
-      <Field label="Estoque deste produto">
+      <Field group label="Estoque deste produto">
         <Segmented value={f.mode} onChange={(mode) => setF({ ...f, mode, ...(mode === 'source' ? { unit: 'UN' as Unit } : {}) })}
           options={[{ value: 'own', label: 'Tem estoque próprio' }, { value: 'source', label: 'Desconta de outro produto' }]} />
       </Field>
@@ -124,7 +124,7 @@ function ProductForm({ p, catalog, onClose, onSaved }: { p: any; catalog: any[];
         <Field label={`Preço de venda${f.unit === 'L' ? ' (por litro)' : f.unit === 'KG' ? ' (por kg)' : ''}`}><input className="input num" inputMode="decimal" value={f.price} onChange={set('price')} placeholder="0,00" /></Field>
         {!derived && <Field label={`Custo por ${UNIT_LABEL[f.unit]}`} hint="Opcional, mas necessário para margem. Na entrada dá para informar o custo da caixa/barril."><input className="input num" inputMode="decimal" value={f.cost} onChange={set('cost')} placeholder="0,00" /></Field>}
         <Field label="Código interno"><input className="input" value={f.internal_code} onChange={set('internal_code')} /></Field>
-        <Field label="Código de barras"><div className="row"><input className="input" value={f.barcode} onChange={set('barcode')} inputMode="numeric" placeholder="Leia com o coletor ou a câmera" /><CameraButton label="" onScan={(c) => setF((x) => ({ ...x, barcode: c }))} /></div></Field>
+        <Field group label="Código de barras"><div className="row"><input className="input" value={f.barcode} onChange={set('barcode')} inputMode="numeric" placeholder="Leia com o coletor ou a câmera" /><CameraButton label="" onScan={(c) => setF((x) => ({ ...x, barcode: c }))} /></div></Field>
         {!derived && <Field label="Estoque mínimo" hint={unitHint}><input className="input num" inputMode="decimal" value={f.min} onChange={set('min')} /></Field>}
         {isNew && !derived && <Field label="Estoque inicial" hint={unitHint}><input className="input num" inputMode="decimal" value={f.initial} onChange={set('initial')} /></Field>}
       </div>
@@ -141,7 +141,7 @@ function ProductForm({ p, catalog, onClose, onSaved }: { p: any; catalog: any[];
         </div>
       )}
       {!isNew && <div className="faint">Unidade não pode ser alterada após o cadastro. Estoque é alterado por entradas, ajustes ou inventário.</div>}
-      <Field label="Imagem (opcional)" hint="Cole o link https:// de uma foto do produto. Sem foto, aparece a ilustração da categoria.">
+      <Field group label="Imagem (opcional)" hint="Cole o link https:// de uma foto do produto. Sem foto, aparece a ilustração da categoria.">
         <div className="row"><ProductArt size="sm" image={f.image || null} category={boot?.categories.find((c) => String(c.id) === f.category_id)?.name} /><input className="input" value={f.image} onChange={set('image')} placeholder="https://..." /></div>
       </Field>
       <label className="check"><input type="checkbox" checked={f.track_expiry} onChange={set('track_expiry')} /> Controlar validade nas entradas</label>

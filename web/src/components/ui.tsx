@@ -41,8 +41,13 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return <div className="notice danger row wrap"><span>{message}</span><span className="spacer" />{onRetry && <button className="btn sm" onClick={onRetry}>Tentar novamente</button>}</div>;
 }
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
-  return <label className="field">{label}{children}{hint && <span className="faint" style={{ fontWeight: 400 }}>{hint}</span>}</label>;
+/**
+ * Campo com rótulo. Use group quando houver botões dentro (ex.: câmera, opções):
+ * dentro de <label> o navegador desvia o clique para o primeiro campo.
+ */
+export function Field({ label, children, hint, group }: { label: string; children: ReactNode; hint?: ReactNode; group?: boolean }) {
+  const body = <>{group ? <span>{label}</span> : label}{children}{hint && <span className="faint" style={{ fontWeight: 400 }}>{hint}</span>}</>;
+  return group ? <div className="field" role="group" aria-label={label}>{body}</div> : <label className="field">{body}</label>;
 }
 
 export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {

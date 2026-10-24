@@ -87,7 +87,7 @@ export function VolumeModal({ product, onClose, onConfirm }: { product: Product;
           </button>
         ))}
       </div>
-      <Field label={isL ? 'Outra quantidade (ex.: 700ml ou 0,7)' : 'Outra quantidade (ex.: 350g ou 0,35)'}>
+      <Field group label={isL ? 'Outra quantidade (ex.: 700ml ou 0,7)' : 'Outra quantidade (ex.: 350g ou 0,35)'}>
         <div className="row">
           <input className="input" inputMode="decimal" value={custom} onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && milli && onConfirm(milli)} />
           <button className="btn primary" disabled={!milli} onClick={() => milli && onConfirm(milli)}>Adicionar</button>
@@ -201,7 +201,7 @@ export function CheckoutModal({ title, subtotalCents, onClose, onConfirm, busy, 
             : <div className="notice danger">Faltam {money(-change)}.</div>)}
         </div>
       )}
-      {pm?.kind === 'CREDIT' && <Field label="Cliente"><CustomerPicker value={customer} onChange={setCustomer} /></Field>}
+      {pm?.kind === 'CREDIT' && <Field group label="Cliente"><CustomerPicker value={customer} onChange={setCustomer} /></Field>}
       {error && <div className="notice danger">{error}</div>}
     </Modal>
   );

@@ -90,7 +90,7 @@ function CreateModal({ onClose }: { onClose: () => void }) {
   });
   return (
     <Modal title="Novo inventário" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || (scope === 'CATEGORY' && !cat)} onClick={create}>Começar contagem</button></>}>
-      <Field label="Tipo de contagem">
+      <Field group label="Tipo de contagem">
         <Segmented value={scope} onChange={setScope} options={[{ value: 'FULL', label: 'Geral' }, { value: 'CATEGORY', label: 'Por categoria' }, { value: 'PARTIAL', label: 'Parcial' }]} />
       </Field>
       <div className="faint">
