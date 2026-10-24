@@ -14,3 +14,11 @@ export function assertQty(unit: Unit, qtyMilli: number) {
     throw new Error('Este produto só pode ser vendido em quantidades inteiras.');
   }
 }
+
+/**
+ * Unidades que contam para o acréscimo do fiado: cada unidade/pacote vendido conta 1;
+ * produtos por volume ou peso (chopp, kg) contam 1 por item lançado.
+ */
+export function surchargeUnits(unit: Unit, qtyMilli: number): number {
+  return FRACTIONAL_UNITS.includes(unit) ? 1 : Math.round(qtyMilli / 1000);
+}

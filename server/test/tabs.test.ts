@@ -74,7 +74,7 @@ describe('mesas e comandas', () => {
     expect(t.status).toBe('OPEN');
     expect(t.pending_cents).toBe(3000);
     expect((await db.one('SELECT stock_milli AS s FROM products WHERE id = ?', [chopp])).s).toBe(30000);
-    const again = (await op.post(`/api/tabs/${tabId}/close`, { idempotencyKey: key(), personId: null, paymentMethodCode: 'CARTAO' })).body;
+    const again = (await op.post(`/api/tabs/${tabId}/close`, { idempotencyKey: key(), personId: null, paymentMethodCode: 'CARTAO_DEBITO' })).body;
     expect(again.sale.total_cents).toBe(3000);
   });
 });

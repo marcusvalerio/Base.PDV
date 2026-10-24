@@ -171,6 +171,10 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       paymentMethods: (await db.all('SELECT code, name, kind FROM payment_methods WHERE active = 1 ORDER BY sort')).filter((m) => m.kind !== 'CREDIT' || mods.fiado),
       categories: await db.all('SELECT * FROM categories WHERE active = 1 ORDER BY name'),
       fiadoSurchargeCents: Number(await settings.getSetting(db, 'fiado_surcharge_cents') || 0),
+      cardSurcharge: {
+        CARTAO_DEBITO: { mode: await settings.getSetting(db, 'card_debit_surcharge_mode'), value: Number(await settings.getSetting(db, 'card_debit_surcharge_value') || 0) },
+        CARTAO_CREDITO: { mode: await settings.getSetting(db, 'card_credit_surcharge_mode'), value: Number(await settings.getSetting(db, 'card_credit_surcharge_value') || 0) },
+      },
       cashCodeMode: await settings.getSetting(db, 'cash_code_mode'),
     });
   });
@@ -372,6 +376,10 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       restock_lead_time_days: optDays.optional(),
       restock_safety_days: optDays.optional(),
       allow_negative_stock: z.enum(['true', 'false']).optional(),
+      card_debit_surcharge_mode: z.enum(['UNIT', 'PERCENT']).optional(),
+      card_credit_surcharge_mode: z.enum(['UNIT', 'PERCENT']).optional(),
+      card_debit_surcharge_value: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
+      card_credit_surcharge_value: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       inventory_accuracy_target: z.union([z.literal(''), z.coerce.number().min(0).max(100).transform(String)]).optional(),
     }).parse(req.body);
     for (const [k, v] of Object.entries(b)) if (v !== undefined) await settings.setSetting(db, k, String(v), uid(req));

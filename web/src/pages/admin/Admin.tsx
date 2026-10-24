@@ -200,12 +200,17 @@ export function Settings() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [newCat, setNewCat] = useState('');
   const toast = useToast();
-  const v = f ?? (data && { ...data, surcharge: centsToInput(Number(data.fiado_surcharge_cents)) });
+  const cardIn = (mode: string, val: string) => { const n = Number(val || 0); if (!n) return ''; return mode === 'UNIT' ? centsToInput(n) : String(n / 100).replace('.', ','); };
+  const cardOut = (mode: string, txt: string): number | null => { const t = String(txt ?? '').trim(); if (!t) return 0; if (mode === 'UNIT') return parseMoney(t); const n = Number(t.replace('%', '').replace(',', '.')); return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.round(n * 100) : null; };
+  const v = f ?? (data && { ...data, surcharge: centsToInput(Number(data.fiado_surcharge_cents)),
+    debitTxt: cardIn(data.card_debit_surcharge_mode, data.card_debit_surcharge_value), creditTxt: cardIn(data.card_credit_surcharge_mode, data.card_credit_surcharge_value) });
   const [save, busy] = useAction(async () => {
     const s = parseMoney(v.surcharge);
-    if (s == null) return toast('Acréscimo inválido.', 'error');
+    if (s == null) return toast('Acréscimo do fiado inválido.', 'error');
+    const deb = cardOut(v.card_debit_surcharge_mode, v.debitTxt), cre = cardOut(v.card_credit_surcharge_mode, v.creditTxt);
+    if (deb == null || cre == null) return toast('Acréscimo do cartão inválido.', 'error');
     try {
-      setData(await api('/settings', { method: 'PUT', body: { fiado_surcharge_cents: s, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
+      setData(await api('/settings', { method: 'PUT', body: { fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
       setF(null); await refreshBoot(); toast('Configurações salvas.', 'success');
     } catch (e: any) { toast(e.message, 'error'); }
   });
@@ -221,9 +226,28 @@ export function Settings() {
       <div className="page-head"><h1>Configurações</h1></div>
       <div className="card stack">
         <h2>Venda a prazo (fiado)</h2>
-        <Field label="Acréscimo fixo por venda a prazo (R$)" hint="Aplicado uma vez por venda a prazo. Alterações valem só para novas vendas; dívidas já registradas não mudam.">
+        <Field label="Acréscimo por unidade vendida a prazo (R$)" hint="Ex.: R$ 0,50 → 3 cervejas + 1 salgadinho = R$ 2,00. Chopp e produtos por kg contam 1 por item. Vale só para novas vendas; dívidas já registradas não mudam.">
           <input className="input num" style={{ maxWidth: 160 }} inputMode="decimal" value={v.surcharge} onChange={set('surcharge')} />
         </Field>
+      </div>
+      <div className="card stack">
+        <h2>Cartão</h2>
+        <div className="faint">Acréscimo aplicado quando a venda é paga no débito ou no crédito. Deixe em branco para não cobrar acréscimo. O valor aparece para a operadora antes de confirmar.</div>
+        {(['debit', 'credit'] as const).map((k) => {
+          const modeKey = `card_${k}_surcharge_mode`, txtKey = k === 'debit' ? 'debitTxt' : 'creditTxt';
+          return (
+            <div key={k} className="grid2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', alignItems: 'end' }}>
+              <Field label={k === 'debit' ? 'Débito: tipo de acréscimo' : 'Crédito: tipo de acréscimo'}>
+                <select className="input" value={v[modeKey]} onChange={(e) => setF({ ...v, [modeKey]: e.target.value, [txtKey]: '' })}>
+                  <option value="PERCENT">% sobre o total</option><option value="UNIT">R$ por unidade (igual ao fiado)</option>
+                </select>
+              </Field>
+              <Field label={v[modeKey] === 'UNIT' ? 'Valor por unidade (R$)' : 'Percentual (%)'}>
+                <input className="input num" inputMode="decimal" placeholder={v[modeKey] === 'UNIT' ? '0,00' : 'ex.: 3,5'} value={v[txtKey]} onChange={set(txtKey)} />
+              </Field>
+            </div>
+          );
+        })}
       </div>
       <div className="card stack">
         <h2>Caixa</h2>

@@ -160,15 +160,31 @@ export function CustomerPicker({ value, onChange }: { value: Customer | null; on
 export interface CheckoutResult { paymentMethodCode: string; customerId: number | null; receivedCents: number | null }
 
 /** Etapa de pagamento: forma, cliente (fiado), valor recebido e troco. */
-export function CheckoutModal({ title, subtotalCents, onClose, onConfirm, busy, error }: {
-  title: string; subtotalCents: number; onClose: () => void; onConfirm: (r: CheckoutResult) => void; busy: boolean; error?: string | null;
+/** Unidades que contam para acréscimos: cada unidade/pacote conta 1; chopp/kg contam 1 por item. Igual ao servidor. */
+export const surchargeUnits = (lines: { unit: Unit; qtyMilli: number }[]) => lines.reduce((a, l) => a + (isFractional(l.unit) ? 1 : Math.round(l.qtyMilli / 1000)), 0);
+
+/** Prévia do acréscimo (o valor final é sempre calculado no servidor). */
+function previewSurcharge(boot: any, code: string | null, subtotal: number, units: number) {
+  if (!code || !boot) return 0;
+  if (code === 'FIADO') return (boot.fiadoSurchargeCents ?? 0) * units;
+  const c = boot.cardSurcharge?.[code];
+  if (!c || !c.value) return 0;
+  return c.mode === 'UNIT' ? c.value * units : Math.round((subtotal * c.value) / 10000);
+}
+
+export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm, busy, error }: {
+  title: string; subtotalCents: number; units: number; onClose: () => void; onConfirm: (r: CheckoutResult) => void; busy: boolean; error?: string | null;
 }) {
   const { boot } = useSession();
   const [method, setMethod] = useState<string | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [received, setReceived] = useState('');
   const pm = boot?.paymentMethods.find((m) => m.code === method);
-  const surcharge = pm?.kind === 'CREDIT' ? boot?.fiadoSurchargeCents ?? 0 : 0;
+  const cards = boot?.paymentMethods.filter((m) => m.kind === 'CARD') ?? [];
+  const others = boot?.paymentMethods.filter((m) => m.kind !== 'CARD') ?? [];
+  const surcharge = previewSurcharge(boot, method, subtotalCents, units);
+  const cardHint = (code: string) => { const v = previewSurcharge(boot, code, subtotalCents, units); return v > 0 ? `+ ${money(v)}` : 'sem acréscimo'; };
   const total = subtotalCents + surcharge;
   const receivedCents = parseMoney(received);
   const change = receivedCents != null ? receivedCents - total : null;
@@ -186,10 +202,25 @@ export function CheckoutModal({ title, subtotalCents, onClose, onConfirm, busy, 
       <button className="btn primary lg" onClick={confirm} disabled={!canConfirm}>{busy ? 'Registrando…' : `Confirmar ${money(total)}`}</button>
     </>}>
       <div className="row"><span className="muted">Total a pagar</span><span className="spacer" /><span className="total-big num">{money(total)}</span></div>
-      {surcharge > 0 && <div className="notice">Inclui acréscimo de venda a prazo: {money(surcharge)} (produtos: {money(subtotalCents)}).</div>}
+      {surcharge > 0 && <div className="notice">Inclui acréscimo {pm?.kind === 'CREDIT' ? 'da venda a prazo' : `do ${pm?.name.toLowerCase()}`}: {money(surcharge)} (produtos: {money(subtotalCents)}).</div>}
       <div className="pay-grid">
-        {boot?.paymentMethods.map((m) => <button key={m.code} className={`pay-btn ${method === m.code ? 'active' : ''}`} onClick={() => setMethod(m.code)} aria-pressed={method === m.code}>{m.name}</button>)}
+        {others.filter((m) => m.kind !== 'CREDIT').map((m) => <button key={m.code} className={`pay-btn ${method === m.code ? 'active' : ''}`} onClick={() => { setMethod(m.code); setCardOpen(false); }} aria-pressed={method === m.code}>{m.name}</button>)}
+        {cards.length > 0 && <button className={`pay-btn ${pm?.kind === 'CARD' || cardOpen ? 'active' : ''}`} onClick={() => { setCardOpen(true); if (pm?.kind !== 'CARD') setMethod(null); }} aria-pressed={pm?.kind === 'CARD'}>Cartão</button>}
+        {others.filter((m) => m.kind === 'CREDIT').map((m) => <button key={m.code} className={`pay-btn ${method === m.code ? 'active' : ''}`} onClick={() => { setMethod(m.code); setCardOpen(false); }} aria-pressed={method === m.code}>{m.name}</button>)}
       </div>
+      {(cardOpen || pm?.kind === 'CARD') && (
+        <div className="stack" style={{ gap: 8 }}>
+          <span className="muted" style={{ fontSize: 13, fontWeight: 550 }}>Débito ou crédito?</span>
+          <div className="pay-grid">
+            {cards.map((m) => (
+              <button key={m.code} className={`pay-btn ${method === m.code ? 'active' : ''}`} onClick={() => setMethod(m.code)} aria-pressed={method === m.code}>
+                {m.code === 'CARTAO_DEBITO' ? 'Débito' : m.code === 'CARTAO_CREDITO' ? 'Crédito' : m.name}
+                <div className="faint num" style={{ fontWeight: 500 }}>{cardHint(m.code)}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {pm?.kind === 'CASH' && (
         <div className="stack">
           <Field label="Valor recebido do cliente">

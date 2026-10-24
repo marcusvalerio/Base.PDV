@@ -91,17 +91,17 @@ export async function registerSummary(db: DB, registerId: number) {
   const reg = await db.one('SELECT * FROM cash_registers WHERE id = ?', [registerId]);
   if (!reg) throw notFound('Caixa não encontrado.');
   const salesBy = await db.all(
-    `SELECT pm.code, pm.name, pm.kind, COUNT(s.id)::int AS count, COALESCE(SUM(s.total_cents),0)::bigint AS total_cents
+    `SELECT pm.code, pm.name, pm.kind, pm.active, COUNT(s.id)::int AS count, COALESCE(SUM(s.total_cents),0)::bigint AS total_cents
      FROM payment_methods pm LEFT JOIN sales s ON s.payment_method_id = pm.id AND s.register_id = ? AND s.status = 'COMPLETED'
      GROUP BY pm.id ORDER BY pm.sort`,
     [registerId],
-  );
+  ).then((rows) => rows.filter((r) => r.active || r.count > 0));
   const receiptsBy = await db.all(
-    `SELECT pm.code, pm.name, pm.kind, COUNT(rp.id)::int AS count, COALESCE(SUM(rp.amount_cents),0)::bigint AS total_cents
+    `SELECT pm.code, pm.name, pm.kind, pm.active, COUNT(rp.id)::int AS count, COALESCE(SUM(rp.amount_cents),0)::bigint AS total_cents
      FROM payment_methods pm LEFT JOIN receivable_payments rp ON rp.payment_method_id = pm.id AND rp.register_id = ?
      WHERE pm.kind != 'CREDIT' GROUP BY pm.id ORDER BY pm.sort`,
     [registerId],
-  );
+  ).then((rows) => rows.filter((r) => r.active || r.count > 0));
   const mov = await db.one(
     `SELECT COALESCE(SUM(CASE WHEN type='SUPRIMENTO' THEN amount_cents END),0)::bigint AS sup,
             COALESCE(SUM(CASE WHEN type='SANGRIA' THEN amount_cents END),0)::bigint AS san

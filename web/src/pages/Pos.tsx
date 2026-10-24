@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, newKey } from '../lib/api';
 import { money, qty } from '../lib/format';
-import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product } from '../components/pos';
+import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product, surchargeUnits } from '../components/pos';
 import { Modal, useToast, Empty } from '../components/ui';
 import { useAction } from '../lib/hooks';
 import { RegisterGate } from '../components/RegisterGate';
@@ -82,7 +82,7 @@ function PosInner() {
         <button className="btn primary lg" style={{ flex: 1 }} disabled={!count} onClick={openCheckout}>Cobrar {money(total)}</button>
       </div>
       {mobileCart && <Modal title="Pedido" onClose={() => setMobileCart(false)}><div className="card flush">{cartView}</div></Modal>}
-      {checkout && <CheckoutModal title="Pagamento" subtotalCents={total} busy={busy} error={error} onClose={() => !busy && setCheckout(false)} onConfirm={confirm} />}
+      {checkout && <CheckoutModal title="Pagamento" subtotalCents={total} units={surchargeUnits(cart.map((l) => ({ unit: l.product.unit, qtyMilli: l.qtyMilli })))} busy={busy} error={error} onClose={() => !busy && setCheckout(false)} onConfirm={confirm} />}
       {done && (
         <Modal title="Venda registrada" onClose={() => setDone(null)} footer={<button className="btn primary lg block" autoFocus onClick={() => setDone(null)}>Nova venda</button>}>
           <div className="notice success">Venda nº {done.id} concluída — {done.payment_method}{done.customer_name ? ` · ${done.customer_name}` : ''}.</div>

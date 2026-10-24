@@ -4,7 +4,7 @@ import { api, newKey } from '../lib/api';
 import { useApi, useAction } from '../lib/hooks';
 import { money, qty, dateTime } from '../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../components/ui';
-import { ProductPicker, CheckoutModal, CheckoutResult, Product } from '../components/pos';
+import { ProductPicker, CheckoutModal, CheckoutResult, Product, surchargeUnits } from '../components/pos';
 import { RegisterGate } from '../components/RegisterGate';
 
 export function TabsList() {
@@ -145,7 +145,7 @@ function TabDetailInner() {
         </Modal>
       )}
       {voiding && <VoidModal item={voiding} onClose={() => setVoiding(null)} onDone={(t) => { setData(t); setVoiding(null); }} tabId={id} />}
-      {closing && <CheckoutModal title={closing.label} subtotalCents={closing.total} busy={closingBusy} error={closeErr} onClose={() => !closingBusy && setClosing(null)} onConfirm={closeBill} />}
+      {closing && <CheckoutModal title={closing.label} subtotalCents={closing.total} units={surchargeUnits(tab.people.filter((p: any) => closing.personId == null || p.id === closing.personId).flatMap((p: any) => p.items).filter((i: any) => i.status === 'PENDING').map((i: any) => ({ unit: i.unit, qtyMilli: i.qty_milli })))} busy={closingBusy} error={closeErr} onClose={() => !closingBusy && setClosing(null)} onConfirm={closeBill} />}
     </div>
   );
 }

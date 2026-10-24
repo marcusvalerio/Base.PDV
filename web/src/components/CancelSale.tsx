@@ -25,7 +25,7 @@ export function SaleModal({ id, onClose, onChanged }: { id: number; onClose: () 
         <div className="row wrap"><span>{dateTime(s.created_at)} · {s.user_name} · {s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</span><span className="spacer" />{s.status === 'CANCELLED' && <span className="badge danger">cancelada</span>}</div>
         <table className="table"><tbody>
           {s.items.map((i: any) => <tr key={i.id}><td>{qty(i.qty_milli, i.unit)} {i.product_name}</td><td className="r num">{money(i.total_cents)}</td></tr>)}
-          {s.surcharge_cents > 0 && <tr><td>Acréscimo a prazo</td><td className="r num">{money(s.surcharge_cents)}</td></tr>}
+          {s.surcharge_cents > 0 && <tr><td>Acréscimo</td><td className="r num">{money(s.surcharge_cents)}</td></tr>}
           <tr><td><b>Total</b></td><td className="r num"><b>{money(s.total_cents)}</b></td></tr>
           {s.received_cents != null && <tr><td className="muted">Recebido / troco</td><td className="r num">{money(s.received_cents)} / {money(s.change_cents)}</td></tr>}
         </tbody></table>

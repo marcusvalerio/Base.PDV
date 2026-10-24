@@ -1,6 +1,6 @@
 import { DB, now, audit, tx, isUniqueViolation } from '../db.js';
 import { badRequest, conflict, notFound, forbidden } from '../errors.js';
-import { assertQty, lineTotal, Unit } from '../money.js';
+import { assertQty, lineTotal, surchargeUnits, Unit } from '../money.js';
 import { moveStock } from './stock.js';
 import { requireOpenRegister } from './cash.js';
 import { getSetting } from './settings.js';
@@ -56,6 +56,21 @@ export async function prepareLines(db: DB, items: SaleLineInput[]): Promise<Prep
   return out;
 }
 
+/**
+ * Acréscimo por forma de pagamento, configurado pelo administrador:
+ *  - Fiado: valor por unidade vendida.
+ *  - Cartão de débito / crédito: valor por unidade ou percentual sobre o total. Sem valor configurado, sem acréscimo.
+ */
+export async function surchargeFor(db: DB, code: string, subtotalCents: number, units: number): Promise<number> {
+  if (code === 'FIADO') return Number((await getSetting(db, 'fiado_surcharge_cents')) || 0) * units;
+  const key = code === 'CARTAO_DEBITO' ? 'debit' : code === 'CARTAO_CREDITO' ? 'credit' : null;
+  if (!key) return 0;
+  const mode = await getSetting(db, `card_${key}_surcharge_mode` as any);
+  const value = Number((await getSetting(db, `card_${key}_surcharge_value` as any)) || 0);
+  if (value <= 0) return 0;
+  return mode === 'UNIT' ? value * units : Math.round((subtotalCents * value) / 10000);
+}
+
 async function findByKey(db: DB, key: string) {
   return db.one<{ id: number }>('SELECT id FROM sales WHERE idempotency_key = ?', [key]);
 }
@@ -68,14 +83,14 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
   const registerId = await requireOpenRegister(t, userId);
   const pm = await getPaymentMethod(t, input.paymentMethodCode);
   const subtotal = input.lines.reduce((a, l) => a + l.totalCents, 0);
-  let surcharge = 0;
   let customerId: number | null = null;
+  const units = input.lines.reduce((a, l) => a + surchargeUnits(l.unit, l.qtyMilli), 0);
+  let surcharge = await surchargeFor(t, pm.code, subtotal, units);
   if (pm.kind === 'CREDIT') {
     if (!input.customerId) throw badRequest('Selecione o cliente para a venda a prazo.', 'CUSTOMER_REQUIRED');
     const c = await t.one('SELECT id, active FROM customers WHERE id = ?', [input.customerId]);
     if (!c || !c.active) throw badRequest('Cliente inválido ou inativo.');
     customerId = c.id;
-    surcharge = Number((await getSetting(t, 'fiado_surcharge_cents')) || 0);
   }
   const total = subtotal + surcharge;
   let received: number | null = null;

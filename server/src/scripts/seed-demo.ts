@@ -45,7 +45,7 @@ const customers: number[] = [];
 for (const n of ['Cliente A', 'Cliente B', 'Cliente C']) customers.push(await createCustomer(db, { name: n }, admin));
 
 await openRegister(db, { code, openingFloatCents: 10000 }, admin);
-const methods = ['DINHEIRO', 'PIX', 'PIX', 'CARTAO', 'CARTAO', 'FIADO'];
+const methods = ['DINHEIRO', 'PIX', 'PIX', 'CARTAO_DEBITO', 'CARTAO_CREDITO', 'FIADO'];
 let seed = 7;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const today = localDate(new Date());

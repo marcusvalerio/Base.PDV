@@ -2,8 +2,13 @@ import { DB, now, audit } from '../db.js';
 
 /** Configurações comerciais. Valores ainda não confirmados pelos proprietários estão documentados em docs/PENDENCIAS.md. */
 export const DEFAULT_SETTINGS = {
-  /** Acréscimo fixo por venda a prazo (interpretação provisória), em centavos. */
+  /** Acréscimo da venda a prazo por unidade vendida, em centavos (chopp/kg: por item lançado). */
   fiado_surcharge_cents: '50',
+  /** Acréscimo no cartão de débito / crédito: modo UNIT (centavos por unidade) ou PERCENT (centésimos de %, ex.: 299 = 2,99%). 0 = sem acréscimo. */
+  card_debit_surcharge_mode: 'PERCENT',
+  card_debit_surcharge_value: '0',
+  card_credit_surcharge_mode: 'PERCENT',
+  card_credit_surcharge_value: '0',
   /** SHARED = um código de caixa comum; INDIVIDUAL = cada usuário tem o seu. */
   cash_code_mode: 'SHARED',
   /** Dias de antecedência para alertar vencimento. */

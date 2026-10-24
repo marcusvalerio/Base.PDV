@@ -24,7 +24,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<Toast[]>([]);
   const push = useCallback((text: string, kind?: Toast['kind']) => {
     const id = Date.now() + Math.random();
-    setList((l) => [...l, { id, text, kind }]);
+    setList((l) => [...l, { id, text, kind }].slice(-2));
     setTimeout(() => setList((l) => l.filter((t) => t.id !== id)), kind === 'error' ? 6000 : 3500);
   }, []);
   return (
