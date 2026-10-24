@@ -68,7 +68,7 @@ function txOn(q: Querier, depth: number, execFn: (sql: string) => Promise<void>)
 
 /** Banco real (Neon) via pool de conexões. */
 export function pgDb(connectionString: string): DB {
-  const pool = new pg.Pool({ connectionString, max: Number(process.env.DB_POOL_MAX || 10), ssl: /sslmode=disable/.test(connectionString) ? false : { rejectUnauthorized: true } });
+  const pool = new pg.Pool({ connectionString: connectionString.replace(/([?&])sslmode=(require|prefer|verify-ca)/, '$1sslmode=verify-full'), max: Number(process.env.DB_POOL_MAX || 10), ssl: /sslmode=disable/.test(connectionString) ? false : { rejectUnauthorized: true } });
   const execFn = async (sql: string) => { await pool.query(sql); };
   const tx: DB['tx'] = async (fn) => {
     const client = await pool.connect();
@@ -115,8 +115,24 @@ export async function memoryDb(): Promise<DB> {
   return wrap(locked, tx, () => lite.close(), (sql) => lock(() => execRaw(sql)));
 }
 
+/**
+ * Corrige erros comuns ao colar a string de conexão (ex.: "DATABASE_URL=...", aspas, comando "psql '...'")
+ * e valida o formato, sem nunca expor a senha em mensagens.
+ */
+export function cleanDatabaseUrl(raw: string): string {
+  let v = raw.trim();
+  v = v.replace(/^DATABASE_URL\s*=\s*/i, '').replace(/^psql\s+/i, '').trim();
+  v = v.replace(/^['"]|['"]$/g, '').trim();
+  let u: URL;
+  try { u = new URL(v); } catch { throw new Error('DATABASE_URL inválida: deve começar com postgresql:// (copie de Neon > Connect).'); }
+  if (!/^postgres(ql)?:$/.test(u.protocol)) throw new Error('DATABASE_URL inválida: deve começar com postgresql://');
+  if (!u.hostname.includes('.')) throw new Error(`DATABASE_URL inválida: servidor "${u.hostname}" não parece um endereço do Neon. Recopie a string completa.`);
+  console.log(`Banco: ${u.hostname}/${u.pathname.slice(1)} (usuário ${decodeURIComponent(u.username)})`);
+  return v;
+}
+
 export async function openDb(url = process.env.DATABASE_URL): Promise<DB> {
-  const db = url && url !== 'memory' ? pgDb(url) : await memoryDb();
+  const db = url && url !== 'memory' ? pgDb(cleanDatabaseUrl(url)) : await memoryDb();
   await migrate(db);
   return db;
 }

@@ -30,3 +30,19 @@ describe('configuração inicial', () => {
     expect((await post(app, body)).status).toBe(403);
   });
 });
+
+import { cleanDatabaseUrl } from '../src/db.js';
+describe('DATABASE_URL', () => {
+  const ok = 'postgresql://u:p@ep-x-pooler.c-2.sa-east-1.aws.neon.tech/pdv?sslmode=require';
+  it('aceita colagens comuns', () => {
+    expect(cleanDatabaseUrl(ok)).toBe(ok);
+    expect(cleanDatabaseUrl(`DATABASE_URL=${ok}`)).toBe(ok);
+    expect(cleanDatabaseUrl(`"${ok}"`)).toBe(ok);
+    expect(cleanDatabaseUrl(`psql '${ok}'`)).toBe(ok);
+  });
+  it('recusa endereço quebrado sem mostrar a senha', () => {
+    expect(() => cleanDatabaseUrl('postgresql://u:segredo@base/pdv')).toThrow(/"base"/);
+    try { cleanDatabaseUrl('postgresql://u:segredo@base/pdv'); } catch (e: any) { expect(e.message).not.toMatch(/segredo/); }
+    expect(() => cleanDatabaseUrl('basepdv')).toThrow(/postgresql:\/\//);
+  });
+});

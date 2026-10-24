@@ -24,6 +24,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     console.error(e);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: { code: 'BOOT', message: 'Servidor indisponível: verifique a configuração do banco.' } }));
+    const msg = e instanceof Error && e.message.startsWith('DATABASE_URL') ? e.message : 'Servidor indisponível: verifique a configuração do banco.';
+    res.end(JSON.stringify({ error: { code: 'BOOT', message: msg } }));
   }
 }
