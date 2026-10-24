@@ -51,3 +51,14 @@ Mais detalhes: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) e [docs/PENDENCIAS.md]
 ## Leitura de código de barras
 - **Coletor / pistola USB ou Bluetooth (modo teclado):** basta ler — funciona no PDV, nas mesas, no inventário e no cadastro de produtos, mesmo sem clicar no campo.
 - **Câmera do celular/tablet:** botão “Câmera”. Usa o leitor nativo do navegador (Chrome/Android) e, se não houver, a biblioteca ZXing (iPhone/Safari). **Requer HTTPS** (ou `localhost`).
+
+## Publicar na Vercel
+1. Importe o repositório na Vercel (o `vercel.json` já define build, saída `dist/` e a função `api/index.ts`).
+2. Em **Settings → Environment Variables** (Production e Preview):
+   - `DATABASE_URL` — string de conexão do Neon (use a do endpoint **-pooler**).
+   - `DB_POOL_MAX` — `3` (funções serverless abrem poucas conexões cada).
+   - `SETUP_TOKEN` — texto longo e aleatório, usado só no primeiro acesso.
+   - `BUSINESS_TZ` — `America/Sao_Paulo`.
+3. Faça o deploy e abra o site: aparece **Configuração inicial**. Informe o `SETUP_TOKEN` e crie o super administrador (dono).
+4. Depois disso a tela some (só funciona com o banco sem usuários). Pode remover o `SETUP_TOKEN` da Vercel.
+5. Entre como super admin → **Administração → Liberações** para liberar os módulos; em **Configurações**, defina o código do caixa e o de cancelamento.

@@ -16,6 +16,7 @@ import * as cash from './services/cash.js';
 import * as tabs from './services/tabs.js';
 import * as analytics from './services/analytics.js';
 import { hashSecret } from './security.js';
+import { timingSafeEqual } from 'node:crypto';
 import * as modules from './services/modules.js';
 import * as inventory from './services/inventory.js';
 
@@ -51,6 +52,8 @@ const attempts = new Map<string, { n: number; until: number }>();
 export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: string } = {}) {
   const app = express();
   app.disable('x-powered-by');
+  // Atrás do proxy da Vercel: IP real do cliente (limite de tentativas de login).
+  app.set('trust proxy', 1);
   app.use(express.json({ limit: '200kb' }));
   app.use(cookieParser());
   app.use((_req, res, next) => {
@@ -107,6 +110,29 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   r.use('/analytics', mod('analise'));
   r.use('/restock', mod('reposicao'));
   r.use('/audit', mod('auditoria'));
+
+  // ---------- Configuração inicial (primeiro super administrador) ----------
+  // Só funciona enquanto não existir nenhum usuário e exige o SETUP_TOKEN definido no servidor.
+  r.get('/setup/status', async (_req, res) => {
+    const n = (await db.one('SELECT COUNT(*)::int AS n FROM users')).n;
+    res.json({ needed: n === 0, enabled: !!process.env.SETUP_TOKEN });
+  });
+  r.post('/setup', async (req, res) => {
+    const b = z.object({
+      token: z.string().min(1).max(200),
+      name: z.string().trim().min(2).max(80),
+      username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/),
+      password: z.string().min(8).max(200),
+    }).parse(req.body);
+    const expected = process.env.SETUP_TOKEN;
+    if (!expected || b.token.length !== expected.length || !timingSafeEqual(Buffer.from(b.token), Buffer.from(expected))) throw forbidden('Token de configuração inválido.');
+    await db.tx(async (t) => {
+      await t.exec('SELECT pg_advisory_xact_lock(4242002)');
+      if ((await t.one('SELECT COUNT(*)::int AS n FROM users')).n > 0) throw forbidden('O sistema já foi configurado.');
+      await users.createUser(t, { name: b.name, username: b.username, password: b.password, role: 'ADMIN', superAdmin: true }, null);
+    });
+    res.status(201).json({ ok: true });
+  });
 
   // ---------- Autenticação ----------
   r.post('/auth/login', async (req, res) => {
