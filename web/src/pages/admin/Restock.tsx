@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../../lib/hooks';
-import { money, qty, isFractional } from '../../lib/format';
+import { money, qty, avgQty, isFractional } from '../../lib/format';
 import { Loading, ErrorState, Empty, Segmented } from '../../components/ui';
 import { useSession } from '../../components/session';
 
@@ -43,7 +43,7 @@ export default function Restock() {
                     <tr key={i.productId}>
                       <td data-label="Produto"><b>{i.name}</b><div className="faint">{i.category}</div></td>
                       <td data-label="Estoque" className="r num">{qty(i.stockMilli, i.unit)}</td>
-                      <td data-label="Média/dia" className="r num">{i.historyDays ? qty(i.avgDailyMilli, i.unit) : '—'}</td>
+                      <td data-label="Média/dia" className="r num">{i.historyDays ? avgQty(i.avgDailyMilli, i.unit) : '—'}</td>
                       <td data-label="Cobertura" className="r num">{i.coverageDays == null ? '—' : `${String(i.coverageDays).replace('.', ',')} dias`}</td>
                       <td data-label="Comprar" className="r">
                         <input className="input num" style={{ width: 90, height: 34, textAlign: 'right' }} inputMode="decimal" aria-label={`Quantidade a comprar de ${i.name} (${i.unit})`}

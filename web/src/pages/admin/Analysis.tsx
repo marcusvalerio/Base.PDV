@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../../lib/hooks';
-import { money, pct, qty, date, todayISO } from '../../lib/format';
+import { money, pct, qty, avgQty, date, todayISO } from '../../lib/format';
 import { Loading, ErrorState, Empty, Metric, Change, Segmented } from '../../components/ui';
 import { PeriodFilter, PeriodState, periodQuery } from '../../components/PeriodFilter';
 import { DailyChart } from '../../components/BarChart';
@@ -70,7 +70,7 @@ function Body({ a, rank, setRank, filtered }: { a: any; rank: Rank; setRank: (r:
                     <td data-label="Faturamento" className="r num">{money(p.revenueCents)}</td>
                     {rank !== 'low' && <>
                       <td data-label="Margem" className="r num">{p.marginPct == null ? <span className="faint">sem custo</span> : pct(p.marginPct, 1)}</td>
-                      <td data-label="Média/dia" className="r num">{qty(p.avgPerDayMilli, p.unit)}</td>
+                      <td data-label="Média/dia" className="r num">{avgQty(p.avgPerDayMilli, p.unit)}</td>
                       <td data-label="Variação" className="r num">{p.qtyChangePct == null ? <span className="faint">novo</span> : <span className={p.qtyChangePct >= 0 ? 'up' : 'down'}>{p.qtyChangePct >= 0 ? '+' : ''}{(p.qtyChangePct * 100).toFixed(0)}%</span>}</td>
                     </>}
                     {rank === 'low' && <td data-label="Estoque" className="r num">{qty(p.stockMilli, p.unit)}</td>}

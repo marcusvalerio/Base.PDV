@@ -42,3 +42,9 @@ export function parseQty(s: string, unit: Unit): number | null {
 export const dateTime = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 export const date = (d: string) => (d.length === 10 ? new Date(d + 'T12:00:00') : new Date(d)).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 export const todayISO = () => new Date().toLocaleDateString('en-CA');
+
+/** Média (ex.: por dia) com no máximo 1 casa decimal: "13,7 un", "671 mL". */
+export function avgQty(milli: number, unit: Unit): string {
+  if ((unit === 'L' || unit === 'KG') && Math.abs(milli) < 1000) return `${Math.round(milli)} ${unit === 'L' ? 'mL' : 'g'}`;
+  return `${fmtNum(milli / 1000, 1)} ${unit === 'L' ? 'L' : unit === 'KG' ? 'kg' : UNIT_SHORT[unit]}`;
+}
