@@ -5,11 +5,11 @@ import { moveStock } from './stock.js';
 
 export interface ProductInput {
   name: string; internal_code?: string | null; barcode?: string | null; category_id: number; unit: Unit;
-  price_cents: number; cost_cents?: number | null; min_stock_milli?: number; track_expiry?: boolean; active?: boolean;
+  price_cents: number; cost_cents?: number | null; min_stock_milli?: number; track_expiry?: boolean; active?: boolean; image_url?: string | null;
   initial_stock_milli?: number;
 }
 
-const TRACKED = ['name', 'internal_code', 'barcode', 'category_id', 'unit', 'price_cents', 'cost_cents', 'min_stock_milli', 'track_expiry', 'active'] as const;
+const TRACKED = ['name', 'internal_code', 'barcode', 'category_id', 'unit', 'price_cents', 'cost_cents', 'min_stock_milli', 'track_expiry', 'active', 'image_url'] as const;
 
 async function checkUnique(db: DB, field: 'internal_code' | 'barcode', value: string | null | undefined, exceptId?: number) {
   if (!value) return;
@@ -24,10 +24,10 @@ export async function createProduct(db: DB, input: ProductInput, userId: number)
   return tx(db, async (t) => {
     const ts = now();
     const r = await t.one<{ id: number }>(
-      `INSERT INTO products (name, internal_code, barcode, category_id, unit, price_cents, cost_cents, min_stock_milli, track_expiry, active, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      `INSERT INTO products (name, internal_code, barcode, category_id, unit, price_cents, cost_cents, min_stock_milli, track_expiry, active, image_url, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
       [input.name.trim(), input.internal_code || null, input.barcode || null, input.category_id, input.unit, input.price_cents,
-        input.cost_cents ?? null, input.min_stock_milli ?? 0, input.track_expiry ? 1 : 0, input.active === false ? 0 : 1, ts, ts],
+        input.cost_cents ?? null, input.min_stock_milli ?? 0, input.track_expiry ? 1 : 0, input.active === false ? 0 : 1, input.image_url || null, ts, ts],
     );
     const id = r!.id;
     if (input.initial_stock_milli && input.initial_stock_milli > 0) {
@@ -55,7 +55,7 @@ export async function updateProduct(db: DB, id: number, patch: Partial<ProductIn
       if ((patch as any)[f] === undefined) continue;
       let v = (patch as any)[f];
       if (f === 'track_expiry' || f === 'active') v = v ? 1 : 0;
-      if ((f === 'internal_code' || f === 'barcode') && !v) v = null;
+      if ((f === 'internal_code' || f === 'barcode' || f === 'image_url') && !v) v = null;
       if (f === 'name') v = String(v).trim();
       if (v !== cur[f]) {
         await t.run('INSERT INTO product_history (product_id, user_id, field, old_value, new_value, at) VALUES (?,?,?,?,?,?)',
@@ -64,8 +64,8 @@ export async function updateProduct(db: DB, id: number, patch: Partial<ProductIn
       }
     }
     await t.run(
-      `UPDATE products SET name=?, internal_code=?, barcode=?, category_id=?, unit=?, price_cents=?, cost_cents=?, min_stock_milli=?, track_expiry=?, active=?, updated_at=? WHERE id=?`,
-      [next.name, next.internal_code, next.barcode, next.category_id, next.unit, next.price_cents, next.cost_cents, next.min_stock_milli, next.track_expiry, next.active, now(), id],
+      `UPDATE products SET name=?, internal_code=?, barcode=?, category_id=?, unit=?, price_cents=?, cost_cents=?, min_stock_milli=?, track_expiry=?, active=?, image_url=?, updated_at=? WHERE id=?`,
+      [next.name, next.internal_code, next.barcode, next.category_id, next.unit, next.price_cents, next.cost_cents, next.min_stock_milli, next.track_expiry, next.active, next.image_url, now(), id],
     );
     await audit(t, userId, 'product.update', 'product', id, patch);
   });

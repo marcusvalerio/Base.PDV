@@ -5,6 +5,7 @@ import { money, qty, parseMoney, centsToInput, parseQty, UNIT_LABEL, Unit, dateT
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../../components/ui';
 import { useSession } from '../../components/session';
 import { CameraButton } from '../../components/scanner';
+import { ProductArt } from '../../components/ProductArt';
 
 const FIELD_LABEL: Record<string, string> = { name: 'Nome', price_cents: 'Preço', cost_cents: 'Custo', active: 'Ativo', category_id: 'Categoria', min_stock_milli: 'Estoque mínimo', barcode: 'Código de barras', internal_code: 'Código interno', unit: 'Unidade', track_expiry: 'Controla validade' };
 
@@ -33,7 +34,7 @@ export default function Products() {
               <thead><tr><th>Produto</th><th className="r">Preço</th><th className="r">Custo</th><th className="r">Estoque</th><th>Situação</th><th /></tr></thead>
               <tbody>{data.map((p) => (
                 <tr key={p.id}>
-                  <td data-label="Produto"><b>{p.name}</b><div className="faint">{p.category} · {UNIT_LABEL[p.unit as Unit]}{p.barcode ? ` · ${p.barcode}` : ''}</div></td>
+                  <td data-label="Produto"><div className="row" style={{ gap: 10 }}><ProductArt size="sm" image={p.image_url} category={p.category} /><div><b>{p.name}</b><div className="faint">{p.category} · {UNIT_LABEL[p.unit as Unit]}{p.barcode ? ` · ${p.barcode}` : ''}</div></div></div></td>
                   <td data-label="Preço" className="r num">{money(p.price_cents)}</td>
                   <td data-label="Custo" className="r num">{money(p.cost_cents)}</td>
                   <td data-label="Estoque" className="r num">{p.stock_milli <= p.min_stock_milli && p.min_stock_milli > 0 ? <span className="badge warning">{qty(p.stock_milli, p.unit)}</span> : qty(p.stock_milli, p.unit)}</td>
@@ -62,7 +63,7 @@ function ProductForm({ p, onClose, onSaved }: { p: any; onClose: () => void; onS
   const [f, setF] = useState({
     name: p.name ?? '', internal_code: p.internal_code ?? '', barcode: p.barcode ?? '', category_id: String(p.category_id ?? boot?.categories[0]?.id ?? ''),
     unit: (p.unit ?? 'UN') as Unit, price: centsToInput(p.price_cents), cost: centsToInput(p.cost_cents),
-    min: p.min_stock_milli != null ? String(p.min_stock_milli / 1000).replace('.', ',') : '', initial: '', track_expiry: !!p.track_expiry, active: p.active === undefined ? true : !!p.active,
+    min: p.min_stock_milli != null ? String(p.min_stock_milli / 1000).replace('.', ',') : '', initial: '', image: p.image_url ?? '', track_expiry: !!p.track_expiry, active: p.active === undefined ? true : !!p.active,
   });
   const [err, setErr] = useState<string | null>(null);
   const set = (k: keyof typeof f) => (e: any) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
@@ -73,7 +74,7 @@ function ProductForm({ p, onClose, onSaved }: { p: any; onClose: () => void; onS
   const valid = f.name.trim() && price != null && (f.cost.trim() === '' || cost != null) && min != null && initial != null;
   const [save, busy] = useAction(async () => {
     setErr(null);
-    const body: any = { name: f.name, internal_code: f.internal_code || null, barcode: f.barcode || null, category_id: Number(f.category_id), unit: f.unit, price_cents: price, cost_cents: cost, min_stock_milli: min, track_expiry: f.track_expiry, active: f.active };
+    const body: any = { name: f.name, internal_code: f.internal_code || null, barcode: f.barcode || null, category_id: Number(f.category_id), unit: f.unit, price_cents: price, cost_cents: cost, min_stock_milli: min, track_expiry: f.track_expiry, active: f.active, image_url: f.image.trim() || null };
     try {
       if (isNew) await api('/products', { body: { ...body, initial_stock_milli: initial || 0 } });
       else await api(`/products/${p.id}`, { method: 'PATCH', body });
@@ -95,6 +96,9 @@ function ProductForm({ p, onClose, onSaved }: { p: any; onClose: () => void; onS
         {isNew && <Field label="Estoque inicial" hint={unitHint}><input className="input num" inputMode="decimal" value={f.initial} onChange={set('initial')} /></Field>}
       </div>
       {!isNew && <div className="faint">Unidade não pode ser alterada após o cadastro. Estoque é alterado por entradas, ajustes ou inventário.</div>}
+      <Field label="Imagem (opcional)" hint="Cole o link https:// de uma foto do produto. Sem foto, aparece a ilustração da categoria.">
+        <div className="row"><ProductArt size="sm" image={f.image || null} category={boot?.categories.find((c) => String(c.id) === f.category_id)?.name} /><input className="input" value={f.image} onChange={set('image')} placeholder="https://..." /></div>
+      </Field>
       <label className="check"><input type="checkbox" checked={f.track_expiry} onChange={set('track_expiry')} /> Controlar validade nas entradas</label>
       <label className="check"><input type="checkbox" checked={f.active} onChange={set('active')} /> Produto ativo (pode ser vendido)</label>
       {price != null && cost != null && price > 0 && <div className="notice">Margem bruta: {(((price - cost) / price) * 100).toFixed(1).replace('.', ',')}% ({money(price - cost)} por {UNIT_LABEL[f.unit]})</div>}

@@ -5,8 +5,9 @@ import { money, qty, parseQty, isFractional, Unit, parseMoney, UNIT_SHORT } from
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from './ui';
 import { useSession } from './session';
 import { useHidScanner, CameraButton } from './scanner';
+import { ProductArt } from './ProductArt';
 
-export interface Product { id: number; name: string; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null }
+export interface Product { id: number; name: string; image_url?: string | null; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null }
 
 /** Busca e seleção de produtos. Enter com código de barras/código interno adiciona direto. */
 export function ProductPicker({ onPick }: { onPick: (p: Product, qtyMilli: number) => void }) {
@@ -56,6 +57,7 @@ export function ProductPicker({ onPick }: { onPick: (p: Product, qtyMilli: numbe
         <div className="tiles">
           {data.map((p) => (
             <button key={p.id} className="tile" onClick={() => pick(p)}>
+              <ProductArt image={p.image_url} category={p.category} />
               <span className="name">{p.name}</span>
               <span className="faint">{p.category}{p.stock_milli <= 0 ? ' · sem estoque' : ''}</span>
               <span className="price num">{money(p.price_cents)}{p.unit !== 'UN' && <span className="faint"> / {UNIT_SHORT[p.unit]}</span>}</span>
