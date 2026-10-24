@@ -63,7 +63,8 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   app.use(cookieParser());
   app.use((_req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
     res.setHeader('Referrer-Policy', 'same-origin');
     next();
   });
