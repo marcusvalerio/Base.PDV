@@ -1,4 +1,4 @@
-# Central PDV — bar e mercearia
+# Central.PDV — bar e mercearia
 
 PDV operacional (vendas, mesas/comandas, fiado, caixa) e administração (produtos, estoque, clientes, caixas, usuários, painel, análise e lista de reposição).
 

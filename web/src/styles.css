@@ -249,3 +249,4 @@ h1 { letter-spacing: -0.025em; }
 .num { font-feature-settings: "tnum" 1; }
 .total-big, .metric .value { font-variant-numeric: tabular-nums; }
 code, .kbd, .code { font-family: var(--mono); }
+.brand-dot { color: var(--accent); }

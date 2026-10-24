@@ -26,7 +26,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand">Central</span>
+        <span className="brand">Central<span className="brand-dot">.</span>PDV</span>
         <nav className="nav">
           <NavLink to="/" end>Vender</NavLink>
           {on('mesas') && <NavLink to="/mesas">Mesas</NavLink>}
