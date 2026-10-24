@@ -1,0 +1,9 @@
+import { openDb } from './db.js';
+import { createApp } from './app.js';
+import { join } from 'node:path';
+
+if (!process.env.DATABASE_URL) console.warn('DATABASE_URL não definida: usando banco em memória (os dados somem ao reiniciar).');
+const db = await openDb(process.env.DATABASE_URL);
+const app = createApp(db, { cookieSecure: process.env.COOKIE_SECURE === 'true', staticDir: join(process.cwd(), 'dist') });
+const port = Number(process.env.PORT || 3001);
+app.listen(port, () => console.log(`API do PDV em http://localhost:${port}`));
