@@ -25,6 +25,20 @@ export async function getPaymentMethod(db: DB, code: string) {
   return pm as { id: number; code: string; name: string; kind: 'CASH' | 'PIX' | 'CARD' | 'CREDIT' };
 }
 
+/**
+ * De qual produto sai o estoque de uma venda. Produtos com "baixa em outro produto" (ex.: copo de chopp)
+ * descontam do produto de origem (ex.: barril), na proporção cadastrada; o custo vem da origem.
+ */
+export async function stockTarget(db: DB, productId: number, qtyMilli: number) {
+  const p = await db.one('SELECT p.stock_source_id, p.stock_source_qty_milli, s.cost_cents AS source_cost FROM products p LEFT JOIN products s ON s.id = p.stock_source_id WHERE p.id = ?', [productId]);
+  if (!p?.stock_source_id) return { productId, qtyMilli, unitCostCents: undefined as number | null | undefined };
+  return {
+    productId: p.stock_source_id as number,
+    qtyMilli: Math.round((qtyMilli * p.stock_source_qty_milli) / 1000),
+    unitCostCents: p.source_cost == null ? null : Math.round((p.source_cost * p.stock_source_qty_milli) / 1000),
+  };
+}
+
 /** Monta as linhas a partir do cadastro atual (preço definido no servidor, nunca pelo navegador). */
 export async function prepareLines(db: DB, items: SaleLineInput[]): Promise<PreparedLine[]> {
   if (!items?.length) throw badRequest('Adicione ao menos um produto.');
@@ -79,12 +93,14 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
   );
   const saleId = r!.id;
   for (const l of input.lines) {
+    const st = await stockTarget(t, l.productId, l.qtyMilli);
+    const cost = st.unitCostCents === undefined ? l.unitCostCents : st.unitCostCents;
     await t.run(
-      `INSERT INTO sale_items (sale_id, product_id, product_name, category_id, unit, qty_milli, unit_price_cents, unit_cost_cents, total_cents, tab_person_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
-      [saleId, l.productId, l.productName, l.categoryId, l.unit, l.qtyMilli, l.unitPriceCents, l.unitCostCents, l.totalCents, l.tabPersonId ?? null],
+      `INSERT INTO sale_items (sale_id, product_id, product_name, category_id, unit, qty_milli, unit_price_cents, unit_cost_cents, total_cents, tab_person_id, stock_product_id, stock_qty_milli)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [saleId, l.productId, l.productName, l.categoryId, l.unit, l.qtyMilli, l.unitPriceCents, cost, l.totalCents, l.tabPersonId ?? null, st.productId, st.qtyMilli],
     );
-    await moveStock(t, { productId: l.productId, type: 'SALE', qtyMilli: -l.qtyMilli, userId, refType: 'sale', refId: saleId });
+    if (st.qtyMilli > 0) await moveStock(t, { productId: st.productId, type: 'SALE', qtyMilli: -st.qtyMilli, userId, refType: 'sale', refId: saleId });
   }
   if (customerId) {
     await t.run(
@@ -188,7 +204,8 @@ export async function cancelSale(db: DB, id: number, reason: string, code: strin
     }
     await t.run("UPDATE sales SET status='CANCELLED', cancelled_at=?, cancelled_by=?, cancel_reason=? WHERE id=?", [now(), userId, reason.trim(), id]);
     for (const it of await t.all('SELECT * FROM sale_items WHERE sale_id = ?', [id])) {
-      await moveStock(t, { productId: it.product_id, type: 'SALE_CANCEL', qtyMilli: it.qty_milli, userId, refType: 'sale', refId: id, reason: 'Cancelamento de venda' });
+      const q = it.stock_qty_milli ?? it.qty_milli;
+      if (q > 0) await moveStock(t, { productId: it.stock_product_id ?? it.product_id, type: 'SALE_CANCEL', qtyMilli: q, userId, refType: 'sale', refId: id, reason: 'Cancelamento de venda' });
     }
     await audit(t, userId, 'sale.cancel', 'sale', id, { reason, tabId: s.tab_id });
   });

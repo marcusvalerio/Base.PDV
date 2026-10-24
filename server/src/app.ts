@@ -44,6 +44,10 @@ const productSchema = z.object({
   track_expiry: z.boolean().optional(),
   active: z.boolean().optional(),
   initial_stock_milli: z.number().int().min(0).optional(),
+  pack_label: z.string().trim().max(30).nullish(),
+  pack_size_milli: z.number().int().positive().nullish(),
+  stock_source_id: id.nullish(),
+  stock_source_qty_milli: z.number().int().positive().nullish(),
   image_url: z.string().trim().max(500).url('Link da imagem inválido.').refine((u) => /^https:\/\//.test(u), 'Use um link https://').nullish().or(z.literal('')),
 });
 

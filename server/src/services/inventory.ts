@@ -18,8 +18,8 @@ export async function createSession(db: DB, input: { name?: string; scope: 'FULL
     const r = await t.one<{ id: number }>("INSERT INTO inventory_sessions (name, scope, category_id, blind, status, created_by, created_at) VALUES (?,?,?,?, 'OPEN', ?, ?) RETURNING id",
       [name, input.scope, input.scope === 'CATEGORY' ? input.categoryId! : null, input.blind === false ? 0 : 1, userId, now()]);
     const id = r!.id;
-    if (input.scope === 'FULL') await t.run('INSERT INTO inventory_session_items (session_id, product_id) SELECT ?, id FROM products WHERE active = 1', [id]);
-    if (input.scope === 'CATEGORY') await t.run('INSERT INTO inventory_session_items (session_id, product_id) SELECT ?, id FROM products WHERE active = 1 AND category_id = ?', [id, input.categoryId]);
+    if (input.scope === 'FULL') await t.run('INSERT INTO inventory_session_items (session_id, product_id) SELECT ?, id FROM products WHERE active = 1 AND stock_source_id IS NULL', [id]);
+    if (input.scope === 'CATEGORY') await t.run('INSERT INTO inventory_session_items (session_id, product_id) SELECT ?, id FROM products WHERE active = 1 AND stock_source_id IS NULL AND category_id = ?', [id, input.categoryId]);
     if (input.scope === 'PARTIAL') {
       for (const pid of input.productIds ?? []) await t.run('INSERT INTO inventory_session_items (session_id, product_id) VALUES (?,?) ON CONFLICT DO NOTHING', [id, pid]);
     }
@@ -39,8 +39,9 @@ async function openSession(db: DB, id: number) {
 export async function countItem(db: DB, sessionId: number, input: { productId: number; qtyMilli: number; mode: 'add' | 'set' }, userId: number) {
   return tx(db, async (t) => {
     const s = await openSession(t, sessionId);
-    const p = await t.one('SELECT id, name, unit, stock_milli, cost_cents, category_id FROM products WHERE id = ?', [input.productId]);
+    const p = await t.one('SELECT id, name, unit, stock_milli, cost_cents, category_id, stock_source_id FROM products WHERE id = ?', [input.productId]);
     if (!p) throw notFound('Produto não encontrado.');
+    if (p.stock_source_id) throw badRequest(`"${p.name}" não tem estoque próprio: conte o produto de origem.`);
     if (input.qtyMilli < 0 || (input.qtyMilli === 0 && input.mode === 'add')) throw badRequest('Quantidade inválida.');
     if (input.qtyMilli > 0) { try { assertQty(p.unit, input.qtyMilli); } catch (e: any) { throw badRequest(e.message); } }
     if (s.scope === 'CATEGORY' && p.category_id !== s.category_id) throw badRequest(`"${p.name}" não pertence à categoria deste inventário.`);

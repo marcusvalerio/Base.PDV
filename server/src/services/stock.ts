@@ -11,6 +11,9 @@ export async function moveStock(db: DB, m: {
   reason?: string | null; refType?: string; refId?: number; unitCostCents?: number | null;
 }): Promise<number> {
   if (!Number.isInteger(m.qtyMilli) || m.qtyMilli === 0) throw badRequest('Quantidade de movimentação inválida.');
+  if (m.type !== 'SALE' && m.type !== 'SALE_CANCEL' && (await db.one('SELECT stock_source_id FROM products WHERE id = ?', [m.productId]))?.stock_source_id) {
+    throw badRequest('Este produto dá baixa em outro e não tem estoque próprio. Movimente o produto de origem.');
+  }
   const upd = await db.one<{ stock_milli: number }>('UPDATE products SET stock_milli = stock_milli + ? WHERE id = ? RETURNING stock_milli', [m.qtyMilli, m.productId]);
   if (!upd) throw notFound('Produto não encontrado.');
   const balance = upd.stock_milli;
@@ -61,7 +64,7 @@ export function lowStock(db: DB) {
   return db.all(
     `SELECT p.id, p.name, p.unit, p.stock_milli, p.min_stock_milli, c.name AS category
      FROM products p JOIN categories c ON c.id = p.category_id
-     WHERE p.active = 1 AND p.stock_milli <= p.min_stock_milli AND (p.min_stock_milli > 0 OR p.stock_milli < 0)
+     WHERE p.active = 1 AND p.stock_source_id IS NULL AND p.stock_milli <= p.min_stock_milli AND (p.min_stock_milli > 0 OR p.stock_milli < 0)
      ORDER BY (p.stock_milli - p.min_stock_milli), p.name`,
   );
 }

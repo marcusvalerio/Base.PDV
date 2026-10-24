@@ -35,7 +35,7 @@ async function itemRows(db: DB, from: string, to: string, f: Filter): Promise<an
   if (f.productId) { where.push('si.product_id = ?'); args.push(f.productId); }
   return db.all(
     `SELECT si.sale_id, si.product_id, si.product_name, si.category_id, c.name AS category, si.unit, si.qty_milli,
-            si.total_cents, si.unit_cost_cents, s.created_at
+            si.total_cents, si.unit_cost_cents, si.stock_product_id, si.stock_qty_milli, s.created_at
      FROM sale_items si JOIN sales s ON s.id = si.sale_id JOIN categories c ON c.id = si.category_id
      WHERE ${where.join(' AND ')}`,
     args,
@@ -168,12 +168,12 @@ export async function restockSuggestions(db: DB, opts: { windowDays?: number; ca
   const targetDays = (lead ?? 7) + (safety ?? 0);
   const rows = await itemRows(db, from, today, { categoryId: opts.categoryId });
   const sold = new Map<number, number>();
-  for (const r of rows) sold.set(r.product_id, (sold.get(r.product_id) ?? 0) + r.qty_milli);
+  for (const r of rows) { const pid = r.stock_product_id ?? r.product_id; const q = r.stock_qty_milli ?? r.qty_milli; sold.set(pid, (sold.get(pid) ?? 0) + q); }
   const products = await db.all(
     `SELECT p.id, p.name, p.unit, p.stock_milli, p.min_stock_milli, p.cost_cents, p.created_at, c.name AS category
-     FROM products p JOIN categories c ON c.id = p.category_id WHERE p.active = 1 ${opts.categoryId ? 'AND p.category_id = ' + Number(opts.categoryId) : ''}`,
+     FROM products p JOIN categories c ON c.id = p.category_id WHERE p.active = 1 AND p.stock_source_id IS NULL ${opts.categoryId ? 'AND p.category_id = ' + Number(opts.categoryId) : ''}`,
   );
-  const firstSales = new Map<number, string>((await db.all("SELECT si.product_id, MIN(s.created_at) AS f FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE s.status='COMPLETED' GROUP BY si.product_id")).map((r) => [r.product_id, r.f]));
+  const firstSales = new Map<number, string>((await db.all("SELECT COALESCE(si.stock_product_id, si.product_id) AS product_id, MIN(s.created_at) AS f FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE s.status='COMPLETED' GROUP BY 1")).map((r) => [r.product_id, r.f]));
 
   const items = products.map((p) => {
     const q = sold.get(p.id) ?? 0;

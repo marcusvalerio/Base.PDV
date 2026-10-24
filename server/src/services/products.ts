@@ -6,10 +6,11 @@ import { moveStock } from './stock.js';
 export interface ProductInput {
   name: string; internal_code?: string | null; barcode?: string | null; category_id: number; unit: Unit;
   price_cents: number; cost_cents?: number | null; min_stock_milli?: number; track_expiry?: boolean; active?: boolean; image_url?: string | null;
+  pack_label?: string | null; pack_size_milli?: number | null; stock_source_id?: number | null; stock_source_qty_milli?: number | null;
   initial_stock_milli?: number;
 }
 
-const TRACKED = ['name', 'internal_code', 'barcode', 'category_id', 'unit', 'price_cents', 'cost_cents', 'min_stock_milli', 'track_expiry', 'active', 'image_url'] as const;
+const TRACKED = ['name', 'internal_code', 'barcode', 'category_id', 'unit', 'price_cents', 'cost_cents', 'min_stock_milli', 'track_expiry', 'active', 'image_url', 'pack_label', 'pack_size_milli', 'stock_source_id', 'stock_source_qty_milli'] as const;
 
 async function checkUnique(db: DB, field: 'internal_code' | 'barcode', value: string | null | undefined, exceptId?: number) {
   if (!value) return;
@@ -17,17 +18,34 @@ async function checkUnique(db: DB, field: 'internal_code' | 'barcode', value: st
   if (r) throw conflict(field === 'barcode' ? 'Código de barras já cadastrado.' : 'Código interno já cadastrado.');
 }
 
+/** Regras de embalagem e de baixa em outro produto (ex.: copo de chopp → barril). */
+async function validateLinks(db: DB, v: { id?: number; pack_label?: string | null; pack_size_milli?: number | null; stock_source_id?: number | null; stock_source_qty_milli?: number | null; unit?: string }) {
+  if ((v.pack_size_milli == null) !== !v.pack_label?.trim()) throw badRequest('Informe o nome da embalagem e quanto vem dentro (ou deixe os dois em branco).');
+  if ((v.stock_source_id == null) !== (v.stock_source_qty_milli == null)) throw badRequest('Informe o produto de origem e quanto sai dele por unidade vendida.');
+  if (v.stock_source_id == null) return;
+  if (v.stock_source_id === v.id) throw badRequest('Um produto não pode dar baixa nele mesmo.');
+  const src = await db.one('SELECT id, stock_source_id FROM products WHERE id = ?', [v.stock_source_id]);
+  if (!src) throw badRequest('Produto de origem não encontrado.');
+  if (src.stock_source_id) throw badRequest('O produto de origem não pode, ele mesmo, dar baixa em outro produto.');
+  if (v.id && (await db.one('SELECT 1 FROM products WHERE stock_source_id = ?', [v.id]))) throw badRequest('Outros produtos já dão baixa neste; ele não pode dar baixa em outro.');
+  if (v.unit && v.unit !== 'UN') throw badRequest('Produtos que dão baixa em outro devem ser vendidos por unidade (ex.: copo, dose, jarra).');
+  if (v.pack_size_milli != null) throw badRequest('Produto que dá baixa em outro não tem estoque nem embalagem própria.');
+}
+
 export async function createProduct(db: DB, input: ProductInput, userId: number) {
+  await validateLinks(db, input);
+  if (input.stock_source_id && input.initial_stock_milli) throw badRequest('Produto que dá baixa em outro não tem estoque próprio.');
   if (!(await db.one('SELECT 1 FROM categories WHERE id = ?', [input.category_id]))) throw badRequest('Categoria inválida.');
   await checkUnique(db, 'internal_code', input.internal_code);
   await checkUnique(db, 'barcode', input.barcode);
   return tx(db, async (t) => {
     const ts = now();
     const r = await t.one<{ id: number }>(
-      `INSERT INTO products (name, internal_code, barcode, category_id, unit, price_cents, cost_cents, min_stock_milli, track_expiry, active, image_url, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      `INSERT INTO products (name, internal_code, barcode, category_id, unit, price_cents, cost_cents, min_stock_milli, track_expiry, active, image_url, pack_label, pack_size_milli, stock_source_id, stock_source_qty_milli, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
       [input.name.trim(), input.internal_code || null, input.barcode || null, input.category_id, input.unit, input.price_cents,
-        input.cost_cents ?? null, input.min_stock_milli ?? 0, input.track_expiry ? 1 : 0, input.active === false ? 0 : 1, input.image_url || null, ts, ts],
+        input.cost_cents ?? null, input.min_stock_milli ?? 0, input.track_expiry ? 1 : 0, input.active === false ? 0 : 1, input.image_url || null,
+        input.pack_label?.trim() || null, input.pack_size_milli ?? null, input.stock_source_id ?? null, input.stock_source_qty_milli ?? null, ts, ts],
     );
     const id = r!.id;
     if (input.initial_stock_milli && input.initial_stock_milli > 0) {
@@ -49,13 +67,16 @@ export async function updateProduct(db: DB, id: number, patch: Partial<ProductIn
       throw badRequest('Não é possível mudar a unidade de um produto com movimentações. Cadastre um novo produto.');
     }
   }
+  const merged = { ...cur, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)), id };
+  await validateLinks(db, merged);
+  if (merged.stock_source_id && !cur.stock_source_id && cur.stock_milli !== 0) throw badRequest('Zere o estoque deste produto antes de fazê-lo dar baixa em outro.');
   return tx(db, async (t) => {
     const next: any = { ...cur };
     for (const f of TRACKED) {
       if ((patch as any)[f] === undefined) continue;
       let v = (patch as any)[f];
       if (f === 'track_expiry' || f === 'active') v = v ? 1 : 0;
-      if ((f === 'internal_code' || f === 'barcode' || f === 'image_url') && !v) v = null;
+      if ((f === 'internal_code' || f === 'barcode' || f === 'image_url' || f === 'pack_label') && !v) v = null;
       if (f === 'name') v = String(v).trim();
       if (v !== cur[f]) {
         await t.run('INSERT INTO product_history (product_id, user_id, field, old_value, new_value, at) VALUES (?,?,?,?,?,?)',
@@ -64,8 +85,8 @@ export async function updateProduct(db: DB, id: number, patch: Partial<ProductIn
       }
     }
     await t.run(
-      `UPDATE products SET name=?, internal_code=?, barcode=?, category_id=?, unit=?, price_cents=?, cost_cents=?, min_stock_milli=?, track_expiry=?, active=?, image_url=?, updated_at=? WHERE id=?`,
-      [next.name, next.internal_code, next.barcode, next.category_id, next.unit, next.price_cents, next.cost_cents, next.min_stock_milli, next.track_expiry, next.active, next.image_url, now(), id],
+      `UPDATE products SET name=?, internal_code=?, barcode=?, category_id=?, unit=?, price_cents=?, cost_cents=?, min_stock_milli=?, track_expiry=?, active=?, image_url=?, pack_label=?, pack_size_milli=?, stock_source_id=?, stock_source_qty_milli=?, updated_at=? WHERE id=?`,
+      [next.name, next.internal_code, next.barcode, next.category_id, next.unit, next.price_cents, next.cost_cents, next.min_stock_milli, next.track_expiry, next.active, next.image_url, next.pack_label, next.pack_size_milli, next.stock_source_id, next.stock_source_qty_milli, now(), id],
     );
     await audit(t, userId, 'product.update', 'product', id, patch);
   });
@@ -81,7 +102,11 @@ export function listProducts(db: DB, opts: { q?: string; includeInactive?: boole
     args.push(`%${opts.q}%`, opts.q, opts.q);
   }
   return db.all(
-    `SELECT p.*, c.name AS category FROM products p JOIN categories c ON c.id = p.category_id
+    `SELECT p.*, c.name AS category, src.name AS stock_source_name, src.unit AS stock_source_unit,
+       -- Para produtos que dão baixa em outro: quantas unidades ainda dá para vender com o estoque da origem.
+       CASE WHEN p.stock_source_id IS NOT NULL THEN GREATEST(0, FLOOR(src.stock_milli::numeric / p.stock_source_qty_milli))::bigint * 1000 ELSE p.stock_milli END AS stock_milli,
+       p.stock_milli AS own_stock_milli
+     FROM products p JOIN categories c ON c.id = p.category_id LEFT JOIN products src ON src.id = p.stock_source_id
      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY p.name`,
     args,
   );
