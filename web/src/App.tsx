@@ -4,6 +4,8 @@ import { SessionProvider, useSession } from './components/session';
 import { ToastProvider, Loading } from './components/ui';
 import Login from './pages/Login';
 import Onboarding, { onboardingSkipped } from './pages/Onboarding';
+import { BillingPage, Blocked } from './pages/Billing';
+import Central from './pages/central/Central';
 import Pos from './pages/Pos';
 import { TabsList, TabDetail } from './pages/Tabs';
 import Fiado from './pages/Fiado';
@@ -13,7 +15,7 @@ import Analysis from './pages/admin/Analysis';
 import Restock from './pages/admin/Restock';
 import Products from './pages/admin/Products';
 import Stock from './pages/admin/Stock';
-import { Customers, Sales, Registers, Users, Settings, Audit, Modules } from './pages/admin/Admin';
+import { Customers, Sales, Registers, Users, Settings, Audit } from './pages/admin/Admin';
 import { InventoryList, InventoryCount } from './pages/Inventory';
 import type { ModuleKey } from './components/session';
 import { SystemFooter } from './components/SystemFooter';
@@ -55,7 +57,7 @@ function AdminLayout({ children }: { children: ReactNode }) {
   if (user?.role !== 'ADMIN') return <Navigate to="/" replace />;
   const all: [string, string, ModuleKey?][] = [['/admin', 'Painel'], ['/admin/analise', 'Análise', 'analise'], ['/admin/reposicao', 'Reposição', 'reposicao'], ['/admin/produtos', 'Produtos'], ['/admin/estoque', 'Estoque', 'estoque'], ['/inventario', 'Inventário', 'inventario'], ['/admin/clientes', 'Clientes', 'fiado'], ['/admin/vendas', 'Vendas'], ['/admin/caixas', 'Caixas'], ['/admin/usuarios', 'Usuários'], ['/admin/config', 'Configurações'], ['/admin/auditoria', 'Auditoria', 'auditoria']];
   const links = all.filter(([, , m]) => !m || boot?.modules[m]);
-  if (user.superAdmin) links.push(['/admin/liberacoes', 'Liberações']);
+  links.push(['/admin/assinatura', 'Assinatura']);
   return (
     <div className="admin-layout">
       <nav className="sidenav">{links.map(([to, l]) => <NavLink key={to} to={to} end={to === '/admin'}>{l}</NavLink>)}</nav>
@@ -72,10 +74,11 @@ function M({ k, children }: { k: ModuleKey; children: ReactNode }) {
 }
 
 function Routed() {
-  const { user, ready, boot } = useSession();
+  const { user, ready, boot, access } = useSession();
   const [onbDone, setOnbDone] = useState(false);
   if (!ready) return <Loading />;
   if (!user) return <Login />;
+  if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
   if (user.role === 'ADMIN' && boot && !boot.storeName && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
   const A = (el: ReactNode) => <AdminLayout>{el}</AdminLayout>;
   return (
@@ -99,7 +102,7 @@ function Routed() {
         <Route path="/admin/usuarios" element={A(<Users />)} />
         <Route path="/admin/config" element={A(<Settings />)} />
         <Route path="/admin/auditoria" element={A(<M k="auditoria"><Audit /></M>)} />
-        <Route path="/admin/liberacoes" element={A(<Modules />)} />
+        <Route path="/admin/assinatura" element={A(<BillingPage />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
@@ -107,5 +110,7 @@ function Routed() {
 }
 
 export default function App() {
+  // Painel do administrador central: área separada, com login próprio.
+  if (location.pathname.startsWith('/central')) return <BrowserRouter><ToastProvider><Central /></ToastProvider></BrowserRouter>;
   return <BrowserRouter><SessionProvider><ToastProvider><Routed /></ToastProvider></SessionProvider></BrowserRouter>;
 }

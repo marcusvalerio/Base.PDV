@@ -1,0 +1,217 @@
+import { FormEvent, useEffect, useState } from 'react';
+import { api, ApiError } from '../../lib/api';
+import { useApi, useAction } from '../../lib/hooks';
+import { date, dateTime } from '../../lib/format';
+import { Modal, Loading, ErrorState, Empty, Field, Segmented, useToast } from '../../components/ui';
+import { SystemFooter } from '../../components/SystemFooter';
+
+type Admin = { id: number; name: string; username: string };
+
+/** Painel do administrador central (dono da plataforma): estabelecimentos, liberações e assinaturas. */
+export default function Central() {
+  const [me, setMe] = useState<{ admin: Admin; stripe: boolean } | null | undefined>(undefined);
+  const load = () => api<{ admin: Admin; stripe: boolean }>('/central/me').then(setMe).catch(() => setMe(null));
+  useEffect(() => { load(); }, []);
+  if (me === undefined) return <Loading />;
+  if (!me) return <CentralLogin onDone={load} />;
+  return <CentralHome me={me} onLogout={async () => { await api('/central/logout', { body: {} }).catch(() => {}); setMe(null); }} />;
+}
+
+function CentralLogin({ onDone }: { onDone: () => void }) {
+  const setup = useApi<{ needed: boolean; enabled: boolean }>('/central/setup-status');
+  const [f, setF] = useState({ token: '', name: '', username: '', password: '' });
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const needed = !!setup.data?.needed;
+  const set = (k: keyof typeof f) => (e: any) => setF({ ...f, [k]: e.target.value });
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    try {
+      if (needed) await api('/central/setup', { body: f });
+      await api('/central/login', { body: { username: f.username, password: f.password } });
+      onDone();
+    } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="login">
+      <form className="card stack" onSubmit={submit}>
+        <div><span className="badge accent">Painel central</span><h1 style={{ marginTop: 10 }}>Central<span className="brand-dot">.</span>PDV</h1>
+          <p className="muted" style={{ margin: '4px 0 8px' }}>{needed ? 'Primeiro acesso: crie a conta do administrador central.' : 'Acesso do administrador da plataforma.'}</p></div>
+        {needed && !setup.data?.enabled && <div className="notice warning">Defina a variável <b>SETUP_TOKEN</b> no servidor (Vercel) e recarregue a página.</div>}
+        {needed && <>
+          <Field label="Token de configuração"><input className="input" type="password" value={f.token} onChange={set('token')} required /></Field>
+          <Field label="Seu nome"><input className="input" value={f.name} onChange={set('name')} required /></Field>
+        </>}
+        <Field label="Usuário"><input className="input lg" autoComplete="username" autoCapitalize="none" value={f.username} onChange={set('username')} required autoFocus /></Field>
+        <Field label="Senha"><input className="input lg" type="password" autoComplete={needed ? 'new-password' : 'current-password'} value={f.password} onChange={set('password')} required /></Field>
+        {err && <div className="notice danger" role="alert">{err}</div>}
+        <button className="btn primary lg block" disabled={busy}>{busy ? 'Entrando…' : needed ? 'Criar e entrar' : 'Entrar'}</button>
+      </form>
+      <SystemFooter />
+    </div>
+  );
+}
+
+const SUB: Record<string, string> = { active: 'Em dia', trialing: 'Em teste (Stripe)', past_due: 'Pagamento recusado', unpaid: 'Não pago', canceled: 'Cancelada', incomplete: 'Pendente' };
+
+function AccessBadge({ t }: { t: any }) {
+  if (t.status === 'SUSPENDED') return <span className="badge danger">Suspenso</span>;
+  if (t.billing_exempt) return <span className="badge success">Isento</span>;
+  if (t.access.ok) return <span className="badge success">{t.subscription_status === 'active' ? 'Pago' : `Teste até ${date(t.access.trialEndsAt ?? t.trial_ends_at)}`}</span>;
+  return <span className="badge danger">{t.subscription_status ? SUB[t.subscription_status] ?? t.subscription_status : 'Sem assinatura'}</span>;
+}
+
+function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; onLogout: () => void }) {
+  const { data, loading, error, reload } = useApi<any[]>('/central/tenants');
+  const [creating, setCreating] = useState(false);
+  const [sel, setSel] = useState<any>(null);
+  const blocked = data?.filter((t) => !t.access.ok).length ?? 0;
+  return (
+    <div className="shell">
+      <header className="topbar">
+        <span className="brand">Central<span className="brand-dot">.</span>PDV</span><span className="badge accent">Painel central</span>
+        <span className="spacer" /><span className="faint user-name">{me.admin.name}</span>
+        <button className="btn ghost sm" onClick={onLogout}>Sair</button>
+      </header>
+      <main className="content stack">
+        <div className="page-head"><h1>Estabelecimentos</h1><span className="spacer" /><button className="btn primary" onClick={() => setCreating(true)}>Novo estabelecimento</button></div>
+        {!me.stripe && <div className="notice warning">Stripe ainda não configurado (STRIPE_SECRET_KEY, STRIPE_PRICE_ID e STRIPE_WEBHOOK_SECRET na Vercel). Até lá, use "Isento" ou período de teste.</div>}
+        {data && <div className="status-strip">
+          <span className="badge lg success">{data.length - blocked} ativo(s)</span>
+          {blocked > 0 && <span className="badge lg danger">{blocked} fora do ar</span>}
+        </div>}
+        {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
+          <div className="card flush">{!data?.length ? <Empty>Nenhum estabelecimento ainda.</Empty> : (
+            <table className="table responsive"><thead><tr><th>Estabelecimento</th><th>Situação</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
+              {data.map((t) => (
+                <tr key={t.id} className="click" onClick={() => setSel(t)}>
+                  <td data-label="Estabelecimento"><b>{t.name}</b><div className="faint">nº {t.id} · desde {date(t.created_at)}</div></td>
+                  <td data-label="Situação"><AccessBadge t={t} /></td>
+                  <td data-label="Usuários" className="r num">{t.users}</td>
+                  <td data-label="Vendas (30 dias)" className="r num">{t.salesLast30}</td>
+                  <td data-label="Última venda">{t.lastSaleAt ? dateTime(t.lastSaleAt) : '—'}</td>
+                </tr>
+              ))}
+            </tbody></table>
+          )}</div>
+        )}
+      </main>
+      <SystemFooter />
+      {creating && <NewTenant onClose={() => setCreating(false)} onDone={() => { setCreating(false); reload(); }} />}
+      {sel && <TenantModal t={sel} onClose={() => setSel(null)} onChanged={reload} />}
+    </div>
+  );
+}
+
+const MOD_LABELS: Record<string, string> = { mesas: 'Mesas e comandas', fiado: 'Fiado e clientes', estoque: 'Estoque', inventario: 'Inventário', analise: 'Análise comercial', reposicao: 'Reposição', auditoria: 'Auditoria' };
+
+function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [f, setF] = useState({ name: '', adminName: '', username: '', password: '', billing: 'trial', trialDays: '7' });
+  const [mods, setMods] = useState<Record<string, boolean>>(Object.fromEntries(Object.keys(MOD_LABELS).map((k) => [k, k !== 'auditoria'])));
+  const [err, setErr] = useState<string | null>(null);
+  const toast = useToast();
+  const set = (k: keyof typeof f) => (e: any) => setF({ ...f, [k]: e.target.value });
+  const [save, busy] = useAction(async () => {
+    setErr(null);
+    try {
+      await api('/central/tenants', { body: {
+        name: f.name, admin: { name: f.adminName, username: f.username, password: f.password },
+        exempt: f.billing === 'exempt', trialDays: f.billing === 'trial' ? Number(f.trialDays) || 0 : undefined, modules: mods,
+      } });
+      toast('Estabelecimento criado.', 'success'); onDone();
+    } catch (e: any) { setErr(e instanceof ApiError ? e.message : 'Erro ao criar.'); }
+  });
+  return (
+    <Modal title="Novo estabelecimento" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || !f.name || !f.username || f.password.length < 8 || !f.adminName} onClick={save}>Criar</button></>}>
+      <Field label="Nome do estabelecimento"><input className="input" value={f.name} onChange={set('name')} placeholder="Ex.: Bar do Zé" autoFocus /></Field>
+      <div className="faint">Administrador do estabelecimento (quem vai usar e cadastrar a equipe):</div>
+      <div className="grid2">
+        <Field label="Nome"><input className="input" value={f.adminName} onChange={set('adminName')} /></Field>
+        <Field label="Login" hint="Único em toda a plataforma (ex.: ze.silva)."><input className="input" autoCapitalize="none" value={f.username} onChange={set('username')} /></Field>
+      </div>
+      <Field label="Senha inicial" hint="Mín. 8 caracteres. Passe para o cliente trocar depois."><input className="input" value={f.password} onChange={set('password')} /></Field>
+      <Field group label="Cobrança">
+        <Segmented value={f.billing} onChange={(billing) => setF({ ...f, billing })} options={[{ value: 'trial', label: 'Teste grátis' }, { value: 'paid', label: 'Assinatura já' }, { value: 'exempt', label: 'Isento' }]} />
+      </Field>
+      {f.billing === 'trial' && <Field label="Dias de teste"><input className="input num" style={{ maxWidth: 120 }} inputMode="numeric" value={f.trialDays} onChange={set('trialDays')} /></Field>}
+      {f.billing === 'paid' && <div className="faint">Fica fora do ar até o administrador assinar em Administração → Assinatura.</div>}
+      <Field group label="Liberações (módulos)">
+        <div className="stack" style={{ gap: 6 }}>{Object.entries(MOD_LABELS).map(([k, l]) => (
+          <label key={k} className="check"><input type="checkbox" checked={!!mods[k]} onChange={(e) => setMods({ ...mods, [k]: e.target.checked })} /> {l}</label>
+        ))}</div>
+      </Field>
+      {err && <div className="notice danger">{err}</div>}
+    </Modal>
+  );
+}
+
+function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; onChanged: () => void }) {
+  const mods = useApi<any>(`/central/tenants/${t.id}/modules`);
+  const users = useApi<any[]>(`/central/tenants/${t.id}/users`);
+  const [name, setName] = useState(t.name);
+  const [trialDays, setTrialDays] = useState('');
+  const [pwFor, setPwFor] = useState<any>(null);
+  const toast = useToast();
+  const patch = async (body: any, msg: string) => {
+    try { await api(`/central/tenants/${t.id}`, { method: 'PATCH', body }); toast(msg, 'success'); onChanged(); onClose(); } catch (e: any) { toast(e.message, 'error'); }
+  };
+  const [toggle] = useAction(async (k: string, v: boolean) => {
+    try { mods.setData(await api(`/central/tenants/${t.id}/modules`, { method: 'PUT', body: { [k]: v } })); } catch (e: any) { toast(e.message, 'error'); }
+  });
+  return (
+    <Modal wide title={t.name} onClose={onClose}>
+      <div className="card stack">
+        <div className="row wrap"><b>Situação</b><span className="spacer" /><AccessBadge t={t} /></div>
+        {t.current_period_end && <div className="faint">Assinatura Stripe: {SUB[t.subscription_status] ?? t.subscription_status} · período até {date(t.current_period_end)}</div>}
+        <div className="row wrap">
+          {t.status === 'SUSPENDED'
+            ? <button className="btn primary" onClick={() => patch({ status: 'ACTIVE' }, 'Estabelecimento reativado.')}>Reativar</button>
+            : <button className="btn danger" onClick={() => window.confirm(`Suspender ${t.name}? O sistema sai do ar para todos de lá.`) && patch({ status: 'SUSPENDED' }, 'Estabelecimento suspenso.')}>Suspender</button>}
+          <button className="btn" onClick={() => patch({ billing_exempt: !t.billing_exempt }, t.billing_exempt ? 'Agora depende da assinatura.' : 'Marcado como isento.')}>{t.billing_exempt ? 'Tirar isenção' : 'Marcar como isento'}</button>
+        </div>
+        <div className="row wrap">
+          <input className="input num" style={{ width: 110 }} inputMode="numeric" placeholder="dias" value={trialDays} onChange={(e) => setTrialDays(e.target.value)} aria-label="Dias de teste" />
+          <button className="btn" disabled={!Number(trialDays)} onClick={() => patch({ trial_ends_at: new Date(Date.now() + Number(trialDays) * 864e5).toISOString() }, 'Período de teste definido.')}>Dar dias de teste</button>
+        </div>
+        <div className="row wrap">
+          <input className="input" style={{ maxWidth: 300 }} value={name} onChange={(e) => setName(e.target.value)} aria-label="Nome" />
+          <button className="btn" disabled={!name.trim() || name === t.name} onClick={() => patch({ name }, 'Nome alterado.')}>Renomear</button>
+        </div>
+      </div>
+      <div className="card flush">
+        <div style={{ padding: '14px 16px' }}><h2>Liberações</h2><div className="faint">Só você altera. Vale na hora para o estabelecimento.</div></div>
+        {!mods.data ? <Loading /> : Object.entries(mods.data.labels as Record<string, string>).map(([k, label]) => (
+          <label key={k} className="list-item" style={{ cursor: 'pointer' }}>
+            <span><b>{label}</b></span><span className="spacer" />
+            <span className={`badge ${mods.data.modules[k] ? 'success' : ''}`}>{mods.data.modules[k] ? 'liberado' : 'bloqueado'}</span>
+            <input type="checkbox" style={{ width: 22, height: 22 }} checked={!!mods.data.modules[k]} onChange={(e) => toggle(k, e.target.checked)} aria-label={`Liberar ${label}`} />
+          </label>
+        ))}
+      </div>
+      <div className="card flush">
+        <div style={{ padding: '14px 16px' }}><h2>Usuários</h2></div>
+        {!users.data ? <Loading /> : users.data.map((u) => (
+          <div key={u.id} className="list-item" style={{ cursor: 'default' }}>
+            <span><b>{u.name}</b><div className="faint">{u.username} · {u.role === 'ADMIN' ? 'Administrador' : 'Operador'}{u.active ? '' : ' · bloqueado'}</div></span>
+            <span className="spacer" /><button className="btn sm" onClick={() => setPwFor(u)}>Redefinir senha</button>
+          </div>
+        ))}
+      </div>
+      {pwFor && <ResetPassword tenantId={t.id} u={pwFor} onClose={() => setPwFor(null)} />}
+    </Modal>
+  );
+}
+
+function ResetPassword({ tenantId, u, onClose }: { tenantId: number; u: any; onClose: () => void }) {
+  const [p, setP] = useState('');
+  const toast = useToast();
+  const [save, busy] = useAction(async () => {
+    try { await api(`/central/tenants/${tenantId}/users/${u.id}/password`, { method: 'PUT', body: { password: p } }); toast('Senha redefinida.', 'success'); onClose(); } catch (e: any) { toast(e.message, 'error'); }
+  });
+  return (
+    <Modal title={`Nova senha para ${u.name}`} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || p.length < 8} onClick={save}>Salvar</button></>}>
+      <Field label="Nova senha" hint="Mín. 8 caracteres. As sessões abertas desse usuário são encerradas."><input className="input" value={p} onChange={(e) => setP(e.target.value)} autoFocus /></Field>
+    </Modal>
+  );
+}

@@ -18,7 +18,8 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
-    if (res.status === 401 && path !== '/auth/login') window.dispatchEvent(new Event('pdv:unauthorized'));
+    if (res.status === 401 && path !== '/auth/login' && !path.startsWith('/central')) window.dispatchEvent(new Event('pdv:unauthorized'));
+    if (res.status === 402) window.dispatchEvent(new Event('pdv:blocked'));
     throw new ApiError(res.status, data?.error?.code ?? 'ERROR', data?.error?.message ?? 'Algo deu errado.');
   }
   return data as T;

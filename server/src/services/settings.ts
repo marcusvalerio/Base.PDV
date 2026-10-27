@@ -45,7 +45,7 @@ export async function getNumberSetting(db: DB, key: SettingKey): Promise<number 
   return Number.isFinite(n) ? n : null;
 }
 
-export async function setSetting(db: DB, key: string, value: string, userId: number) {
+export async function setSetting(db: DB, key: string, value: string, userId: number | null) {
   await db.run(
     `INSERT INTO settings (key, value, updated_by, updated_at) VALUES (?,?,?,?)
      ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,

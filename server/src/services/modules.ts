@@ -2,7 +2,7 @@ import { DB, audit } from '../db.js';
 import { forbidden, badRequest } from '../errors.js';
 import { getSetting, setSetting } from './settings.js';
 
-/** Módulos que só ficam disponíveis quando o super administrador libera. */
+/** Módulos que só ficam disponíveis quando o administrador central libera para o estabelecimento. */
 export const MODULES = {
   mesas: 'Mesas e comandas',
   fiado: 'Fiado e clientes',
@@ -21,10 +21,10 @@ export async function getModules(db: DB): Promise<Record<ModuleKey, boolean>> {
 }
 
 export async function requireModule(db: DB, k: ModuleKey) {
-  if (!(await getModules(db))[k]) throw forbidden(`O módulo "${MODULES[k]}" não está liberado. Fale com o super administrador.`);
+  if (!(await getModules(db))[k]) throw forbidden(`O módulo "${MODULES[k]}" não está liberado. Fale com o suporte do Central.PDV.`);
 }
 
-export async function setModules(db: DB, patch: Partial<Record<string, boolean>>, userId: number) {
+export async function setModules(db: DB, patch: Partial<Record<string, boolean>>, userId: number | null) {
   const cur = await getModules(db);
   for (const [k, v] of Object.entries(patch)) {
     if (!(k in MODULES)) throw badRequest(`Módulo desconhecido: ${k}`);

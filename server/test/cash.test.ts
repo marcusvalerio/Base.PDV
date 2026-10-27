@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { setup, key, product, openCash, CODE, agent, PASS } from './helpers.js';
-import { createUser } from '../src/services/users.js';
 
 describe('caixa', () => {
   it('recusa código incorreto e não abre dois caixas para a mesma pessoa', async () => {
@@ -15,7 +14,7 @@ describe('caixa', () => {
     const pid = await product(admin);
     const ops = [];
     for (let i = 1; i <= 5; i++) {
-      await createUser(db, { name: `Op ${i}`, username: `op${i}`, password: PASS, role: 'OPERADOR' }, adminId);
+      expect((await admin.post('/api/users', { name: `Op ${i}`, username: `op${i}`, password: PASS, role: 'OPERADOR' })).status).toBe(201);
       const c = await agent(app, `op${i}`);
       await openCash(c, 1000 * i);
       await c.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'DINHEIRO', items: [{ productId: pid, qtyMilli: i * 1000 }] });

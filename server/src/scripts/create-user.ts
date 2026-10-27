@@ -1,16 +1,16 @@
 /**
- * Cria um usuário sem senha fixa no código.
- * Uso: npm run create-admin -- --name "Fulano" --username fulano [--role OPERADOR] [--super]
+ * Cria um administrador central (painel /central) sem senha fixa no código.
+ * Uso: npm run create-admin -- --name "Fulano" --username fulano
  * A senha é lida da variável PDV_PASSWORD ou digitada no terminal.
  */
 import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { openDb } from '../db.js';
-import { createUser, Role } from '../services/users.js';
+import { createPlatformAdmin } from '../services/platform.js';
 
-const { values } = parseArgs({ options: { name: { type: 'string' }, username: { type: 'string' }, role: { type: 'string', default: 'ADMIN' }, super: { type: 'boolean', default: false } } });
+const { values } = parseArgs({ options: { name: { type: 'string' }, username: { type: 'string' } } });
 if (!values.name || !values.username) {
-  console.error('Uso: npm run create-admin -- --name "Nome" --username login [--role ADMIN|OPERADOR] [--super]');
+  console.error('Uso: npm run create-admin -- --name "Nome" --username login');
   process.exit(1);
 }
 let password = process.env.PDV_PASSWORD;
@@ -21,6 +21,6 @@ if (!password) {
 }
 if (!process.env.DATABASE_URL) { console.error('Defina DATABASE_URL (string de conexão do Neon).'); process.exit(1); }
 const db = await openDb();
-const id = await createUser(db, { name: values.name, username: values.username, password, role: values.role as Role, superAdmin: values.super }, null);
-console.log(`Usuário #${id} (${values.super ? 'SUPER ADMIN' : values.role}) criado.`);
+const id = await createPlatformAdmin(db, { name: values.name, username: values.username, password });
+console.log(`Administrador central #${id} criado. Entre em /central.`);
 await db.close();

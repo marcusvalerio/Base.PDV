@@ -1,29 +1,38 @@
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
-import { memoryDb, migrate } from '../src/db.js';
+import { memoryDb, migrate, schemaDb, withSchema } from '../src/db.js';
 import { createApp } from '../src/app.js';
 import { createUser } from '../src/services/users.js';
 import { setSetting } from '../src/services/settings.js';
 import { hashSecret } from '../src/security.js';
 import { setModules, MODULES } from '../src/services/modules.js';
+import { createTenant, createPlatformAdmin, reserveUsername } from '../src/services/platform.js';
 
 export const PASS = 'senha-de-teste-123';
 export const CODE = '4321';
 export const CANCEL = '9090';
 
-export async function setup(opts: { modules?: boolean } = {}) {
-  const db = await memoryDb();
-  await migrate(db);
-  const app = createApp(db);
-  const adminId = await createUser(db, { name: 'Admin Teste', username: 'admin', password: PASS, role: 'ADMIN' }, null);
-  const opId = await createUser(db, { name: 'Operadora Teste', username: 'op', password: PASS, role: 'OPERADOR' }, adminId);
-  await setSetting(db, 'shared_cash_code_hash', hashSecret(CODE), adminId);
-  await setSetting(db, 'cancel_code_hash', hashSecret(CANCEL), adminId);
-  const superId = await createUser(db, { name: 'Super Teste', username: 'super', password: PASS, role: 'ADMIN', superAdmin: true }, null);
-  if (opts.modules !== false) await setModules(db, Object.fromEntries(Object.keys(MODULES).map((k) => [k, true])), superId);
+/** Plataforma em memória com um estabelecimento (isento de assinatura), admin "admin", operadora "op" e admin central "super". */
+export async function setup(opts: { modules?: boolean; fetch?: any } = {}) {
+  const base = await memoryDb();
+  await migrate(base);
+  const app = createApp(base, { fetch: opts.fetch });
+  const tenantId = await createTenant(base, { name: 'Loja Teste', admin: { name: 'Admin Teste', username: 'admin', password: PASS }, exempt: true,
+    modules: Object.fromEntries(Object.keys(MODULES).map((k) => [k, opts.modules !== false])) }, null);
+  const schema = `t_${tenantId}`;
+  const db = schemaDb(base, schema);
+  const adminId = (await db.one("SELECT id FROM users WHERE username = 'admin'")).id as number;
+  await reserveUsername(base, 'op', tenantId);
+  const opId = await withSchema(base, schema, async (t) => {
+    const id = await createUser(t, { name: 'Operadora Teste', username: 'op', password: PASS, role: 'OPERADOR' }, adminId);
+    await setSetting(t, 'shared_cash_code_hash', hashSecret(CODE), adminId);
+    await setSetting(t, 'cancel_code_hash', hashSecret(CANCEL), adminId);
+    return id;
+  });
+  await createPlatformAdmin(base, { name: 'Super Teste', username: 'super', password: PASS });
   const admin = await agent(app, 'admin');
   const op = await agent(app, 'op');
-  return { db, app, admin, op, adminId, opId, superId };
+  return { db, base, app, admin, op, adminId, opId, tenantId, schema };
 }
 
 export type Client = ReturnType<typeof wrap>;
@@ -38,8 +47,8 @@ function wrap(app: any, cookie: string) {
   };
 }
 
-export async function agent(app: any, username: string) {
-  const res = await request(app).post('/api/auth/login').set('X-Requested-With', 'pdv').send({ username, password: PASS });
+export async function agent(app: any, username: string, central = false) {
+  const res = await request(app).post(central ? '/api/central/login' : '/api/auth/login').set('X-Requested-With', 'pdv').send({ username, password: PASS });
   if (res.status !== 200) throw new Error('login falhou: ' + JSON.stringify(res.body));
   const cookie = (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
   return wrap(app, cookie);

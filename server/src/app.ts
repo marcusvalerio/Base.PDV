@@ -3,7 +3,9 @@ import cookieParser from 'cookie-parser';
 import { z, ZodError } from 'zod';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { DB, audit } from './db.js';
+import { DB, audit, tenantAware, tenantStore, withSchema } from './db.js';
+import * as platform from './services/platform.js';
+import * as stripe from './services/stripe.js';
 import { AppError, forbidden, unauthorized, badRequest } from './errors.js';
 import { UNITS } from './money.js';
 import * as users from './services/users.js';
@@ -22,10 +24,11 @@ import * as modules from './services/modules.js';
 import * as inventory from './services/inventory.js';
 
 declare global {
-  namespace Express { interface Request { user?: users.SessionUser; token?: string } }
+  namespace Express { interface Request { user?: users.SessionUser; token?: string; tenant?: platform.Tenant; central?: { id: number; name: string; username: string }; rawBody?: Buffer } }
 }
 
 export const COOKIE = 'pdv_session';
+export const CENTRAL_COOKIE = 'pdv_central';
 
 const id = z.coerce.number().int().positive();
 const cents = z.number().int().min(0).max(100_000_000);
@@ -55,11 +58,17 @@ const productSchema = z.object({
 /** Limite simples de tentativas de login por IP+usuário (memória do processo). */
 const attempts = new Map<string, { n: number; until: number }>();
 
-export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: string } = {}) {
+export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: string; fetch?: stripe.Fetch } = {}) {
+  // "db" usa automaticamente o schema do estabelecimento da requisição; "base" é a plataforma (schema public).
+  const db = tenantAware(base);
+  const sfetch: stripe.Fetch = opts.fetch ?? fetch;
+  const cookieOpts = { httpOnly: true, sameSite: 'strict' as const, secure: !!opts.cookieSecure, maxAge: 12 * 3600e3, path: '/' };
   const app = express();
   app.disable('x-powered-by');
   // Atrás do proxy da Vercel: IP real do cliente (limite de tentativas de login).
   app.set('trust proxy', 1);
+  // Webhook do Stripe precisa do corpo bruto para validar a assinatura.
+  app.use('/api/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), (req, _res, next) => { req.rawBody = req.body; next(); });
   app.use(express.json({ limit: '200kb' }));
   app.use(cookieParser());
   app.use((_req, res, next) => {
@@ -72,13 +81,45 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
 
   // Proteção CSRF: toda requisição que altera dados precisa do cabeçalho customizado (navegadores não o enviam em formulários de outros sites).
   app.use('/api', (req, _res, next) => {
+    if (req.path === '/stripe/webhook') return next();
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.get('X-Requested-With') !== 'pdv') return next(forbidden('Requisição inválida.'));
     next();
   });
 
+  // Sessão do estabelecimento: cookie "<id do estabelecimento>.<token>". A conexão fica presa ao schema dele até o fim da resposta.
+  app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/central') || req.path === '/stripe/webhook') return next();
+    const raw = String(req.cookies?.[COOKIE] ?? '');
+    const dot = raw.indexOf('.');
+    const tenantId = Number(raw.slice(0, dot));
+    if (dot < 1 || !Number.isInteger(tenantId) || tenantId <= 0) return next();
+    (async () => {
+      const t = await platform.getTenant(base, tenantId);
+      if (!t) return next();
+      const h = await base.scope!(t.schema_name);
+      let released = false;
+      const release = () => { if (!released) { released = true; h.release().catch(() => {}); } };
+      res.once('finish', release);
+      res.once('close', release);
+      tenantStore.run({ db: h.db }, () => {
+        const token = raw.slice(dot + 1);
+        users.userFromToken(h.db, token).then((u) => {
+          if (u) { req.user = u; req.token = token; req.tenant = t; }
+          next();
+        }, (e) => { release(); next(e); });
+      });
+    })().catch(next);
+  });
+
+  // Assinatura: sem pagamento em dia (ou suspenso pelo admin central), o sistema fica fora do ar para o estabelecimento.
+  const OPEN_WHEN_BLOCKED = /^\/(auth\/|billing\/|bootstrap$|public\/)/;
   app.use('/api', (req, _res, next) => {
-    const token = req.cookies?.[COOKIE];
-    users.userFromToken(db, token).then((u) => { if (u) { req.user = u; req.token = token; } next(); }, next);
+    if (!req.tenant || OPEN_WHEN_BLOCKED.test(req.path)) return next();
+    const a = platform.access(req.tenant);
+    if (a.ok) return next();
+    next(new AppError(402, 'SUBSCRIPTION_INACTIVE', a.reason === 'SUSPENDED'
+      ? 'Este estabelecimento está suspenso. Fale com o suporte do Central.PDV.'
+      : 'A assinatura do Central.PDV não está em dia. O administrador precisa regularizar o pagamento.'));
   });
 
   const auth = (req: Request, _res: Response, next: NextFunction) => (req.user ? next() : next(unauthorized()));
@@ -88,11 +129,6 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       audit(db, req.user.id, 'auth.forbidden', null, null, { path: req.path, method: req.method }).catch(() => {});
       return next(forbidden());
     }
-    next();
-  };
-  const sup = (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user) return next(unauthorized());
-    if (!req.user.superAdmin) return next(forbidden('Somente o super administrador pode fazer isso.'));
     next();
   };
   /** Bloqueia no servidor rotas de módulos não liberados pelo super administrador. */
@@ -118,48 +154,28 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   r.use('/restock', mod('reposicao'));
   r.use('/audit', mod('auditoria'));
 
-  // ---------- Configuração inicial (primeiro super administrador) ----------
-  // Só funciona enquanto não existir nenhum usuário e exige o SETUP_TOKEN definido no servidor.
-  // Informações públicas (tela de entrada): só o nome do estabelecimento.
-  r.get('/public/info', async (_req, res) => res.json({
+  // Informações públicas (tela de entrada): nome e logo do estabelecimento do último acesso, se houver sessão.
+  r.get('/public/info', async (req, res) => res.json(req.tenant ? {
     storeName: await settings.getSetting(db, 'store_name'),
     storeLogo: await settings.getSetting(db, 'store_logo_url'),
-  }));
-  r.get('/setup/status', async (_req, res) => {
-    const n = (await db.one('SELECT COUNT(*)::int AS n FROM users')).n;
-    res.json({ needed: n === 0, enabled: !!process.env.SETUP_TOKEN });
-  });
-  r.post('/setup', async (req, res) => {
-    const b = z.object({
-      token: z.string().min(1).max(200),
-      name: z.string().trim().min(2).max(80),
-      username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/),
-      password: z.string().min(8).max(200),
-    }).parse(req.body);
-    const expected = process.env.SETUP_TOKEN;
-    if (!expected || b.token.length !== expected.length || !timingSafeEqual(Buffer.from(b.token), Buffer.from(expected))) throw forbidden('Token de configuração inválido.');
-    await db.tx(async (t) => {
-      await t.exec('SELECT pg_advisory_xact_lock(4242002)');
-      if ((await t.one('SELECT COUNT(*)::int AS n FROM users')).n > 0) throw forbidden('O sistema já foi configurado.');
-      await users.createUser(t, { name: b.name, username: b.username, password: b.password, role: 'ADMIN', superAdmin: true }, null);
-    });
-    res.status(201).json({ ok: true });
-  });
+  } : { storeName: '', storeLogo: '' }));
+  r.get('/setup/status', async (_req, res) => res.json({ needed: false, enabled: false }));
 
-  // ---------- Autenticação ----------
+  // ---------- Autenticação (estabelecimento) ----------
   r.post('/auth/login', async (req, res) => {
     const body = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200) }).parse(req.body);
     const key = `${req.ip}|${body.username.toLowerCase()}`;
     const a = attempts.get(key);
     if (a && a.until > Date.now()) throw new AppError(429, 'TOO_MANY', 'Muitas tentativas. Aguarde alguns minutos.');
-    const result = await users.login(db, body.username, body.password);
-    if (!result) {
+    const t = await platform.tenantByUsername(base, body.username);
+    const result = t ? await withSchema(base, t.schema_name, (tdb) => users.login(tdb, body.username, body.password)) : null;
+    if (!t || !result) {
       const n = (a?.n ?? 0) + 1;
       attempts.set(key, { n, until: n >= 5 ? Date.now() + 5 * 60e3 : 0 });
       throw unauthorized('Usuário ou senha incorretos.');
     }
     attempts.delete(key);
-    res.cookie(COOKIE, result.token, { httpOnly: true, sameSite: 'strict', secure: !!opts.cookieSecure, maxAge: 12 * 3600e3, path: '/' });
+    res.cookie(COOKIE, `${t.id}.${result.token}`, cookieOpts);
     res.json({ user: result.user });
   });
   r.post('/auth/logout', async (req, res) => {
@@ -167,7 +183,16 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     res.clearCookie(COOKIE, { path: '/' });
     res.json({ ok: true });
   });
-  r.get('/auth/me', auth, async (req, res) => res.json({ user: req.user }));
+  r.get('/auth/me', auth, async (req, res) => res.json({ user: req.user, access: platform.access(req.tenant!) }));
+
+  // ---------- Assinatura do estabelecimento (administrador) ----------
+  r.get('/billing/status', admin, async (req, res) => {
+    const t = (await platform.getTenant(base, req.tenant!.id))!;
+    res.json({ access: platform.access(t), status: t.subscription_status, currentPeriodEnd: t.current_period_end, exempt: !!t.billing_exempt,
+      hasCustomer: !!t.stripe_customer_id, configured: stripe.stripeConfigured(), trialEndsAt: t.trial_ends_at });
+  });
+  r.post('/billing/checkout', admin, async (req, res) => res.json({ url: await stripe.checkoutUrl(base, sfetch, req.tenant!.id) }));
+  r.post('/billing/portal', admin, async (req, res) => res.json({ url: await stripe.portalUrl(base, sfetch, req.tenant!.id) }));
 
   // ---------- Dados básicos para o PDV ----------
   r.get('/bootstrap', auth, async (_req, res) => {
@@ -387,8 +412,10 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   const roleSchema = z.enum(['ADMIN', 'OPERADOR']);
   r.get('/users', admin, async (_req, res) => res.json(await users.listUsers(db)));
   r.post('/users', admin, async (req, res) => {
-    const b = z.object({ name: z.string().trim().min(2).max(80), username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/), password: z.string().min(8).max(200), role: roleSchema, superAdmin: z.boolean().optional() }).parse(req.body);
-    res.status(201).json({ id: await users.createUser(db, b, uid(req)) });
+    const b = z.object({ name: z.string().trim().min(2).max(80), username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/, 'Login: use letras, números, ponto, hífen ou _.'), password: z.string().min(8).max(200), role: roleSchema }).parse(req.body);
+    await platform.reserveUsername(base, b.username, req.tenant!.id);
+    try { res.status(201).json({ id: await users.createUser(db, b, uid(req)) }); }
+    catch (e) { await platform.releaseUsername(base, b.username); throw e; }
   });
   r.patch('/users/:id', admin, async (req, res) => {
     const b = z.object({ name: z.string().trim().min(2).max(80).optional(), role: roleSchema.optional(), active: z.boolean().optional(), password: z.string().min(8).max(200).optional() }).parse(req.body);
@@ -435,12 +462,8 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     'SELECT a.*, u.name AS user_name FROM audit_log a LEFT JOIN users u ON u.id = a.user_id ORDER BY a.id DESC LIMIT 300',
   )));
 
-  // ---------- Super administrador: liberação de módulos ----------
+  // Módulos liberados para este estabelecimento (só o admin central altera, pelo painel central).
   r.get('/modules', admin, async (_req, res) => res.json({ modules: await modules.getModules(db), labels: modules.MODULES }));
-  r.put('/modules', sup, async (req, res) => {
-    const b = z.record(z.boolean()).parse(req.body);
-    res.json({ modules: await modules.setModules(db, b, uid(req)), labels: modules.MODULES });
-  });
 
   // ---------- Inventário ----------
   r.get('/inventory', auth, async (_req, res) => res.json(await inventory.listSessions(db)));
@@ -466,6 +489,115 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     res.json(await inventory.finishSession(db, id.parse(req.params.id), b, uid(req)));
   });
   r.post('/inventory/:id/cancel', admin, async (req, res) => { await inventory.cancelSession(db, id.parse(req.params.id), uid(req)); res.json({ ok: true }); });
+
+  // ---------- Painel do administrador central (dono da plataforma) ----------
+  const c = express.Router();
+  for (const m of ['get', 'post', 'put', 'patch', 'delete'] as const) {
+    const orig = (c as any)[m].bind(c);
+    (c as any)[m] = (path: string, ...hs: any[]) => orig(path, ...hs.map((h) => (req: Request, res: Response, next: NextFunction) => {
+      try { const out = h(req, res, next); if (out && typeof out.then === 'function') out.catch(next); } catch (e) { next(e); }
+    }));
+  }
+  c.use((req, _res, next) => {
+    platform.platformAdminFromToken(base, req.cookies?.[CENTRAL_COOKIE]).then((a) => { if (a) { req.central = a; req.token = req.cookies[CENTRAL_COOKIE]; } next(); }, next);
+  });
+  const central = (req: Request, _res: Response, next: NextFunction) => (req.central ? next() : next(unauthorized()));
+  const loginSchema = z.object({ username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/, 'Login: use letras, números, ponto, hífen ou _.'), password: z.string().min(8).max(200) });
+
+  // Primeiro acesso: cria o administrador central com o SETUP_TOKEN definido no servidor.
+  c.get('/setup-status', async (_req, res) => res.json({
+    needed: (await base.one('SELECT COUNT(*)::int AS n FROM platform_admins')).n === 0, enabled: !!process.env.SETUP_TOKEN,
+  }));
+  c.post('/setup', async (req, res) => {
+    const b = loginSchema.extend({ token: z.string().min(1).max(200), name: z.string().trim().min(2).max(80) }).parse(req.body);
+    const expected = process.env.SETUP_TOKEN;
+    if (!expected || b.token.length !== expected.length || !timingSafeEqual(Buffer.from(b.token), Buffer.from(expected))) throw forbidden('Token de configuração inválido.');
+    await base.tx(async (t) => {
+      await t.exec('SELECT pg_advisory_xact_lock(4242003)');
+      if ((await t.one('SELECT COUNT(*)::int AS n FROM platform_admins')).n > 0) throw forbidden('O painel central já foi configurado.');
+      await platform.createPlatformAdmin(t, b);
+    });
+    res.status(201).json({ ok: true });
+  });
+  c.post('/login', async (req, res) => {
+    const b = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200) }).parse(req.body);
+    const key = `central|${req.ip}|${b.username.toLowerCase()}`;
+    const a = attempts.get(key);
+    if (a && a.until > Date.now()) throw new AppError(429, 'TOO_MANY', 'Muitas tentativas. Aguarde alguns minutos.');
+    const r2 = await platform.platformLogin(base, b.username, b.password);
+    if (!r2) { const n = (a?.n ?? 0) + 1; attempts.set(key, { n, until: n >= 5 ? Date.now() + 5 * 60e3 : 0 }); throw unauthorized('Usuário ou senha incorretos.'); }
+    attempts.delete(key);
+    res.cookie(CENTRAL_COOKIE, r2.token, cookieOpts);
+    res.json({ admin: r2.admin });
+  });
+  c.post('/logout', async (req, res) => {
+    if (req.central && req.token) await platform.platformLogout(base, req.token);
+    res.clearCookie(CENTRAL_COOKIE, { path: '/' });
+    res.json({ ok: true });
+  });
+  c.get('/me', central, async (req, res) => res.json({ admin: req.central, stripe: stripe.stripeConfigured() }));
+
+  const tenantId = (req: Request) => id.parse(req.params.id);
+  const getT = async (req: Request) => { const t = await platform.getTenant(base, tenantId(req)); if (!t) throw new AppError(404, 'NOT_FOUND', 'Estabelecimento não encontrado.'); return t; };
+  c.get('/tenants', central, async (_req, res) => res.json(await platform.listTenants(base)));
+  c.post('/tenants', central, async (req, res) => {
+    const b = z.object({
+      name: z.string().trim().min(2).max(60),
+      admin: loginSchema.extend({ name: z.string().trim().min(2).max(80) }),
+      trialDays: z.number().int().min(0).max(365).optional(), exempt: z.boolean().optional(),
+      modules: z.record(z.boolean()).optional(),
+    }).parse(req.body);
+    res.status(201).json({ id: await platform.createTenant(base, b, req.central!.id) });
+  });
+  c.patch('/tenants/:id', central, async (req, res) => {
+    const b = z.object({
+      name: z.string().trim().min(2).max(60).optional(), status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
+      billing_exempt: z.boolean().optional(), trial_ends_at: z.string().datetime().nullable().optional(),
+    }).parse(req.body);
+    await platform.updateTenant(base, tenantId(req), b, req.central!.id);
+    res.json({ ok: true });
+  });
+  c.get('/tenants/:id/modules', central, async (req, res) => {
+    const t = await getT(req);
+    res.json({ modules: await withSchema(base, t.schema_name, (tdb) => modules.getModules(tdb)), labels: modules.MODULES });
+  });
+  c.put('/tenants/:id/modules', central, async (req, res) => {
+    const t = await getT(req);
+    const b = z.record(z.boolean()).parse(req.body);
+    const m = await withSchema(base, t.schema_name, (tdb) => modules.setModules(tdb, b, null));
+    await platform.platformAudit(base, req.central!.id, 'tenant.modules', t.id, b);
+    res.json({ modules: m, labels: modules.MODULES });
+  });
+  c.get('/tenants/:id/users', central, async (req, res) => {
+    const t = await getT(req);
+    res.json(await withSchema(base, t.schema_name, (tdb) => users.listUsers(tdb)));
+  });
+  // Suporte: redefine a senha de um usuário do estabelecimento (ex.: administrador esqueceu).
+  c.put('/tenants/:id/users/:userId/password', central, async (req, res) => {
+    const t = await getT(req);
+    const b = z.object({ password: z.string().min(8).max(200) }).parse(req.body);
+    const userId = id.parse(req.params.userId);
+    await withSchema(base, t.schema_name, async (tdb) => {
+      const u = await tdb.one('SELECT id FROM users WHERE id = ?', [userId]);
+      if (!u) throw new AppError(404, 'NOT_FOUND', 'Usuário não encontrado.');
+      await tdb.run('UPDATE users SET password_hash = ?, active = 1, updated_at = ? WHERE id = ?', [hashSecret(b.password), new Date().toISOString(), userId]);
+      await tdb.run('DELETE FROM sessions WHERE user_id = ?', [userId]);
+    });
+    await platform.platformAudit(base, req.central!.id, 'tenant.user_password', t.id, { userId });
+    res.json({ ok: true });
+  });
+  app.use('/api/central', c);
+
+  // ---------- Webhook do Stripe ----------
+  app.post('/api/stripe/webhook', (req, res, next) => {
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secret) return next(new AppError(503, 'BILLING_OFF', 'Webhook não configurado.'));
+    const raw = req.rawBody ?? Buffer.alloc(0);
+    if (!stripe.verifyWebhook(raw, req.get('Stripe-Signature'), secret)) return next(new AppError(400, 'BAD_SIGNATURE', 'Assinatura inválida.'));
+    let ev: any;
+    try { ev = JSON.parse(raw.toString('utf8')); } catch { return next(new AppError(400, 'INVALID_JSON', 'Dados inválidos.')); }
+    stripe.handleEvent(base, sfetch, ev).then(() => res.json({ received: true }), next);
+  });
 
   app.use('/api', r);
   app.use('/api', (_req, _res, next) => next(new AppError(404, 'NOT_FOUND', 'Rota não encontrada.')));

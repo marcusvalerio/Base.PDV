@@ -4,7 +4,8 @@
  */
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { memoryDb, migrate, DB } from '../db.js';
+import { memoryDb, migrate, DB, withSchema } from '../db.js';
+import { createTenant, createPlatformAdmin, reserveUsername } from '../services/platform.js';
 import { createApp } from '../app.js';
 import { createUser } from '../services/users.js';
 import { createProduct } from '../services/products.js';
@@ -18,10 +19,9 @@ import { registerEntry } from '../services/stock.js';
 import { addDays, localDate } from '../tz.js';
 
 export async function seedDemo(db: DB, pass: string, code: string) {
-const admin = await createUser(db, { name: 'Admin Demo', username: 'admin', password: pass, role: 'ADMIN' }, null);
+const admin = (await db.one("SELECT id FROM users WHERE username = 'admin'")).id;
 await createUser(db, { name: 'Operadora Demo', username: 'caixa', password: pass, role: 'OPERADOR' }, admin);
-const sup = await createUser(db, { name: 'Super Demo', username: 'super', password: pass, role: 'ADMIN', superAdmin: true }, null);
-await setModules(db, Object.fromEntries(Object.keys(MODULES).map((k) => [k, true])), sup);
+await setModules(db, Object.fromEntries(Object.keys(MODULES).map((k) => [k, true])), null);
 await setSetting(db, 'shared_cash_code_hash', hashSecret(code), admin);
 await setSetting(db, 'cancel_code_hash', hashSecret(process.env.PDV_DEMO_CANCEL_CODE || code), admin);
 
@@ -72,6 +72,10 @@ if (!pass || pass.length < 8 || !code) {
 }
 const db = await memoryDb();
 await migrate(db);
-await seedDemo(db, pass, code);
+// Admin central "super" (painel /central) e um estabelecimento de demonstração com admin "admin" e operadora "caixa".
+await createPlatformAdmin(db, { name: 'Super Demo', username: 'super', password: pass });
+const tid = await createTenant(db, { name: 'Bar do Exemplo', admin: { name: 'Admin Demo', username: 'admin', password: pass }, exempt: true }, null);
+await reserveUsername(db, 'caixa', tid);
+await withSchema(db, `t_${tid}`, (tdb) => seedDemo(tdb, pass, code));
 const port = Number(process.env.PORT || 3001);
-createApp(db, { staticDir: join(process.cwd(), 'dist') }).listen(port, () => console.log(`DEMO em http://localhost:${port} — usuários: super / admin / caixa (dados fictícios em memória)`));
+createApp(db, { staticDir: join(process.cwd(), 'dist') }).listen(port, () => console.log(`DEMO em http://localhost:${port} — admin central: super (/central) · estabelecimento: admin / caixa (dados fictícios em memória)`));
