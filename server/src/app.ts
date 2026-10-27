@@ -236,12 +236,20 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     res.status(sale.replayed ? 200 : 201).json(sale);
   });
   r.get('/sales', auth, async (req, res) => {
-    if (isAdmin(req)) {
-      const registerId = req.query.registerId ? Number(req.query.registerId) : undefined;
-      return res.json(await sales.listSales(db, { registerId, limit: 200 }));
-    }
+    const q = z.object({
+      registerId: z.coerce.number().int().positive().optional(), userId: z.coerce.number().int().positive().optional(),
+      categoryId: z.coerce.number().int().positive().optional(), kind: z.enum(['CASH', 'PIX', 'CARD', 'CREDIT']).optional(),
+      origin: z.enum(['BALCAO', 'MESA']).optional(), status: z.enum(['COMPLETED', 'CANCELLED']).optional(),
+      customer: z.string().trim().max(60).optional(),
+      preset: z.enum(['all', 'today', '7d', '15d', '30d', 'month', 'custom']).default('all'), from: z.string().optional(), to: z.string().optional(),
+    }).parse(req.query);
+    let range: { start?: string; end?: string } = {};
+    if (q.preset !== 'all') { const pr = analytics.resolvePeriod(q.preset, q.from, q.to); range = rangeToUtc(pr.from, pr.to); }
+    const f = { ...q, ...range, customer: q.customer || undefined };
+    if (isAdmin(req)) return res.json(await sales.listSales(db, { ...f, limit: 500 }));
+    // Operador: só as vendas do próprio caixa aberto.
     const reg = await cash.currentRegister(db, uid(req));
-    res.json(reg ? await sales.listSales(db, { registerId: reg.id, limit: 50 }) : []);
+    res.json(reg ? await sales.listSales(db, { ...f, userId: undefined, registerId: reg.id, limit: 500 }) : []);
   });
   r.get('/sales/:id', auth, async (req, res) => {
     const s = await sales.getSale(db, id.parse(req.params.id));

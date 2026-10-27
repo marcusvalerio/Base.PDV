@@ -7,6 +7,7 @@ import { CustomerModal } from '../Fiado';
 import { CashSummary } from '../../components/CashSummary';
 import { useSession } from '../../components/session';
 import { SaleModal } from '../../components/CancelSale';
+import { SalesList } from '../../components/SalesList';
 
 export function Customers() {
   const [q, setQ] = useState('');
@@ -58,23 +59,10 @@ function CustomerForm({ c, onClose, onSaved }: { c: any; onClose: () => void; on
 }
 
 export function Sales() {
-  const { data, loading, error, reload } = useApi<any[]>('/sales');
-  const [sel, setSel] = useState<number | null>(null);
   return (
     <div className="stack">
-      <div className="page-head"><h1>Vendas</h1><span className="faint">Últimas 200</span></div>
-      {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
-        <div className="card flush">{!data?.length ? <Empty>Nenhuma venda.</Empty> : (
-          <table className="table responsive"><thead><tr><th>Nº</th><th>Data</th><th>Operador</th><th>Forma</th><th>Origem</th><th className="r">Total</th></tr></thead><tbody>
-            {data.map((s) => (
-              <tr key={s.id} className="click" onClick={() => setSel(s.id)}><td data-label="Nº">{s.id}</td><td data-label="Data">{dateTime(s.created_at)}</td><td data-label="Operador">{s.user_name}</td>
-                <td data-label="Forma">{s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</td><td data-label="Origem">{s.tab_label ?? 'Balcão'}</td>
-                <td data-label="Total" className="r num">{s.status === 'CANCELLED' ? <span className="badge danger">cancelada</span> : money(s.total_cents)}</td></tr>
-            ))}
-          </tbody></table>
-        )}</div>
-      )}
-      {sel && <SaleModal id={sel} onClose={() => setSel(null)} onChanged={reload} />}
+      <div className="page-head"><h1>Vendas</h1></div>
+      <SalesList admin />
     </div>
   );
 }

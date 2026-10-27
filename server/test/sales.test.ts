@@ -103,3 +103,21 @@ describe('vendas no PDV', () => {
     expect(a.summary.salesCount).toBe(0);
   });
 });
+
+describe('lista de vendas com filtros', () => {
+  it('filtra por forma, situação, origem e período; operador só vê o próprio caixa', async () => {
+    const { admin, op } = await setup();
+    const pid = await product(admin);
+    await openCash(op);
+    const sell = (code: string) => op.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: code, items: [{ productId: pid, qtyMilli: 1000 }] });
+    await sell('DINHEIRO'); await sell('PIX'); await sell('CARTAO_DEBITO');
+    expect((await op.get('/api/sales')).body.length).toBe(3);
+    expect((await op.get('/api/sales?kind=PIX')).body.map((s: any) => s.payment_kind)).toEqual(['PIX']);
+    expect((await op.get('/api/sales?kind=CARD')).body.length).toBe(1);
+    expect((await op.get('/api/sales?origin=MESA')).body.length).toBe(0);
+    expect((await op.get('/api/sales?status=CANCELLED')).body.length).toBe(0);
+    expect((await op.get('/api/sales?preset=today')).body.length).toBe(3);
+    expect((await admin.get('/api/sales?preset=custom&from=2000-01-01&to=2000-01-31')).body.length).toBe(0);
+    expect((await admin.get('/api/sales?kind=XYZ')).status).toBe(400);
+  });
+});

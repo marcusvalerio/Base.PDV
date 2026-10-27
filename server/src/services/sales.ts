@@ -166,16 +166,31 @@ export async function getSale(db: DB, id: number) {
   return s;
 }
 
-export function listSales(db: DB, opts: { registerId?: number; limit?: number }) {
+export interface SalesFilter {
+  registerId?: number; limit?: number; start?: string; end?: string; kind?: string; categoryId?: number;
+  origin?: 'BALCAO' | 'MESA'; status?: 'COMPLETED' | 'CANCELLED'; userId?: number; customer?: string;
+}
+
+/** Vendas com filtros (período, forma, categoria, origem, situação, operador, cliente). Mais recentes primeiro. */
+export function listSales(db: DB, f: SalesFilter) {
   const where: string[] = [];
   const args: any[] = [];
-  if (opts.registerId) { where.push('s.register_id = ?'); args.push(opts.registerId); }
-  args.push(opts.limit ?? 100);
+  if (f.registerId) { where.push('s.register_id = ?'); args.push(f.registerId); }
+  if (f.start) { where.push('s.created_at >= ?'); args.push(f.start); }
+  if (f.end) { where.push('s.created_at < ?'); args.push(f.end); }
+  if (f.kind) { where.push('pm.kind = ?'); args.push(f.kind); }
+  if (f.categoryId) { where.push('EXISTS (SELECT 1 FROM sale_items si JOIN products p ON p.id = si.product_id WHERE si.sale_id = s.id AND p.category_id = ?)'); args.push(f.categoryId); }
+  if (f.origin === 'BALCAO') where.push('s.tab_id IS NULL');
+  if (f.origin === 'MESA') where.push('s.tab_id IS NOT NULL');
+  if (f.status) { where.push('s.status = ?'); args.push(f.status); }
+  if (f.userId) { where.push('s.user_id = ?'); args.push(f.userId); }
+  if (f.customer) { where.push('c.name ILIKE ?'); args.push(`%${f.customer}%`); }
+  args.push(f.limit ?? 100);
   return db.all(
-    `SELECT s.id, s.created_at, s.status, s.total_cents, s.surcharge_cents, pm.name AS payment_method, u.name AS user_name, c.name AS customer_name, t.label AS tab_label
+    `SELECT s.id, s.created_at, s.status, s.total_cents, s.surcharge_cents, pm.name AS payment_method, pm.kind AS payment_kind, u.name AS user_name, c.name AS customer_name, t.label AS tab_label
      FROM sales s JOIN payment_methods pm ON pm.id = s.payment_method_id JOIN users u ON u.id = s.user_id
      LEFT JOIN customers c ON c.id = s.customer_id LEFT JOIN tabs t ON t.id = s.tab_id
-     ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY s.id DESC LIMIT ?`,
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY s.created_at DESC, s.id DESC LIMIT ?`,
     args,
   );
 }
