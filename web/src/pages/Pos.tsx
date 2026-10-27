@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, newKey } from '../lib/api';
 import { money, qty } from '../lib/format';
-import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product, surchargeUnits } from '../components/pos';
+import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product, surchargeUnits, previewSurcharge } from '../components/pos';
+import { enqueueSale } from '../lib/offline';
+import { useSession } from '../components/session';
 import { Modal, useToast, Empty } from '../components/ui';
 import { useAction } from '../lib/hooks';
 import { RegisterGate } from '../components/RegisterGate';
@@ -27,6 +29,9 @@ function PosInner() {
   const [error, setError] = useState<string | null>(null);
   const key = useRef<string>(newKey());
   const toast = useToast();
+  const { user, boot } = useSession();
+  // Mantém no aparelho a lista completa de produtos para vender sem internet.
+  useEffect(() => { if (navigator.onLine) api('/products').catch(() => {}); }, []);
   useEffect(() => { try { sessionStorage.setItem(STORE, JSON.stringify(cart)); } catch { /* sem armazenamento */ } }, [cart]);
 
   const add = (p: Product, m: number) => {
@@ -44,10 +49,24 @@ function PosInner() {
   const openCheckout = () => { key.current = newKey(); setError(null); setCheckout(true); setMobileCart(false); };
   const [confirm, busy] = useAction(async (r: CheckoutResult) => {
     setError(null);
+    const body = { items: cart.map((l) => ({ productId: l.product.id, qtyMilli: l.qtyMilli })), ...r };
+    const kind = boot?.paymentMethods.find((m) => m.code === r.paymentMethodCode)?.kind;
+    const saveOffline = () => {
+      // Sem internet: guarda a venda no aparelho; o total e o troco são uma prévia (o servidor confirma ao enviar).
+      const units = surchargeUnits(cart.map((l) => ({ unit: l.product.unit, qtyMilli: l.qtyMilli })));
+      const totalCents = total + previewSurcharge(boot, r.paymentMethodCode, total, units);
+      const method = boot?.paymentMethods.find((m) => m.code === r.paymentMethodCode)?.name ?? '';
+      enqueueSale({ key: key.current, userId: user!.id, body, at: new Date().toISOString(), totalCents, label: `${method} · ${cart.map((l) => `${qty(l.qtyMilli, l.product.unit)} ${l.product.name}`).join(', ')}` });
+      setCart([]); setCheckout(false);
+      setDone({ offline: true, total_cents: totalCents, payment_method: method, change_cents: r.receivedCents != null ? r.receivedCents - totalCents : null,
+        items: cart.map((l) => ({ qty_milli: l.qtyMilli, unit: l.product.unit, product_name: l.product.name })) });
+    };
+    if (!navigator.onLine && kind !== 'CREDIT') return saveOffline();
     try {
-      const sale = await api('/sales', { body: { idempotencyKey: key.current, items: cart.map((l) => ({ productId: l.product.id, qtyMilli: l.qtyMilli })), ...r } });
+      const sale = await api('/sales', { body: { idempotencyKey: key.current, ...body } });
       setCart([]); setCheckout(false); setDone(sale);
     } catch (e: any) {
+      if (e?.code === 'NETWORK' && kind !== 'CREDIT') return saveOffline();
       // Mantém a mesma chave: tentar de novo não duplica a venda.
       setError(e.message);
     }
@@ -86,8 +105,10 @@ function PosInner() {
       {mobileCart && <Modal title="Pedido" onClose={() => setMobileCart(false)}><div className="card flush">{cartView}</div></Modal>}
       {checkout && <CheckoutModal title="Pagamento" subtotalCents={total} units={surchargeUnits(cart.map((l) => ({ unit: l.product.unit, qtyMilli: l.qtyMilli })))} busy={busy} error={error} onClose={() => !busy && setCheckout(false)} onConfirm={confirm} />}
       {done && (
-        <Modal title="Venda registrada" onClose={() => setDone(null)} footer={<button className="btn primary lg block" autoFocus onClick={() => setDone(null)}>Nova venda</button>}>
-          <div className="notice success">Venda nº {done.id} concluída — {done.payment_method}{done.customer_name ? ` · ${done.customer_name}` : ''}.</div>
+        <Modal title={done.offline ? "Venda guardada" : "Venda registrada"} onClose={() => setDone(null)} footer={<button className="btn primary lg block" autoFocus onClick={() => setDone(null)}>Nova venda</button>}>
+          {done.offline
+            ? <div className="notice warning">Venda guardada no aparelho (sem internet) — {done.payment_method}. Ela será enviada sozinha quando a conexão voltar.</div>
+            : <div className="notice success">Venda nº {done.id} concluída — {done.payment_method}{done.customer_name ? ` · ${done.customer_name}` : ''}.</div>}
           <div className="row"><span className="muted">Total</span><span className="spacer" /><b className="num" style={{ fontSize: 22 }}>{money(done.total_cents)}</b></div>
           {done.change_cents != null && <div className="row"><span className="muted">Troco</span><span className="spacer" /><b className="total-big num">{money(done.change_cents)}</b></div>}
           <div className="faint">{done.items.map((i: any) => `${qty(i.qty_milli, i.unit)} ${i.product_name}`).join(' · ')}</div>

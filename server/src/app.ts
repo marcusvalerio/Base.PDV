@@ -255,9 +255,21 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     const b = z.object({
       idempotencyKey: idemKey, paymentMethodCode: z.string().max(20), items: lines,
       customerId: id.nullish(), receivedCents: cents.nullish(),
+      // Venda feita sem internet: horário real da venda no aparelho (aceito até 3 dias atrás).
+      offlineAt: z.string().datetime().optional(),
     }).parse(req.body);
     if ((await sales.getPaymentMethod(db, b.paymentMethodCode)).kind === 'CREDIT') await modules.requireModule(db, 'fiado');
     const sale = await sales.createSale(db, b, uid(req));
+    if (b.offlineAt && !sale.replayed) {
+      const at = Date.parse(b.offlineAt);
+      if (at > Date.now() - 3 * 864e5 && at < Date.now() + 5 * 60e3) {
+        const iso = new Date(at).toISOString();
+        await db.run('UPDATE sales SET created_at = ? WHERE id = ?', [iso, sale.id]);
+        await db.run("UPDATE stock_movements SET at = ? WHERE ref_type = 'sale' AND type = 'SALE' AND ref_id = ?", [iso, sale.id]);
+        sale.created_at = iso;
+      }
+      await audit(db, uid(req), 'sale.offline_sync', 'sale', sale.id, { offlineAt: b.offlineAt });
+    }
     res.status(sale.replayed ? 200 : 201).json(sale);
   });
   r.get('/sales', auth, async (req, res) => {

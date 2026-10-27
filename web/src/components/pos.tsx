@@ -6,6 +6,7 @@ import { Modal, Loading, ErrorState, Empty, Field, useToast } from './ui';
 import { useSession } from './session';
 import { useHidScanner, CameraButton } from './scanner';
 import { ProductArt } from './ProductArt';
+import { useOffline } from '../lib/offline';
 
 export interface Product { id: number; name: string; image_url?: string | null; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null; low_stock?: boolean }
 
@@ -165,7 +166,7 @@ export interface CheckoutResult { paymentMethodCode: string; customerId: number 
 export const surchargeUnits = (lines: { unit: Unit; qtyMilli: number }[]) => lines.reduce((a, l) => a + (isFractional(l.unit) ? 1 : Math.round(l.qtyMilli / 1000)), 0);
 
 /** Prévia do acréscimo (o valor final é sempre calculado no servidor). */
-function previewSurcharge(boot: any, code: string | null, subtotal: number, units: number) {
+export function previewSurcharge(boot: any, code: string | null, subtotal: number, units: number) {
   if (!code || !boot) return 0;
   if (code === 'FIADO') return (boot.fiadoSurchargeCents ?? 0) * units;
   const c = boot.cardSurcharge?.[code];
@@ -177,13 +178,15 @@ export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm,
   title: string; subtotalCents: number; units: number; onClose: () => void; onConfirm: (r: CheckoutResult) => void; busy: boolean; error?: string | null;
 }) {
   const { boot } = useSession();
+  const { online } = useOffline();
   const [method, setMethod] = useState<string | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [received, setReceived] = useState('');
   const pm = boot?.paymentMethods.find((m) => m.code === method);
   const cards = boot?.paymentMethods.filter((m) => m.kind === 'CARD') ?? [];
-  const others = boot?.paymentMethods.filter((m) => m.kind !== 'CARD') ?? [];
+  // Sem internet não dá para vender fiado (precisa do saldo do cliente no servidor).
+  const others = boot?.paymentMethods.filter((m) => m.kind !== 'CARD' && (online || m.kind !== 'CREDIT')) ?? [];
   const surcharge = previewSurcharge(boot, method, subtotalCents, units);
   const cardHint = (code: string) => { const v = previewSurcharge(boot, code, subtotalCents, units); return v > 0 ? `+ ${money(v)}` : 'sem acréscimo'; };
   const total = subtotalCents + surcharge;
@@ -202,6 +205,7 @@ export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm,
       <button className="btn lg" onClick={onClose} disabled={busy}>Voltar</button>
       <button className="btn primary lg" onClick={confirm} disabled={!canConfirm}>{busy ? 'Registrando…' : `Confirmar ${money(total)}`}</button>
     </>}>
+      {!online && <div className="notice warning">Sem internet: a venda fica guardada no aparelho e é enviada sozinha quando a conexão voltar. Fiado só com internet.</div>}
       <div className="row"><span className="muted">Total a pagar</span><span className="spacer" /><span className="total-big num">{money(total)}</span></div>
       {surcharge > 0 && <div className="notice">Inclui acréscimo {pm?.kind === 'CREDIT' ? 'da venda a prazo' : `do ${pm?.name.toLowerCase()}`}: {money(surcharge)} (produtos: {money(subtotalCents)}).</div>}
       <div className="pay-grid">

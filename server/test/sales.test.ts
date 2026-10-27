@@ -121,3 +121,23 @@ describe('lista de vendas com filtros', () => {
     expect((await admin.get('/api/sales?kind=XYZ')).status).toBe(400);
   });
 });
+
+describe('venda feita sem internet', () => {
+  it('guarda o horário real da venda e reenvio não duplica', async () => {
+    const { admin, op } = await setup();
+    const pid = await product(admin);
+    await openCash(op);
+    const at = new Date(Date.now() - 2 * 3600e3).toISOString();
+    const body = { idempotencyKey: key(), paymentMethodCode: 'DINHEIRO', items: [{ productId: pid, qtyMilli: 1000 }], receivedCents: 600, offlineAt: at };
+    const r1 = await op.post('/api/sales', body);
+    expect(r1.status).toBe(201);
+    expect(r1.body.created_at).toBe(at);
+    const r2 = await op.post('/api/sales', body);
+    expect(r2.status).toBe(200);
+    expect(r2.body.id).toBe(r1.body.id);
+    expect((await op.get('/api/sales')).body.length).toBe(1);
+    // Horário muito antigo é ignorado (fica a hora do envio).
+    const old = await op.post('/api/sales', { ...body, idempotencyKey: key(), offlineAt: '2020-01-01T00:00:00.000Z' });
+    expect(old.body.created_at > '2025').toBe(true);
+  });
+});

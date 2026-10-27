@@ -19,6 +19,7 @@ import { Customers, Sales, Registers, Users, Settings, Audit } from './pages/adm
 import { InventoryList, InventoryCount } from './pages/Inventory';
 import type { ModuleKey } from './components/session';
 import { SystemFooter } from './components/SystemFooter';
+import { OfflineStatus } from './components/OfflineStatus';
 
 function Shell({ children }: { children: ReactNode }) {
   const { user, logout, boot } = useSession();
@@ -40,6 +41,7 @@ function Shell({ children }: { children: ReactNode }) {
           {user?.role === 'ADMIN' && <NavLink to="/admin">Administração</NavLink>}
         </nav>
         <span className="spacer" />
+        <OfflineStatus />
         <span className="faint user-name">{user?.name}</span>
         <button className="btn ghost sm" onClick={logout}>Sair</button>
       </header>

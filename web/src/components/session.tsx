@@ -1,5 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { cacheClear } from '../lib/offline';
 
 export interface User { id: number; name: string; username: string; role: 'ADMIN' | 'OPERADOR' }
 export interface Access { ok: boolean; reason: 'OK' | 'SUSPENDED' | 'NO_SUBSCRIPTION' | 'UNPAID'; trialEndsAt: string | null }
@@ -32,6 +33,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await refreshAccess();
     setUser(r.user);
   };
-  const logout = async () => { await api('/auth/logout', { body: {} }).catch(() => {}); setUser(null); };
+  const logout = async () => { await api('/auth/logout', { body: {} }).catch(() => {}); cacheClear(); setUser(null); };
   return <SessionCtx.Provider value={{ user, boot, ready, access, refreshAccess, login, logout, refreshBoot }}>{children}</SessionCtx.Provider>;
 }

@@ -311,3 +311,4 @@ html, body, #root { min-height: 100%; }
 .table.months .month-row td { background: var(--surface-2) !important; border-top: 2px solid var(--border-strong); padding-top: 10px; padding-bottom: 10px; text-align: left; display: table-cell; }
 .table.months tbody.m-b .month-row td { background: color-mix(in srgb, var(--border) 70%, var(--surface-2)) !important; }
 @media (max-width: 720px) { .table.months .month-row { display: block; } .table.months .month-row td { display: block; } .table.months .month-row td::before { content: none; } }
+.offline-pill { cursor: pointer; border: 0; font: inherit; font-size: 12px; font-weight: 700; height: 26px; }

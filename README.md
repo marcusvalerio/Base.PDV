@@ -43,6 +43,11 @@ npm run typecheck
 | `DB_POOL_MAX` | 10 | Conexões por instância |
 | `BUSINESS_TZ` | America/Sao_Paulo | Fuso para dias/relatórios |
 | `COOKIE_SECURE` | false | `true` atrás de HTTPS |
+| `SETUP_TOKEN` | — | Só no primeiro acesso ao painel central (`/central`) |
+| `STRIPE_SECRET_KEY` | — | Chave secreta do Stripe (`sk_live_…` / `sk_test_…`) |
+| `STRIPE_PRICE_ID` | — | Preço recorrente da assinatura (`price_…`) |
+| `STRIPE_WEBHOOK_SECRET` | — | Segredo do webhook (`whsec_…`) |
+| `APP_URL` | — | Endereço do site, ex.: `https://basepdv.vercel.app` (volta do Checkout) |
 
 Nenhum segredo é necessário em código. Senhas e códigos de caixa são guardados com hash scrypt.
 
@@ -59,6 +64,29 @@ Mais detalhes: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) e [docs/PENDENCIAS.md]
    - `DB_POOL_MAX` — `3` (funções serverless abrem poucas conexões cada).
    - `SETUP_TOKEN` — texto longo e aleatório, usado só no primeiro acesso.
    - `BUSINESS_TZ` — `America/Sao_Paulo`.
-3. Faça o deploy e abra o site: aparece **Configuração inicial**. Informe o `SETUP_TOKEN` e crie o super administrador (dono).
-4. Depois disso a tela some (só funciona com o banco sem usuários). Pode remover o `SETUP_TOKEN` da Vercel.
-5. Entre como super admin → **Administração → Liberações** para liberar os módulos; em **Configurações**, defina o código do caixa e o de cancelamento.
+3. Faça o deploy e abra **/central**: no primeiro acesso, informe o `SETUP_TOKEN` e crie o administrador central (dono da plataforma).
+4. No painel central, crie cada estabelecimento (com o administrador dele), escolha teste grátis / assinatura / isento e as liberações.
+5. O administrador do estabelecimento entra pela página inicial; em **Configurações** define o código do caixa e o de cancelamento.
+
+## Perfis
+- **Admin central** (`/central`): cria e suspende estabelecimentos, libera módulos, dá teste grátis ou isenção, redefine senhas.
+- **Administrador** (de um estabelecimento): cadastros, equipe, relatórios, configurações e a assinatura.
+- **Operador**: vende, mesas, fiado, caixa e contagem de inventário.
+
+Cada estabelecimento tem um schema próprio no Postgres (`t_<nº>`); logins são únicos entre todos.
+
+## Assinatura (Stripe)
+1. No Stripe, crie um produto com preço **recorrente** e copie o `price_…`.
+2. Em **Developers → Webhooks**, adicione `https://SEU-SITE/api/stripe/webhook` com os eventos
+   `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
+   `customer.subscription.deleted` e `invoice.payment_failed`. Copie o `whsec_…`.
+3. Ative o **Customer portal** (Settings → Billing → Customer portal).
+4. Preencha as variáveis `STRIPE_*` e `APP_URL` na Vercel e faça o deploy.
+
+Sem assinatura ativa (ou com pagamento recusado), o sistema sai do ar na hora para o estabelecimento;
+o administrador vê o botão para pagar e volta assim que o Stripe confirma.
+
+## Modo offline
+O caixa continua vendendo sem internet (dinheiro, Pix e cartão): a venda fica guardada no aparelho e é
+enviada sozinha quando a conexão volta, com o horário real. Fiado, mesas, cadastros, relatórios e fechamento
+de caixa precisam de internet. É preciso ter aberto o sistema com internet pelo menos uma vez no aparelho.
