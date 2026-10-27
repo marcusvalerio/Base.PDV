@@ -53,9 +53,10 @@ h1,h2,h3{font-family:var(--display);letter-spacing:-.035em;line-height:1.05;marg
 .pill.bad{background:#dc2626;color:#fff;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7v6M12 16.6v.1' stroke-width='3'/%3E%3C/svg%3E")}
 /* papéis voando */
 .paper-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;-webkit-mask-image:radial-gradient(ellipse 46% 42% at 50% 34%,rgba(0,0,0,.12),#000 100%);mask-image:radial-gradient(ellipse 46% 42% at 50% 34%,rgba(0,0,0,.12),#000 100%)}
+.nopaper .paper-fx{-webkit-mask-image:radial-gradient(ellipse 42% 30% at 50% 22%,rgba(0,0,0,.15),#000 100%);mask-image:radial-gradient(ellipse 42% 30% at 50% 22%,rgba(0,0,0,.15),#000 100%)}
 .final .paper-fx{-webkit-mask-image:radial-gradient(ellipse 40% 45% at 50% 50%,rgba(0,0,0,.12),#000 100%);mask-image:radial-gradient(ellipse 40% 45% at 50% 50%,rgba(0,0,0,.12),#000 100%)}
 .hero .wrap,.final .wrap,.nopaper .wrap{position:relative;z-index:2}
-.nopaper{position:relative;overflow:hidden;padding-top:170px}
+.nopaper{position:relative;overflow:hidden;padding:110px 0;background:radial-gradient(800px 400px at 50% 30%,rgba(59,108,255,.10),transparent 70%)}
 .swap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .sw{padding:22px;border-radius:18px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
 .sw s{color:var(--t3);text-decoration-color:var(--bad);text-decoration-thickness:2px;font-size:14.5px}
@@ -166,7 +167,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 </div></header>
 
 <section class="hero">
-  <div class="glow"></div><div class="grid-bg"></div><canvas class="paper-fx" data-papers="18" aria-hidden="true"></canvas>
+  <div class="glow"></div><div class="grid-bg"></div>
   <div class="wrap hero-text">
     <span class="eyebrow"><b>v1.5</b> Cartão de débito e crédito com acréscimo configurável</span>
     <h1><span class="grad">Adeus, papel.</span><br/>Sua loja toda no sistema.</h1>
@@ -179,17 +180,17 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
       <div class="device">
         <div class="device-bar"><i></i><i></i><i></i><span>Vender · uma venda do começo ao fim</span><em id="demo-step">Toque no produto</em></div>
         <div class="screen">
-          <img class="frame on" src="img/t-pos.webp" alt="Tela de vender com os produtos" />
-          <img class="frame" src="img/t-cart.webp" alt="Pedido com 3 cervejas lata e 1 cerveja 600 ml" />
-          <img class="frame" src="img/t-checkout.webp" alt="Formas de pagamento" />
-          <img class="frame" src="img/t-card.webp" alt="Escolha entre débito e crédito" />
-          <img class="frame" src="img/t-credit.webp" alt="Crédito selecionado com acréscimo" />
-          <img class="frame" src="img/t-done.webp" alt="Venda registrada" />
+          <img class="frame on" src="/conheca/img/t-pos.webp" alt="Tela de vender com os produtos" />
+          <img class="frame" src="/conheca/img/t-cart.webp" alt="Pedido com 3 cervejas lata e 1 cerveja 600 ml" />
+          <img class="frame" src="/conheca/img/t-checkout.webp" alt="Formas de pagamento" />
+          <img class="frame" src="/conheca/img/t-card.webp" alt="Escolha entre débito e crédito" />
+          <img class="frame" src="/conheca/img/t-credit.webp" alt="Crédito selecionado com acréscimo" />
+          <img class="frame" src="/conheca/img/t-done.webp" alt="Venda registrada" />
           <span class="tap" id="tap"></span>
         </div>
         <div class="progress"><span id="demo-bar"></span></div>
       </div>
-      <div class="phone"><img src="img/m-dash.webp" alt="Painel no celular" /></div>
+      <div class="phone"><img src="/conheca/img/m-dash.webp" alt="Painel no celular" /></div>
       <div class="floater f1"><span class="pill ok">Venda concluída</span>R$ 31,05</div>
       <div class="floater f2"><span class="pill warn">Atenção</span>Lote vencendo</div>
       <div class="floater f3"><span class="pill bad">Sem estoque</span>Porção de Fritas</div>
@@ -197,7 +198,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
   </div>
 </section>
 
-<section class="nopaper"><canvas class="paper-fx" data-papers="12" data-soft="1" aria-hidden="true"></canvas><div class="wrap">
+<section class="nopaper"><canvas class="paper-fx" data-papers="22" aria-hidden="true"></canvas><div class="wrap">
   <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">Do papel para o sistema</span><h2>Tudo que hoje está no papel,<br/><span class="grad">sistematizado.</span></h2><p>Nada de comanda perdida, conta errada ou caderno rasgado.</p></div>
   <div class="swap">
     <div class="sw reveal"><s>Comanda de papel</s><b>Mesas no sistema</b><small>Cada pedido lançado na hora, com o total sempre certo.</small></div>
@@ -213,21 +214,21 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
     <button class="tab on" data-i="0">Vender</button><button class="tab" data-i="1">Mesas</button><button class="tab" data-i="2">Fiado</button><button class="tab" data-i="3">Painel</button><button class="tab" data-i="4">Produtos</button><button class="tab" data-i="5">Análise</button>
   </div>
   <div class="gal-wrap"><div class="gallery" id="gallery">
-    <figure class="on"><img loading="lazy" src="img/t-cart.webp" alt="Tela de vender" /><figcaption>Toque no produto e ele entra no pedido. Sem estoque aparece em vermelho.</figcaption></figure>
-    <figure><img loading="lazy" src="img/t-mesas.webp" alt="Mesas abertas" /><figcaption>Cada mesa com quanto já consumiu e há quanto tempo está aberta.</figcaption></figure>
-    <figure><img loading="lazy" src="img/t-fiado.webp" alt="Clientes do fiado" /><figcaption>Quem deve e quanto, na hora. Receba direto pelo caixa.</figcaption></figure>
-    <figure><img loading="lazy" src="img/t-dash.webp" alt="Painel do administrador" /><figcaption>O dia em um olhar: faturamento, caixas abertos e o que precisa de atenção.</figcaption></figure>
-    <figure><img loading="lazy" src="img/t-prod.webp" alt="Lista de produtos" /><figcaption>Estoque de cada produto com a cor certa: verde, amarelo ou vermelho.</figcaption></figure>
-    <figure><img loading="lazy" src="img/t-analise.webp" alt="Análise de vendas" /><figcaption>Faturamento, custo e lucro bruto por período, comparado com o anterior.</figcaption></figure>
+    <figure class="on"><img loading="lazy" src="/conheca/img/t-cart.webp" alt="Tela de vender" /><figcaption>Toque no produto e ele entra no pedido. Sem estoque aparece em vermelho.</figcaption></figure>
+    <figure><img loading="lazy" src="/conheca/img/t-mesas.webp" alt="Mesas abertas" /><figcaption>Cada mesa com quanto já consumiu e há quanto tempo está aberta.</figcaption></figure>
+    <figure><img loading="lazy" src="/conheca/img/t-fiado.webp" alt="Clientes do fiado" /><figcaption>Quem deve e quanto, na hora. Receba direto pelo caixa.</figcaption></figure>
+    <figure><img loading="lazy" src="/conheca/img/t-dash.webp" alt="Painel do administrador" /><figcaption>O dia em um olhar: faturamento, caixas abertos e o que precisa de atenção.</figcaption></figure>
+    <figure><img loading="lazy" src="/conheca/img/t-prod.webp" alt="Lista de produtos" /><figcaption>Estoque de cada produto com a cor certa: verde, amarelo ou vermelho.</figcaption></figure>
+    <figure><img loading="lazy" src="/conheca/img/t-analise.webp" alt="Análise de vendas" /><figcaption>Faturamento, custo e lucro bruto por período, comparado com o anterior.</figcaption></figure>
   </div></div>
 </div></section>
 
 <section class="phones-sec"><div class="wrap">
   <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">No bolso</span><h2>O mesmo sistema<br/>no celular.</h2><p>Venda no caixa, confira o painel em casa, feche o caixa de qualquer lugar.</p></div>
   <div class="phones">
-    <div class="phone p1" data-par="-0.06"><img loading="lazy" src="img/m-pos.webp" alt="Vender pelo celular" /></div>
-    <div class="phone p2" data-par="0.04"><img loading="lazy" src="img/m-dash.webp" alt="Painel pelo celular" /></div>
-    <div class="phone p3" data-par="-0.03"><img loading="lazy" src="img/m-caixa.webp" alt="Caixa pelo celular" /></div>
+    <div class="phone p1" data-par="-0.06"><img loading="lazy" src="/conheca/img/m-pos.webp" alt="Vender pelo celular" /></div>
+    <div class="phone p2" data-par="0.04"><img loading="lazy" src="/conheca/img/m-dash.webp" alt="Painel pelo celular" /></div>
+    <div class="phone p3" data-par="-0.03"><img loading="lazy" src="/conheca/img/m-caixa.webp" alt="Caixa pelo celular" /></div>
   </div>
 </div></section>
 
@@ -280,7 +281,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
   </div>
 </div></section>
 
-<section class="final"><div class="glow"></div><canvas class="paper-fx" data-papers="18" aria-hidden="true"></canvas><div class="wrap">
+<section class="final"><div class="glow"></div><div class="wrap">
   <h2 class="reveal"><span class="grad">Menos papel.</span><br/>Mais tempo para o cliente.</h2>
   <p class="reveal">Tudo registrado, nada perdido. Entre com a conta criada pelo administrador do seu estabelecimento.</p>
   <div class="cta reveal"><a class="btn primary" href="/">Entrar no sistema →</a></div>
