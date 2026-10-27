@@ -108,15 +108,12 @@ describe('inventário e acuracidade', () => {
     expect((await op.get('/api/inventory-target')).body.targetPct).toBe(97.5);
   });
 
-  it('nome, logo e WhatsApp do estabelecimento: público na entrada, WhatsApp só pelo super admin', async () => {
+  it('nome e logo do estabelecimento: públicos na tela de entrada', async () => {
     const { app, admin } = await setup();
     expect((await admin.put('/api/settings', { store_name: 'Bar do Teste', store_logo_url: 'https://exemplo.com/logo.png' })).status).toBe(200);
     expect((await admin.put('/api/settings', { store_logo_url: 'http://inseguro.com/x.png' })).status).toBe(400);
-    expect((await admin.put('/api/settings', { contact_whatsapp: '11999990000' })).status).toBe(403);
-    const sup = await agent(app, 'super');
-    expect((await sup.put('/api/settings', { contact_whatsapp: '(11) 99999-0000' })).status).toBe(200);
     const info = (await (await import('supertest')).default(app).get('/api/public/info')).body;
-    expect(info).toEqual({ storeName: 'Bar do Teste', storeLogo: 'https://exemplo.com/logo.png', whatsapp: '11999990000' });
+    expect(info).toEqual({ storeName: 'Bar do Teste', storeLogo: 'https://exemplo.com/logo.png' });
     expect((await admin.get('/api/bootstrap')).body.storeName).toBe('Bar do Teste');
   });
 });

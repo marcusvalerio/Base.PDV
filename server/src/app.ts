@@ -123,7 +123,6 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   r.get('/public/info', async (_req, res) => res.json({
     storeName: await settings.getSetting(db, 'store_name'),
     storeLogo: await settings.getSetting(db, 'store_logo_url'),
-    whatsapp: await settings.getSetting(db, 'contact_whatsapp'),
   }));
   r.get('/setup/status', async (_req, res) => {
     const n = (await db.one('SELECT COUNT(*)::int AS n FROM users')).n;
@@ -380,7 +379,6 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     const b = z.object({
       store_name: z.string().trim().max(60).optional(),
       store_logo_url: z.union([z.literal(''), z.string().trim().max(500).url('Link da logo inválido.').refine((u) => /^https:\/\//.test(u), 'Use um link https://')]).optional(),
-      contact_whatsapp: z.union([z.literal(''), z.string().transform((t) => t.replace(/\D/g, '')).pipe(z.string().regex(/^\d{10,13}$/, 'WhatsApp inválido: use DDD + número.'))]).optional(),
       fiado_surcharge_cents: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       cash_code_mode: z.enum(['SHARED', 'INDIVIDUAL']).optional(),
       expiry_alert_days: z.coerce.number().int().min(1).max(365).transform(String).optional(),
@@ -393,10 +391,6 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
       card_credit_surcharge_value: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       inventory_accuracy_target: z.union([z.literal(''), z.coerce.number().min(0).max(100).transform(String)]).optional(),
     }).parse(req.body);
-    if (b.contact_whatsapp !== undefined && !req.user!.superAdmin) {
-      if (b.contact_whatsapp !== await settings.getSetting(db, 'contact_whatsapp')) throw forbidden('Somente o super administrador altera o WhatsApp de contato.');
-      delete b.contact_whatsapp;
-    }
     for (const [k, v] of Object.entries(b)) if (v !== undefined) await settings.setSetting(db, k, String(v), uid(req));
     res.json(await settings.publicSettings(db));
   });

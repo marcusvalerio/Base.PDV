@@ -278,3 +278,6 @@ code, .kbd, .code { font-family: var(--mono); }
 .store-logo { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; flex: none; margin-right: 2px; }
 .store-logo.lg { width: 44px; height: 44px; }
 .login-logo { width: 64px; height: 64px; border-radius: 16px; object-fit: cover; }
+.onboarding .card { max-width: 440px; }
+.onboarding h1 { font-size: 26px; letter-spacing: -0.03em; line-height: 1.15; margin: 0; }
+.onb-step { color: var(--accent); font-weight: 650; font-size: 13px; margin-bottom: 6px; }

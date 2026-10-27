@@ -1,8 +1,9 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './components/session';
 import { ToastProvider, Loading } from './components/ui';
 import Login from './pages/Login';
+import Onboarding, { onboardingSkipped } from './pages/Onboarding';
 import Pos from './pages/Pos';
 import { TabsList, TabDetail } from './pages/Tabs';
 import Fiado from './pages/Fiado';
@@ -71,9 +72,11 @@ function M({ k, children }: { k: ModuleKey; children: ReactNode }) {
 }
 
 function Routed() {
-  const { user, ready } = useSession();
+  const { user, ready, boot } = useSession();
+  const [onbDone, setOnbDone] = useState(false);
   if (!ready) return <Loading />;
   if (!user) return <Login />;
+  if (user.role === 'ADMIN' && boot && !boot.storeName && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
   const A = (el: ReactNode) => <AdminLayout>{el}</AdminLayout>;
   return (
     <Shell>
