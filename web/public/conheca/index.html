@@ -6,8 +6,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#07080c" />
-<meta name="description" content="Central.PDV: o caixa e a gestão do seu bar ou mercearia no celular, tablet ou computador. Vendas, mesas, fiado, estoque e relatórios em um lugar só." />
-<title>Central.PDV · O caixa do seu bar, simples e completo</title>
+<meta name="description" content="Central.PDV: o caixa e a gestão do seu estabelecimento no celular, tablet ou computador. Vendas, mesas, fiado, estoque e relatórios em um lugar só." />
+<title>Central.PDV · Adeus, papel. Seu estabelecimento no sistema</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Geist+Mono:wght@400..600&family=Inter:wght@400..700&display=swap" rel="stylesheet" />
@@ -51,6 +51,19 @@ h1,h2,h3{font-family:var(--display);letter-spacing:-.035em;line-height:1.05;marg
 .pill.ok{background:#16a34a;color:#fff;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
 .pill.warn{background:#f5b301;color:#2b1d00;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5L2.5 20h19z'/%3E%3Cpath d='M12 10v4.5M12 17.6v.1' stroke-width='3'/%3E%3C/svg%3E")}
 .pill.bad{background:#dc2626;color:#fff;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7v6M12 16.6v.1' stroke-width='3'/%3E%3C/svg%3E")}
+/* papéis voando */
+.paper-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;-webkit-mask-image:radial-gradient(ellipse 46% 42% at 50% 34%,rgba(0,0,0,.12),#000 100%);mask-image:radial-gradient(ellipse 46% 42% at 50% 34%,rgba(0,0,0,.12),#000 100%)}
+.final .paper-fx{-webkit-mask-image:radial-gradient(ellipse 40% 45% at 50% 50%,rgba(0,0,0,.12),#000 100%);mask-image:radial-gradient(ellipse 40% 45% at 50% 50%,rgba(0,0,0,.12),#000 100%)}
+.hero .wrap,.final .wrap,.nopaper .wrap{position:relative;z-index:2}
+.nopaper{position:relative;overflow:hidden;padding-top:170px}
+.swap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.sw{padding:22px;border-radius:18px;background:var(--card);border:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.sw s{color:var(--t3);text-decoration-color:var(--bad);text-decoration-thickness:2px;font-size:14.5px}
+.sw b{font-family:var(--display);font-size:20px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+.sw b::before{content:"";width:18px;height:18px;flex:none;border-radius:50%;background:#16a34a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4L18 8'/%3E%3C/svg%3E") center/12px no-repeat}
+.sw small{color:var(--t2);font-size:14px}
+@media(max-width:900px){.swap{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.swap{grid-template-columns:1fr}}
 /* vitrine */
 .hero-text{text-align:center;display:flex;flex-direction:column;align-items:center}
 .hero-text .lead{margin-inline:auto}.hero-text .cta,.hero-text .ticks{justify-content:center}
@@ -75,7 +88,7 @@ h1,h2,h3{font-family:var(--display);letter-spacing:-.035em;line-height:1.05;marg
 .f1{left:-30px;top:18%;animation-delay:-1s}.f2{right:-40px;top:8%;animation-delay:-2.5s}.f3{left:6%;bottom:-26px;animation-delay:-4s}
 @media(max-width:760px){.showcase{margin-top:44px}.showcase .phone{right:-6px;bottom:-40px;width:30%;border-width:5px;border-radius:20px}.f1{left:-4px;top:auto;bottom:-56px}.f2{right:-4px;top:auto;bottom:-56px;left:auto}.f1{display:none}.f3{display:none}.floater{font-size:11.5px;padding:8px 10px}.device-bar span{display:none}.tap{width:30px;height:30px;margin:-15px 0 0 -15px}}
 /* galeria */
-.inside{padding-top:150px}
+.inside{padding-top:90px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
 .tab{position:relative;overflow:hidden;font:inherit;font-weight:650;font-size:14.5px;color:var(--t2);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
 .tab.on{color:#fff;border-color:#3b4a80;background:rgba(59,108,255,.16)}
@@ -153,11 +166,11 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 </div></header>
 
 <section class="hero">
-  <div class="glow"></div><div class="grid-bg"></div>
+  <div class="glow"></div><div class="grid-bg"></div><canvas class="paper-fx" data-papers="18" aria-hidden="true"></canvas>
   <div class="wrap hero-text">
     <span class="eyebrow"><b>v1.5</b> Cartão de débito e crédito com acréscimo configurável</span>
-    <h1><span class="grad">O caixa do seu bar,</span><br/>simples de verdade.</h1>
-    <p class="lead">Vendas, mesas, fiado, estoque e relatórios em um lugar só. Funciona no celular, no tablet e no computador, sem instalar nada.</p>
+    <h1><span class="grad">Adeus, papel.</span><br/>Sua loja toda no sistema.</h1>
+    <p class="lead">Comanda, caderninho do fiado, controle de estoque e fechamento de caixa: tudo sistematizado em um lugar só. Funciona no celular, no tablet e no computador, sem instalar nada.</p>
     <div class="cta"><a class="btn primary" href="/">Começar a vender →</a><a class="btn ghost" href="#por-dentro">Ver o sistema por dentro</a></div>
     <div class="ticks"><span>Vários caixas ao mesmo tempo</span><span>Leitor de código e câmera</span><span>Fiado com controle de saldo</span></div>
   </div>
@@ -184,6 +197,16 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
   </div>
 </section>
 
+<section class="nopaper"><canvas class="paper-fx" data-papers="12" data-soft="1" aria-hidden="true"></canvas><div class="wrap">
+  <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">Do papel para o sistema</span><h2>Tudo que hoje está no papel,<br/><span class="grad">sistematizado.</span></h2><p>Nada de comanda perdida, conta errada ou caderno rasgado.</p></div>
+  <div class="swap">
+    <div class="sw reveal"><s>Comanda de papel</s><b>Mesas no sistema</b><small>Cada pedido lançado na hora, com o total sempre certo.</small></div>
+    <div class="sw reveal"><s>Caderninho do fiado</s><b>Saldo por cliente</b><small>Quem deve, quanto e desde quando. Recebimento registrado.</small></div>
+    <div class="sw reveal"><s>Caderno de estoque</s><b>Estoque automático</b><small>Cada venda dá baixa sozinha. Aviso quando estiver acabando.</small></div>
+    <div class="sw reveal"><s>Fechamento na calculadora</s><b>Caixa conferido</b><small>Dinheiro, Pix e cartão separados no fechamento.</small></div>
+  </div>
+</div></section>
+
 <section id="por-dentro" class="inside"><div class="wrap">
   <div class="sec-head reveal"><span class="kicker">Por dentro</span><h2>Telas de verdade.<br/><span class="grad">Nada de maquete.</span></h2><p>Estas são capturas do próprio Central.PDV, com dados de teste.</p></div>
   <div class="tabs reveal" role="tablist">
@@ -200,7 +223,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 </div></section>
 
 <section class="phones-sec"><div class="wrap">
-  <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">No bolso</span><h2>O mesmo sistema<br/>no celular.</h2><p>Venda no balcão, confira o painel em casa, feche o caixa de qualquer lugar.</p></div>
+  <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">No bolso</span><h2>O mesmo sistema<br/>no celular.</h2><p>Venda no caixa, confira o painel em casa, feche o caixa de qualquer lugar.</p></div>
   <div class="phones">
     <div class="phone p1" data-par="-0.06"><img loading="lazy" src="img/m-pos.webp" alt="Vender pelo celular" /></div>
     <div class="phone p2" data-par="0.04"><img loading="lazy" src="img/m-dash.webp" alt="Painel pelo celular" /></div>
@@ -209,7 +232,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 </div></section>
 
 <section id="recursos"><div class="wrap">
-  <div class="sec-head reveal"><span class="kicker">Recursos</span><h2>Tudo o que o balcão precisa.<br/><span class="grad">Nada que atrapalhe.</span></h2><p>Feito para quem precisa atender rápido e fechar o dia sabendo exatamente onde está o dinheiro.</p></div>
+  <div class="sec-head reveal"><span class="kicker">Recursos</span><h2>Tudo o que o seu estabelecimento precisa.<br/><span class="grad">Nada que atrapalhe.</span></h2><p>Feito para quem precisa atender rápido e fechar o dia sabendo exatamente onde está o dinheiro.</p></div>
   <div class="feat">
     <div class="fc big reveal" style="--c:rgba(59,108,255,.28)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div><h3>Venda em três toques</h3><p>Toque no produto, escolha a forma de pagamento e pronto. Leitor de código de barras, câmera do celular e busca por nome para quando o movimento aperta.</p></div>
     <div class="fc reveal" style="--c:rgba(124,92,255,.28)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div><h3>Mesas e comandas</h3><p>Lance pedidos na mesa e feche a conta quando o cliente pedir. Cancelou? Os itens voltam para a mesa.</p></div>
@@ -257,9 +280,9 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
   </div>
 </div></section>
 
-<section class="final"><div class="glow"></div><div class="wrap">
-  <h2 class="reveal"><span class="grad">Menos papel.</span><br/>Mais tempo no balcão.</h2>
-  <p class="reveal">Entre com a conta criada pelo administrador do seu estabelecimento.</p>
+<section class="final"><div class="glow"></div><canvas class="paper-fx" data-papers="18" aria-hidden="true"></canvas><div class="wrap">
+  <h2 class="reveal"><span class="grad">Menos papel.</span><br/>Mais tempo para o cliente.</h2>
+  <p class="reveal">Tudo registrado, nada perdido. Entre com a conta criada pelo administrador do seu estabelecimento.</p>
   <div class="cta reveal"><a class="btn primary" href="/">Entrar no sistema →</a></div>
 </div></section>
 
@@ -299,6 +322,31 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
   function f(){const y=scrollY,h=innerHeight;const p=Math.min(1,y/(h*.6));dev.style.setProperty('--tilt',(14*(1-p))+'deg');dev.style.setProperty('--sc',(.94+.06*p));
     ph.forEach(el=>{const r=el.parentElement.getBoundingClientRect();el.style.transform='translateY('+((r.top-h/2)*+el.dataset.par)+'px)'})}
   addEventListener('scroll',()=>requestAnimationFrame(f),{passive:true});f();
+})();
+
+// Papéis voando: folhas de comanda e caderno que caem girando e somem.
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  document.querySelectorAll('.paper-fx').forEach(cv=>{
+    const ctx=cv.getContext('2d'),N=+cv.dataset.papers||16,soft=!!cv.dataset.soft;let W,H,dpr,ps=[],vis=true,last=0;
+    const size=()=>{dpr=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)};
+    const kinds=['comanda','caderno','nota'];
+    const mk=(first)=>{const sc=(W<600?.65:1)*(.7+Math.random()*.6);return{x:Math.random()*W,y:first?Math.random()*H*.9-H*.2:-60-Math.random()*120,w:46*sc,h:60*sc,vy:.35+Math.random()*.6,ph:Math.random()*6.28,sw:.6+Math.random()*1.2,rot:Math.random()*6.28,vr:(Math.random()-.5)*.02,flip:Math.random()*6.28,vf:.02+Math.random()*.03,life:0,max:H*(.55+Math.random()*.45),k:kinds[Math.random()*3|0]}};
+    const draw=(p)=>{const fade=Math.max(0,Math.min(1,p.life/40))*Math.max(0,Math.min(1,(p.max-p.y)/(H*.18)));if(fade<=0)return;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);const fx=Math.cos(p.flip);ctx.scale(fx,1);ctx.globalAlpha=fade*(soft?.35:.7);
+      const w=p.w,h=p.h,shade=200+Math.abs(fx)*55|0;
+      ctx.fillStyle=`rgb(${shade},${shade},${Math.min(255,shade+6)})`;ctx.shadowColor='rgba(0,0,0,.35)';ctx.shadowBlur=10;ctx.shadowOffsetY=4;
+      ctx.beginPath();ctx.moveTo(-w/2,-h/2);ctx.lineTo(w/2-8,-h/2);ctx.lineTo(w/2,-h/2+8);ctx.lineTo(w/2,h/2);ctx.lineTo(-w/2,h/2);ctx.closePath();ctx.fill();ctx.shadowColor='transparent';
+      ctx.strokeStyle=p.k==='caderno'?'rgba(80,120,220,.45)':'rgba(60,60,70,.35)';ctx.lineWidth=1;
+      const n=p.k==='nota'?3:6;for(let i=1;i<=n;i++){const y=-h/2+i*h/(n+1.5);ctx.beginPath();ctx.moveTo(-w/2+6,y);ctx.lineTo(w/2-(i%2?6:14),y);ctx.stroke()}
+      if(p.k==='caderno'){ctx.strokeStyle='rgba(220,60,60,.5)';ctx.beginPath();ctx.moveTo(-w/2+9,-h/2);ctx.lineTo(-w/2+9,h/2);ctx.stroke()}
+      if(p.k==='comanda'){ctx.fillStyle='rgba(60,60,70,.55)';ctx.fillRect(-w/2+6,-h/2+5,w*.45,3)}
+      ctx.restore()};
+    const tick=(t)=>{requestAnimationFrame(tick);if(!vis)return;const dt=Math.min(3,(t-last)/16.7||1);last=t;ctx.clearRect(0,0,W,H);
+      ps.forEach((p,i)=>{p.life+=dt;p.ph+=.02*dt;p.y+=p.vy*dt;p.x+=Math.sin(p.ph)*p.sw*dt*.6;p.rot+=p.vr*dt+Math.sin(p.ph)*.004;p.flip+=p.vf*dt;if(p.y>p.max||p.x<-80||p.x>W+80)ps[i]=mk(false);draw(p)})};
+    size();ps=Array.from({length:N},()=>mk(true));addEventListener('resize',size);
+    new IntersectionObserver(e=>vis=e[0].isIntersecting).observe(cv);requestAnimationFrame(tick);
+  });
 })();
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4)*70+'ms';io.observe(el)});
