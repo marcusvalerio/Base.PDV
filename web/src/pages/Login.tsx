@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useSession } from '../components/session';
 import { Field } from '../components/ui';
 import { api } from '../lib/api';
+import { SystemFooter } from '../components/SystemFooter';
 
 export default function Login() {
   const { login } = useSession();
@@ -16,6 +17,8 @@ function LoginForm({ login }: { login: (u: string, p: string) => Promise<void> }
   const [p, setP] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [store, setStore] = useState('');
+  useEffect(() => { api<{ storeName: string }>('/public/info').then((r) => setStore(r.storeName)).catch(() => {}); }, []);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
@@ -25,12 +28,13 @@ function LoginForm({ login }: { login: (u: string, p: string) => Promise<void> }
   return (
     <div className="login">
       <form className="card stack" onSubmit={submit}>
-        <div><h1>Central<span className="brand-dot">.</span>PDV</h1><p className="muted" style={{ margin: '4px 0 8px' }}>Entre com a sua conta.</p></div>
+        <div><h1>{store || <>Central<span className="brand-dot">.</span>PDV</>}</h1><p className="muted" style={{ margin: '4px 0 8px' }}>Entre com a sua conta.</p></div>
         <Field label="Usuário"><input className="input lg" autoComplete="username" autoCapitalize="none" value={u} onChange={(e) => setU(e.target.value)} autoFocus required /></Field>
         <Field label="Senha"><input className="input lg" type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} required /></Field>
         {err && <div className="notice danger" role="alert">{err}</div>}
         <button className="btn primary lg block" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
       </form>
+      <SystemFooter />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import Stock from './pages/admin/Stock';
 import { Customers, Sales, Registers, Users, Settings, Audit, Modules } from './pages/admin/Admin';
 import { InventoryList, InventoryCount } from './pages/Inventory';
 import type { ModuleKey } from './components/session';
+import { SystemFooter } from './components/SystemFooter';
 
 function Shell({ children }: { children: ReactNode }) {
   const { user, logout, boot } = useSession();
@@ -26,7 +27,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand">Central<span className="brand-dot">.</span>PDV</span>
+        <span className="brand" title={boot?.storeName || undefined}>{boot?.storeName || 'Meu estabelecimento'}</span>
         <nav className="nav">
           <NavLink to="/" end>Vender</NavLink>
           {on('mesas') && <NavLink to="/mesas">Mesas</NavLink>}
@@ -40,6 +41,7 @@ function Shell({ children }: { children: ReactNode }) {
         <button className="btn ghost sm" onClick={logout}>Sair</button>
       </header>
       {inAdmin ? children : <main className={`content ${loc.pathname === '/' ? 'has-bar' : ''}`}>{children}</main>}
+      {loc.pathname !== '/' && <SystemFooter />}
       <nav className="bottom-nav" aria-label="Navegação principal">
         {links.map(([to, l]) => <NavLink key={to} to={to} end={to === '/'}>{l}</NavLink>)}
       </nav>

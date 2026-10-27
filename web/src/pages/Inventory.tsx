@@ -9,7 +9,7 @@ import { useHidScanner, CameraButton } from '../components/scanner';
 
 const SCOPE: Record<string, string> = { FULL: 'Geral', CATEGORY: 'Por categoria', PARTIAL: 'Parcial' };
 /** Cor pela meta do administrador; sem meta, cor neutra. */
-const accClass = (v: number | null, target: number | null) => (v == null || target == null ? '' : v * 100 >= target ? 'success' : 'danger');
+const accClass = (v: number | null, target: number | null) => (v == null || target == null ? '' : v * 100 >= target ? 'success' : v * 100 >= target - 5 ? 'warning' : 'danger');
 const useTarget = () => useApi<{ targetPct: number | null }>('/inventory-target').data?.targetPct ?? null;
 function MetaText({ v, target }: { v: number | null; target: number | null }) {
   if (target == null) return <>Meta não definida (Configurações)</>;

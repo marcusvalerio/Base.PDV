@@ -67,6 +67,10 @@ label.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .badge.success { background: var(--success-soft); color: var(--success); }
 .badge.warning { background: var(--warning-soft); color: var(--warning); }
 .badge.danger { background: var(--danger-soft); color: var(--danger); }
+.badge.success::before, .badge.warning::before, .badge.danger::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 6px; flex: none; }
+.badge.success { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 28%, transparent); }
+.badge.warning { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 32%, transparent); }
+.badge.danger { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 32%, transparent); }
 .badge.accent { background: var(--accent-soft); color: var(--accent); }
 .notice { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-2); font-size: 13px; }
 .notice.warning { background: var(--warning-soft); color: var(--warning); }
@@ -250,3 +254,14 @@ h1 { letter-spacing: -0.025em; }
 .total-big, .metric .value { font-variant-numeric: tabular-nums; }
 code, .kbd, .code { font-family: var(--mono); }
 .brand-dot { color: var(--accent); }
+
+/* Faixa do sistema (rodapé) */
+.sys-footer { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 14px 16px; border-top: 1px solid var(--border); background: var(--surface); color: var(--text-3); font-size: 12.5px; }
+.sys-footer > span:first-child { font-family: var(--display); font-weight: 700; color: var(--text-2); }
+.sys-footer a { color: var(--accent); font-weight: 600; }
+.sys-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-3); }
+.login { flex-direction: column; gap: 18px; }
+.login .sys-footer { border: 0; background: transparent; }
+.brand { max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge.lg { height: 30px; padding: 0 12px; font-size: 13px; }

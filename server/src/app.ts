@@ -119,6 +119,8 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
 
   // ---------- Configuração inicial (primeiro super administrador) ----------
   // Só funciona enquanto não existir nenhum usuário e exige o SETUP_TOKEN definido no servidor.
+  // Informações públicas (tela de entrada): só o nome do estabelecimento.
+  r.get('/public/info', async (_req, res) => res.json({ storeName: await settings.getSetting(db, 'store_name') }));
   r.get('/setup/status', async (_req, res) => {
     const n = (await db.one('SELECT COUNT(*)::int AS n FROM users')).n;
     res.json({ needed: n === 0, enabled: !!process.env.SETUP_TOKEN });
@@ -176,6 +178,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
         CARTAO_CREDITO: { mode: await settings.getSetting(db, 'card_credit_surcharge_mode'), value: Number(await settings.getSetting(db, 'card_credit_surcharge_value') || 0) },
       },
       cashCodeMode: await settings.getSetting(db, 'cash_code_mode'),
+      storeName: await settings.getSetting(db, 'store_name'),
     });
   });
 
@@ -370,6 +373,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
   r.put('/settings', admin, async (req, res) => {
     const optDays = z.union([z.literal(''), z.coerce.number().int().min(0).max(365).transform(String)]);
     const b = z.object({
+      store_name: z.string().trim().max(60).optional(),
       fiado_surcharge_cents: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       cash_code_mode: z.enum(['SHARED', 'INDIVIDUAL']).optional(),
       expiry_alert_days: z.coerce.number().int().min(1).max(365).transform(String).optional(),
@@ -436,6 +440,7 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
 
   if (opts.staticDir && existsSync(opts.staticDir)) {
     app.use(express.static(opts.staticDir, { index: false, maxAge: '1h' }));
+    app.get('/conheca', (_req, res) => res.sendFile(join(opts.staticDir!, 'conheca', 'index.html')));
     app.get('*', async (_req, res) => res.sendFile(join(opts.staticDir!, 'index.html')));
   }
 

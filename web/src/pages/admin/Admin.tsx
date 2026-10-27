@@ -210,7 +210,7 @@ export function Settings() {
     const deb = cardOut(v.card_debit_surcharge_mode, v.debitTxt), cre = cardOut(v.card_credit_surcharge_mode, v.creditTxt);
     if (deb == null || cre == null) return toast('Acréscimo do cartão inválido.', 'error');
     try {
-      setData(await api('/settings', { method: 'PUT', body: { fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
+      setData(await api('/settings', { method: 'PUT', body: { store_name: v.store_name ?? '', fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
       setF(null); await refreshBoot(); toast('Configurações salvas.', 'success');
     } catch (e: any) { toast(e.message, 'error'); }
   });
@@ -224,6 +224,12 @@ export function Settings() {
   return (
     <div className="stack" style={{ maxWidth: 720 }}>
       <div className="page-head"><h1>Configurações</h1></div>
+      <div className="card stack">
+        <h2>Estabelecimento</h2>
+        <Field label="Nome do estabelecimento" hint="Aparece no topo do sistema e na tela de entrada.">
+          <input className="input" style={{ maxWidth: 360 }} maxLength={60} placeholder="Ex.: Bar do Zé" value={v.store_name ?? ''} onChange={set('store_name')} />
+        </Field>
+      </div>
       <div className="card stack">
         <h2>Venda a prazo (fiado)</h2>
         <Field label="Acréscimo por unidade vendida a prazo (R$)" hint="Ex.: R$ 0,50 → 3 cervejas + 1 salgadinho = R$ 2,00. Chopp e produtos por kg contam 1 por item. Vale só para novas vendas; dívidas já registradas não mudam.">

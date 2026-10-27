@@ -22,6 +22,7 @@ export default function Dashboard() {
         <Metric label="Fiado pendente" value={money(d.fiado.pendingCents)} sub={`${d.fiado.customers} cliente(s)`} />
         <Metric label="Caixas abertos" value={d.openRegisters.length} sub={d.openRegisters.length ? d.openRegisters.map((r: any) => r.openedByName).join(', ') : 'Nenhum caixa aberto'} />
       </div>
+      <StatusStrip d={d} />
       <OpenRegisters />
       <div className="grid2">
         <div className="card flush">
@@ -45,4 +46,19 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+/** Faixa de sinalização: vermelho = problema, amarelo = atenção, verde = em dia. */
+function StatusStrip({ d }: { d: any }) {
+  const zero = d.lowStock.filter((p: any) => p.stock_milli <= 0).length;
+  const low = d.lowStock.length - zero;
+  const expired = d.expiring.filter((l: any) => l.expired).length;
+  const soon = d.expiring.length - expired;
+  const items: [string, string][] = [
+    zero ? ['danger', `${zero} sem estoque`] : low ? ['warning', `${low} abaixo do mínimo`] : ['success', 'Estoque em dia'],
+    ...(zero && low ? [['warning', `${low} abaixo do mínimo`] as [string, string]] : []),
+    expired ? ['danger', `${expired} lote(s) vencido(s)`] : soon ? ['warning', `${soon} lote(s) vencendo`] : ['success', 'Validades em dia'],
+    d.fiado.pendingCents > 0 ? ['warning', `Fiado a receber ${money(d.fiado.pendingCents)}`] : ['success', 'Fiado em dia'],
+  ];
+  return <div className="status-strip">{items.map(([c, t]) => <span key={t} className={`badge lg ${c}`}>{t}</span>)}</div>;
 }

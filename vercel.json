@@ -3,10 +3,23 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/index.ts": { "includeFiles": "server/src/migrations/**", "maxDuration": 30 }
+    "api/index.ts": {
+      "includeFiles": "server/src/migrations/**",
+      "maxDuration": 30
+    }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/conheca",
+      "destination": "/conheca/index.html"
+    },
+    {
+      "source": "/((?!assets/|conheca/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

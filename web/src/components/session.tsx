@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 
 export interface User { id: number; name: string; username: string; role: 'ADMIN' | 'OPERADOR'; superAdmin: boolean }
 export type ModuleKey = 'mesas' | 'fiado' | 'estoque' | 'inventario' | 'analise' | 'reposicao' | 'auditoria';
-export interface Boot { modules: Record<ModuleKey, boolean>; paymentMethods: { code: string; name: string; kind: 'CASH' | 'PIX' | 'CARD' | 'CREDIT' }[]; categories: { id: number; name: string }[]; fiadoSurchargeCents: number; cardSurcharge?: Record<string, { mode: 'UNIT' | 'PERCENT'; value: number }>; cashCodeMode: string }
+export interface Boot { modules: Record<ModuleKey, boolean>; paymentMethods: { code: string; name: string; kind: 'CASH' | 'PIX' | 'CARD' | 'CREDIT' }[]; categories: { id: number; name: string }[]; fiadoSurchargeCents: number; cardSurcharge?: Record<string, { mode: 'UNIT' | 'PERCENT'; value: number }>; cashCodeMode: string; storeName?: string }
 
 interface Ctx { user: User | null; boot: Boot | null; ready: boolean; login: (u: string, p: string) => Promise<void>; logout: () => Promise<void>; refreshBoot: () => Promise<void> }
 const SessionCtx = createContext<Ctx>(null as any);

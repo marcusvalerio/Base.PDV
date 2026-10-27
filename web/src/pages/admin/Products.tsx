@@ -37,7 +37,7 @@ export default function Products() {
                   <td data-label="Produto"><div className="row" style={{ gap: 10 }}><ProductArt size="sm" image={p.image_url} category={p.category} /><div><b>{p.name}</b><div className="faint">{p.category} · {UNIT_LABEL[p.unit as Unit]}{p.pack_label ? ` · ${p.pack_label} c/ ${qty(p.pack_size_milli, p.unit)}` : ''}{p.stock_source_id ? ` · desconta ${qty(p.stock_source_qty_milli, p.stock_source_unit)} de ${p.stock_source_name}` : ''}{p.barcode ? ` · ${p.barcode}` : ''}</div></div></div></td>
                   <td data-label="Preço" className="r num">{money(p.price_cents)}</td>
                   <td data-label="Custo" className="r num">{money(p.cost_cents)}</td>
-                  <td data-label="Estoque" className="r num">{p.stock_milli <= p.min_stock_milli && p.min_stock_milli > 0 ? <span className="badge warning">{qty(p.stock_milli, p.unit)}</span> : qty(p.stock_milli, p.unit)}{p.stock_source_id ? <div className="faint">pela origem</div> : null}</td>
+                  <td data-label="Estoque" className="r num"><span className={`badge num ${p.stock_milli <= 0 ? 'danger' : p.min_stock_milli > 0 && p.stock_milli <= p.min_stock_milli ? 'warning' : 'success'}`}>{qty(p.stock_milli, p.unit)}</span>{p.stock_source_id ? <div className="faint">pela origem</div> : null}</td>
                   <td data-label="Situação">{p.active ? <span className="badge success">ativo</span> : <span className="badge">inativo</span>}</td>
                   <td className="r"><div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
                     {!p.stock_source_id && <button className="btn sm" onClick={() => setEntry(p)}>Entrada</button>}

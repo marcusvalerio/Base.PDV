@@ -2,6 +2,8 @@ import { DB, now, audit } from '../db.js';
 
 /** Configurações comerciais. Valores ainda não confirmados pelos proprietários estão documentados em docs/PENDENCIAS.md. */
 export const DEFAULT_SETTINGS = {
+  /** Nome do estabelecimento exibido no topo do sistema e na tela de entrada. */
+  store_name: '',
   /** Acréscimo da venda a prazo por unidade vendida, em centavos (chopp/kg: por item lançado). */
   fiado_surcharge_cents: '50',
   /** Acréscimo no cartão de débito / crédito: modo UNIT (centavos por unidade) ou PERCENT (centésimos de %, ex.: 299 = 2,99%). 0 = sem acréscimo. */
