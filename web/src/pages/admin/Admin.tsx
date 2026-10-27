@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../../lib/api';
 import { useApi, useAction, useDebounced } from '../../lib/hooks';
 import { money, dateTime, centsToInput, parseMoney, qty } from '../../lib/format';
-import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../../components/ui';
+import { Modal, Loading, ErrorState, Empty, Field, Segmented, useToast } from '../../components/ui';
 import { CustomerModal } from '../Fiado';
 import { CashSummary } from '../../components/CashSummary';
 import { useSession } from '../../components/session';
@@ -98,25 +98,65 @@ export function OpenRegisters({ onSelect }: { onSelect?: (id: number) => void })
   );
 }
 
+const MONTH_FMT = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', month: 'long', year: 'numeric' });
+const monthKey = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date(iso));
+const monthName = (iso: string) => { const t = MONTH_FMT.format(new Date(iso)); return t.charAt(0).toUpperCase() + t.slice(1); };
+const lastDay = (ym: string) => { const [y, m] = ym.split('-').map(Number); return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`; };
+
 export function Registers() {
-  const { data, loading, error, reload } = useApi<any[]>('/cash');
+  const users = useApi<any[]>('/users');
+  const [f, setF] = useState({ preset: 'month', month: '', from: '', to: '', userId: '' });
+  const p: Record<string, string> = {};
+  if (f.preset === 'pick') { if (f.month) Object.assign(p, { preset: 'custom', from: `${f.month}-01`, to: lastDay(f.month) }); }
+  else if (f.preset === 'custom') { if (f.from && f.to) Object.assign(p, { preset: 'custom', from: f.from, to: f.to }); }
+  else p.preset = f.preset;
+  if (f.userId) p.userId = f.userId;
+  const ready = !!p.preset;
+  const { data, loading, error, reload } = useApi<any[]>(ready ? `/cash?${new URLSearchParams(p)}` : null);
   const [sel, setSel] = useState<number | null>(null);
   const detail = useApi<any>(sel ? `/cash/${sel}/closing` : null, [sel]);
+  const groups: { key: string; name: string; rows: any[] }[] = [];
+  for (const r of data ?? []) {
+    const k = monthKey(r.opened_at);
+    if (groups[groups.length - 1]?.key !== k) groups.push({ key: k, name: monthName(r.opened_at), rows: [] });
+    groups[groups.length - 1].rows.push(r);
+  }
+  const diff = (rows: any[]) => rows.reduce((a, r) => a + (r.counted_cash_cents == null ? 0 : r.counted_cash_cents - r.expected_cash_cents), 0);
   return (
     <div className="stack">
       <div className="page-head"><h1>Caixas</h1><span className="spacer" /><button className="btn sm" onClick={reload}>Atualizar</button></div>
       <OpenRegisters onSelect={setSel} />
       <h2>Histórico</h2>
-      {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
-        <div className="card flush">{!data?.length ? <Empty>Nenhum caixa registrado.</Empty> : (
-          <table className="table responsive"><thead><tr><th>Nº</th><th>Abertura</th><th>Fechamento</th><th className="r">Esperado</th><th className="r">Contado</th><th className="r">Diferença</th></tr></thead><tbody>
-            {data.map((r) => (
-              <tr key={r.id} className="click" onClick={() => setSel(r.id)}><td data-label="Nº">{r.id}</td><td data-label="Abertura">{dateTime(r.opened_at)} · {r.opened_by_name}</td>
-                <td data-label="Fechamento">{r.closed_at ? `${dateTime(r.closed_at)} · ${r.closed_by_name}` : <span className="badge success">aberto</span>}</td>
-                <td data-label="Esperado" className="r num">{money(r.expected_cash_cents)}</td><td data-label="Contado" className="r num">{money(r.counted_cash_cents)}</td>
-                <td data-label="Diferença" className="r num">{r.counted_cash_cents == null ? '—' : <span className={r.counted_cash_cents - r.expected_cash_cents < 0 ? 'down' : ''}>{money(r.counted_cash_cents - r.expected_cash_cents)}</span>}</td></tr>
+      <div className="card stack" style={{ gap: 10 }}>
+        <Segmented value={f.preset} onChange={(preset) => setF({ ...f, preset })} options={[{ value: 'month', label: 'Mês atual' }, { value: '15d', label: 'Quinzena' }, { value: '7d', label: 'Semana' }, { value: 'today', label: 'Hoje' }, { value: 'pick', label: 'Escolher mês' }, { value: 'custom', label: 'Personalizado' }, { value: 'all', label: 'Tudo' }]} />
+        <div className="filters">
+          {f.preset === 'pick' && <input className="input" type="month" value={f.month} onChange={(e) => setF({ ...f, month: e.target.value })} aria-label="Mês" />}
+          {f.preset === 'custom' && <>
+            <input className="input" type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} aria-label="Data inicial" />
+            <input className="input" type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} aria-label="Data final" />
+          </>}
+          <select className="input" value={f.userId} onChange={(e) => setF({ ...f, userId: e.target.value })} aria-label="Quem abriu">
+            <option value="">Todas as pessoas</option>
+            {users.data?.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+        {data && <div className="faint">{data.length} caixa(s) · diferença total {money(diff(data))}</div>}
+      </div>
+      {!ready ? <div className="faint">{f.preset === 'pick' ? 'Escolha o mês.' : 'Escolha as duas datas.'}</div> : error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
+        <div className="card flush">{!data?.length ? <Empty>Nenhum caixa no período.</Empty> : (
+          <table className="table responsive months"><thead><tr><th>Nº</th><th>Abertura</th><th>Fechamento</th><th className="r">Esperado</th><th className="r">Contado</th><th className="r">Diferença</th></tr></thead>
+            {groups.map((g, gi) => (
+              <tbody key={g.key} className={gi % 2 ? 'm-b' : 'm-a'}>
+                <tr className="month-row"><td colSpan={6}><b>{g.name}</b><span className="faint"> · {g.rows.length} caixa(s) · diferença {money(diff(g.rows))}</span></td></tr>
+                {g.rows.map((r) => (
+                  <tr key={r.id} className="click" onClick={() => setSel(r.id)}><td data-label="Nº">{r.id}</td><td data-label="Abertura">{dateTime(r.opened_at)} · {r.opened_by_name}</td>
+                    <td data-label="Fechamento">{r.closed_at ? `${dateTime(r.closed_at)} · ${r.closed_by_name}` : <span className="badge success">aberto</span>}</td>
+                    <td data-label="Esperado" className="r num">{money(r.expected_cash_cents)}</td><td data-label="Contado" className="r num">{money(r.counted_cash_cents)}</td>
+                    <td data-label="Diferença" className="r num">{r.counted_cash_cents == null ? '—' : <span className={r.counted_cash_cents - r.expected_cash_cents < 0 ? 'down' : ''}>{money(r.counted_cash_cents - r.expected_cash_cents)}</span>}</td></tr>
+                ))}
+              </tbody>
             ))}
-          </tbody></table>
+          </table>
         )}</div>
       )}
       {sel && <Modal wide title={`Caixa nº ${sel}`} onClose={() => setSel(null)}>{detail.data ? <CashSummary s={detail.data} /> : <Loading />}</Modal>}

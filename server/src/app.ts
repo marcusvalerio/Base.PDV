@@ -298,7 +298,15 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     res.json(await cash.closeRegister(db, { ...b, registerId: id.parse(req.params.id) }, uid(req)));
   });
   r.get('/cash/active', admin, async (_req, res) => res.json(await cash.openRegisters(db)));
-  r.get('/cash', admin, async (_req, res) => res.json(await cash.listRegisters(db)));
+  r.get('/cash', admin, async (req, res) => {
+    const q = z.object({
+      preset: z.enum(['all', 'today', '7d', '15d', '30d', 'month', 'custom']).default('all'),
+      from: z.string().optional(), to: z.string().optional(), userId: z.coerce.number().int().positive().optional(),
+    }).parse(req.query);
+    let range: { start?: string; end?: string } = {};
+    if (q.preset !== 'all') { const pr = analytics.resolvePeriod(q.preset, q.from, q.to); range = rangeToUtc(pr.from, pr.to); }
+    res.json(await cash.listRegisters(db, { ...range, userId: q.userId }));
+  });
   r.get('/cash/:id/closing', admin, async (req, res) => {
     const reg = await db.one('SELECT summary_json FROM cash_registers WHERE id = ?', [id.parse(req.params.id)]);
     res.json(reg?.summary_json ? JSON.parse(reg.summary_json) : await cash.registerSummary(db, id.parse(req.params.id)));

@@ -67,3 +67,18 @@ describe('caixa', () => {
     expect((await op.post('/api/cash/open', { code: '8765', openingFloatCents: 0 })).status).toBe(201);
   });
 });
+
+describe('histórico de caixas com filtro de período', () => {
+  it('filtra por mês escolhido, período e pessoa', async () => {
+    const { admin, op, db } = await setup();
+    await openCash(op);
+    const uid = (await db.one("SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1")).id;
+    await db.run("INSERT INTO cash_registers (opened_by, opened_at, opening_float_cents, status, closed_by, closed_at, expected_cash_cents, counted_cash_cents) VALUES (?, '2025-03-10T15:00:00.000Z', 0, 'CLOSED', ?, '2025-03-10T23:00:00.000Z', 1000, 900)", [uid, uid]);
+    expect((await admin.get('/api/cash?preset=all')).body.length).toBe(2);
+    const march = (await admin.get('/api/cash?preset=custom&from=2025-03-01&to=2025-03-31')).body;
+    expect(march.map((r: any) => r.opened_at)).toEqual(['2025-03-10T15:00:00.000Z']);
+    expect((await admin.get('/api/cash?preset=month')).body.length).toBe(1);
+    expect((await admin.get(`/api/cash?preset=all&userId=${uid}`)).body.length).toBe(1);
+    expect((await op.get('/api/cash')).status).toBe(403);
+  });
+});

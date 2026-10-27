@@ -155,12 +155,18 @@ export async function closeRegister(db: DB, input: { code: string; countedCashCe
   });
 }
 
-export function listRegisters(db: DB, limit = 60) {
+/** Histórico de caixas, opcionalmente filtrado pela data de abertura (intervalo em UTC) e por quem abriu. */
+export function listRegisters(db: DB, f: { start?: string; end?: string; userId?: number } = {}, limit = 500) {
+  const where: string[] = [];
+  const args: any[] = [];
+  if (f.start) { where.push('r.opened_at >= ?'); args.push(f.start); }
+  if (f.end) { where.push('r.opened_at < ?'); args.push(f.end); }
+  if (f.userId) { where.push('r.opened_by = ?'); args.push(f.userId); }
   return db.all(
     `SELECT r.id, r.status, r.opened_at, r.closed_at, r.opening_float_cents, r.expected_cash_cents, r.counted_cash_cents,
             uo.name AS opened_by_name, uc.name AS closed_by_name
      FROM cash_registers r JOIN users uo ON uo.id = r.opened_by LEFT JOIN users uc ON uc.id = r.closed_by
-     ORDER BY r.id DESC LIMIT ?`,
-    [limit],
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.id DESC LIMIT ?`,
+    [...args, limit],
   );
 }

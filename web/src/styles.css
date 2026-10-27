@@ -306,3 +306,8 @@ html, body, #root { min-height: 100%; }
 .sys-footer { margin-top: auto; }
 .cart-line.with-art { grid-template-columns: 48px 1fr auto; align-items: center; }
 .cart-line.with-art > .product-art { grid-row: span 2; width: 48px; height: 48px; align-self: start; }
+.table.months tbody.m-a td { background: var(--surface); }
+.table.months tbody.m-b td { background: color-mix(in srgb, var(--surface-2) 75%, var(--surface)); }
+.table.months .month-row td { background: var(--surface-2) !important; border-top: 2px solid var(--border-strong); padding-top: 10px; padding-bottom: 10px; text-align: left; display: table-cell; }
+.table.months tbody.m-b .month-row td { background: color-mix(in srgb, var(--border) 70%, var(--surface-2)) !important; }
+@media (max-width: 720px) { .table.months .month-row { display: block; } .table.months .month-row td { display: block; } .table.months .month-row td::before { content: none; } }
