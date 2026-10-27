@@ -72,3 +72,23 @@ describe('análise', () => {
     expect(d.openRegisters).toEqual([]);
   });
 });
+
+describe('movimentações de estoque com filtros', () => {
+  it('filtra por pessoa, tipo, produto e período; aceita desenho pré-cadastrado', async () => {
+    const { admin, op } = await setup();
+    const pid = await product(admin, { name: 'Cerveja 600ml', image_url: 'art:cerveja-600' });
+    await admin.post('/api/stock/adjustments', { productId: pid, qtyMilli: -1000, type: 'LOSS', reason: 'garrafa quebrada' });
+    await openCash(op);
+    await op.post('/api/sales', { idempotencyKey: key(), paymentMethodCode: 'DINHEIRO', items: [{ productId: pid, qtyMilli: 1000 }] });
+    const all = (await admin.get(`/api/stock/movements?productId=${pid}`)).body;
+    const me = (await admin.get('/api/auth/me')).body.user.id;
+    const byUser = (await admin.get(`/api/stock/movements?userId=${me}&productId=${pid}`)).body;
+    expect(byUser.every((m: any) => m.user_id === me)).toBe(true);
+    expect(byUser.length).toBeLessThan(all.length);
+    expect((await admin.get(`/api/stock/movements?type=LOSS&productId=${pid}`)).body.map((m: any) => m.type)).toEqual(['LOSS']);
+    expect((await admin.get('/api/stock/movements?q=600ml&preset=today')).body.length).toBe(all.length);
+    expect((await admin.get('/api/stock/movements?preset=custom&from=2000-01-01&to=2000-01-02')).body).toEqual([]);
+    expect((await admin.get('/api/products?q=600ml')).body[0].image_url).toBe('art:cerveja-600');
+    expect((await admin.post('/api/products', { name: 'X', category_id: 1, unit: 'UN', price_cents: 100, image_url: 'art:../x' })).status).toBe(400);
+  });
+});

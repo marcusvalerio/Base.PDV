@@ -49,7 +49,7 @@ export default function Dashboard() {
 }
 
 /** Faixa de sinalização: vermelho = problema, amarelo = atenção, verde = em dia. */
-function StatusStrip({ d }: { d: any }) {
+export function StatusStrip({ d }: { d: any }) {
   const zero = d.lowStock.filter((p: any) => p.stock_milli <= 0).length;
   const low = d.lowStock.length - zero;
   const expired = d.expiring.filter((l: any) => l.expired).length;

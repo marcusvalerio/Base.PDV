@@ -7,6 +7,23 @@ import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../component
 import { ProductPicker, CheckoutModal, CheckoutResult, Product, surchargeUnits } from '../components/pos';
 import { RegisterGate } from '../components/RegisterGate';
 
+/** Desenho de mesa vista de cima, com o número no tampo. */
+export function TableArt({ label, people = 0 }: { label: string; people?: number }) {
+  const num = label.match(/\d+/)?.[0] ?? label.trim().slice(0, 2).toUpperCase();
+  const seats = Math.min(8, Math.max(4, people));
+  return (
+    <svg className="table-art" viewBox="0 0 100 100" aria-hidden="true">
+      {Array.from({ length: seats }, (_, i) => {
+        const a = (i / seats) * Math.PI * 2 - Math.PI / 2, x = 50 + Math.cos(a) * 40, y = 50 + Math.sin(a) * 40;
+        return <rect key={i} x={x - 9} y={y - 9} width={18} height={18} rx={6} className={i < people ? 'seat on' : 'seat'} transform={`rotate(${(a * 180) / Math.PI + 90} ${x} ${y})`} />;
+      })}
+      <circle cx="50" cy="50" r="29" className="top" />
+      <circle cx="50" cy="50" r="23" className="top-in" />
+      <text x="50" y="50" dy=".35em" textAnchor="middle" fontSize={num.length > 2 ? 15 : 22} fontWeight={800}>{num}</text>
+    </svg>
+  );
+}
+
 export function TabsList() {
   const { data, loading, error, reload } = useApi<any[]>('/tabs');
   const [open, setOpen] = useState(false);
@@ -26,7 +43,8 @@ export function TabsList() {
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : !data?.length ? <div className="card"><Empty>Nenhuma mesa aberta.</Empty></div> : (
         <div className="tiles" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
           {data.map((t) => (
-            <Link key={t.id} to={`/mesas/${t.id}`} className="tile" style={{ color: 'inherit' }}>
+            <Link key={t.id} to={`/mesas/${t.id}`} className="tile table-tile" style={{ color: 'inherit' }}>
+              <TableArt label={t.label} people={t.people_count} />
               <span className="name" style={{ fontSize: 18 }}>{t.label}</span>
               <span className="faint">{t.people_count} {t.people_count === 1 ? 'pessoa' : 'pessoas'} · desde {dateTime(t.opened_at)}</span>
               <span className="price num">{money(t.pending_cents)} <span className="faint">em aberto</span></span>

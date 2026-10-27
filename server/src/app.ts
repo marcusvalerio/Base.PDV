@@ -15,6 +15,7 @@ import * as customers from './services/customers.js';
 import * as cash from './services/cash.js';
 import * as tabs from './services/tabs.js';
 import * as analytics from './services/analytics.js';
+import { rangeToUtc } from './tz.js';
 import { hashSecret } from './security.js';
 import { timingSafeEqual } from 'node:crypto';
 import * as modules from './services/modules.js';
@@ -48,7 +49,7 @@ const productSchema = z.object({
   pack_size_milli: z.number().int().positive().nullish(),
   stock_source_id: id.nullish(),
   stock_source_qty_milli: z.number().int().positive().nullish(),
-  image_url: z.string().trim().max(500).url('Link da imagem inválido.').refine((u) => /^https:\/\//.test(u), 'Use um link https://').nullish().or(z.literal('')),
+  image_url: z.union([z.string().trim().regex(/^art:[a-z0-9-]{1,40}$/), z.string().trim().max(500).url('Link da imagem inválido.').refine((u) => /^https:\/\//.test(u), 'Use um link https://')]).nullish().or(z.literal('')),
 });
 
 /** Limite simples de tentativas de login por IP+usuário (memória do processo). */
@@ -341,7 +342,17 @@ export function createApp(db: DB, opts: { cookieSecure?: boolean; staticDir?: st
     const b = z.object({ productId: id, qtyMilli: z.number().int().refine((v) => v !== 0), type: z.enum(['ADJUST', 'LOSS']), reason: z.string().trim().min(3).max(200) }).parse(req.body);
     res.status(201).json({ id: await stock.registerAdjustment(db, b, uid(req)) });
   });
-  r.get('/stock/movements', admin, async (req, res) => res.json(await stock.listMovements(db, req.query.productId ? Number(req.query.productId) : undefined)));
+  r.get('/stock/movements', admin, async (req, res) => {
+    const q = z.object({
+      productId: z.coerce.number().int().positive().optional(), userId: z.coerce.number().int().positive().optional(),
+      categoryId: z.coerce.number().int().positive().optional(), type: z.enum(['SALE', 'SALE_CANCEL', 'ENTRY', 'ADJUST', 'LOSS', 'INVENTORY']).optional(),
+      q: z.string().trim().max(60).optional(), preset: z.enum(['all', 'today', '7d', '15d', '30d', 'month', 'custom']).default('all'),
+      from: z.string().optional(), to: z.string().optional(),
+    }).parse(req.query);
+    let range: { start?: string; end?: string } = {};
+    if (q.preset !== 'all') { const pr = analytics.resolvePeriod(q.preset, q.from, q.to); range = rangeToUtc(pr.from, pr.to); }
+    res.json(await stock.listMovements(db, { ...q, q: q.q || undefined, ...range }));
+  });
   r.get('/stock/alerts', admin, async (_req, res) => res.json({ lowStock: await stock.lowStock(db), expiring: await stock.expiringSoon(db) }));
 
   // ---------- Indicadores ----------

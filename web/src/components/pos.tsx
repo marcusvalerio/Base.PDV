@@ -57,7 +57,7 @@ export function ProductPicker({ onPick }: { onPick: (p: Product, qtyMilli: numbe
         <div className="tiles">
           {data.map((p) => (
             <button key={p.id} className={`tile ${p.stock_milli <= 0 ? 'out' : p.low_stock ? 'low' : ''}`} onClick={() => pick(p)}>
-              <ProductArt image={p.image_url} category={p.category} />
+              <ProductArt image={p.image_url} category={p.category} name={p.name} />
               <span className="name">{p.name}</span>
               <span className="faint">{p.category}</span>
               {p.stock_milli <= 0 ? <span className="badge danger">Sem estoque</span> : p.low_stock ? <span className="badge warning">Estoque baixo</span> : null}

@@ -3,6 +3,7 @@ import { useApi } from '../../lib/hooks';
 import { money, qty, avgQty, isFractional } from '../../lib/format';
 import { Loading, ErrorState, Empty, Segmented } from '../../components/ui';
 import { useSession } from '../../components/session';
+import { StatusStrip } from './Dashboard';
 
 export default function Restock() {
   const { boot } = useSession();
@@ -10,6 +11,7 @@ export default function Restock() {
   const [cat, setCat] = useState('');
   const [onlyNeeded, setOnlyNeeded] = useState(true);
   const [adjust, setAdjust] = useState<Record<number, string>>({});
+  const dash = useApi<any>('/dashboard');
   const { data, loading, error, reload } = useApi<any>(`/restock?windowDays=${win}${cat ? `&categoryId=${cat}` : ''}`);
   const items = (data?.items ?? []).filter((i: any) => !onlyNeeded || i.needsRestock);
   const chosen = (i: any) => {
@@ -23,6 +25,7 @@ export default function Restock() {
   return (
     <div className="stack" style={{ gap: 16 }}>
       <div className="page-head"><h1>Lista de reposição</h1></div>
+      {dash.data && <StatusStrip d={dash.data} />}
       <div className="row wrap">
         <Segmented value={win} onChange={setWin} options={[{ value: '7', label: 'Base 7 dias' }, { value: '15', label: '15 dias' }, { value: '30', label: '30 dias' }, { value: '60', label: '60 dias' }]} />
         <select className="input" style={{ width: 'auto' }} value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Categoria">
@@ -37,12 +40,13 @@ export default function Restock() {
           <div className="card flush">
             {!items.length ? <Empty>Nenhum produto precisa de reposição pelos critérios atuais.</Empty> : (
               <table className="table responsive">
-                <thead><tr><th>Produto</th><th className="r">Estoque</th><th className="r">Média/dia</th><th className="r">Cobertura</th><th className="r">Comprar</th><th>Por quê</th></tr></thead>
+                <thead><tr><th>Situação</th><th>Produto</th><th className="r">Estoque</th><th className="r">Média/dia</th><th className="r">Cobertura</th><th className="r">Comprar</th><th>Por quê</th></tr></thead>
                 <tbody>
                   {items.map((i: any) => (
                     <tr key={i.productId}>
+                      <td data-label="Situação">{i.stockMilli <= 0 ? <span className="badge danger">Sem estoque</span> : i.needsRestock ? <span className="badge warning">Repor</span> : <span className="badge success">Em dia</span>}</td>
                       <td data-label="Produto"><b>{i.name}</b><div className="faint">{i.category}</div></td>
-                      <td data-label="Estoque" className="r num">{qty(i.stockMilli, i.unit)}</td>
+                      <td data-label="Estoque" className={`r num ${i.stockMilli <= 0 ? 'down' : ''}`}>{qty(i.stockMilli, i.unit)}</td>
                       <td data-label="Média/dia" className="r num">{i.historyDays ? avgQty(i.avgDailyMilli, i.unit) : '—'}</td>
                       <td data-label="Cobertura" className="r num">{i.coverageDays == null ? '—' : `${String(i.coverageDays).replace('.', ',')} dias`}</td>
                       <td data-label="Comprar" className="r">

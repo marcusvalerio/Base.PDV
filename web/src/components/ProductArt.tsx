@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ART, guessArt } from './productArtLibrary';
 
 /** Ilustrações simples por categoria (traço), usadas quando o produto não tem foto. */
 const ICONS: Record<string, JSX.Element> = {
@@ -24,13 +25,40 @@ function iconFor(category = '') {
   return ICONS.outro;
 }
 
-export function ProductArt({ image, category, size = 'md' }: { image?: string | null; category?: string; size?: 'sm' | 'md' }) {
+/** Desenho do produto: desenho escolhido ("art:chave") → foto (link) → desenho pelo nome → ícone da categoria. */
+export function ProductArt({ image, category, name, size = 'md' }: { image?: string | null; category?: string; name?: string; size?: 'sm' | 'md' }) {
   const [broken, setBroken] = useState(false);
+  const artKey = image?.startsWith('art:') ? image.slice(4) : !image || broken ? guessArt(name) : null;
+  const art = artKey ? ART[artKey] : null;
   return (
-    <div className={`product-art ${size}`} aria-hidden="true">
-      {image && !broken
+    <div className={`product-art ${size} ${art ? 'drawn' : ''}`} aria-hidden="true">
+      {art ? <svg viewBox="0 0 64 64">{art.svg}</svg>
+        : image && !image.startsWith('art:') && !broken
         ? <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
         : <svg viewBox="0 0 52 60" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{iconFor(category)}</svg>}
+    </div>
+  );
+}
+
+/** Escolha do desenho no cadastro do produto. */
+export function ArtPicker({ value, name, onChange }: { value: string; name: string; onChange: (v: string) => void }) {
+  const auto = guessArt(name);
+  const groups = [...new Set(Object.values(ART).map((a) => a.group))];
+  const sel = value.startsWith('art:') ? value.slice(4) : '';
+  return (
+    <div className="art-picker">
+      <button type="button" className={`art-opt ${!sel ? 'on' : ''}`} onClick={() => onChange('')} title="Automático pelo nome">
+        <ProductArt size="sm" name={name} /><span>Automático{auto ? '' : ' (categoria)'}</span>
+      </button>
+      {groups.map((g) => (
+        <div key={g} className="art-group"><div className="faint">{g}</div><div className="art-grid">
+          {Object.entries(ART).filter(([, a]) => a.group === g).map(([k, a]) => (
+            <button type="button" key={k} className={`art-opt ${sel === k ? 'on' : ''}`} onClick={() => onChange(`art:${k}`)} title={a.label}>
+              <span className="product-art sm drawn"><svg viewBox="0 0 64 64">{a.svg}</svg></span><span>{a.label}</span>
+            </button>
+          ))}
+        </div></div>
+      ))}
     </div>
   );
 }

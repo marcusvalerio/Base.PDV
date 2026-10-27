@@ -86,11 +86,23 @@ export async function expiringSoon(db: DB, days?: number) {
   return rows.map((r) => ({ ...r, expired: r.expiry_date < today }));
 }
 
-export function listMovements(db: DB, productId?: number, limit = 200) {
+export interface MovementFilter { productId?: number; userId?: number; type?: string; categoryId?: number; q?: string; start?: string; end?: string }
+
+/** Movimentações de estoque com filtros (quem fez, tipo, produto, categoria, período). */
+export function listMovements(db: DB, f: MovementFilter = {}, limit = 300) {
+  const where: string[] = [];
+  const args: any[] = [];
+  if (f.productId) { where.push('m.product_id = ?'); args.push(f.productId); }
+  if (f.userId) { where.push('m.user_id = ?'); args.push(f.userId); }
+  if (f.type) { where.push('m.type = ?'); args.push(f.type); }
+  if (f.categoryId) { where.push('p.category_id = ?'); args.push(f.categoryId); }
+  if (f.q) { where.push('p.name ILIKE ?'); args.push(`%${f.q}%`); }
+  if (f.start) { where.push('m.at >= ?'); args.push(f.start); }
+  if (f.end) { where.push('m.at < ?'); args.push(f.end); }
   return db.all(
     `SELECT m.*, p.name AS product_name, p.unit, u.name AS user_name FROM stock_movements m
      JOIN products p ON p.id = m.product_id JOIN users u ON u.id = m.user_id
-     ${productId ? 'WHERE m.product_id = ?' : ''} ORDER BY m.id DESC LIMIT ?`,
-    productId ? [productId, limit] : [limit],
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY m.id DESC LIMIT ?`,
+    [...args, limit],
   );
 }

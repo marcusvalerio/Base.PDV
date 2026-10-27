@@ -5,7 +5,7 @@ import { money, qty, parseMoney, centsToInput, parseQty, UNIT_LABEL, Unit, dateT
 import { Modal, Loading, ErrorState, Empty, Field, Segmented, useToast } from '../../components/ui';
 import { useSession } from '../../components/session';
 import { CameraButton } from '../../components/scanner';
-import { ProductArt } from '../../components/ProductArt';
+import { ProductArt, ArtPicker } from '../../components/ProductArt';
 
 const FIELD_LABEL: Record<string, string> = { name: 'Nome', price_cents: 'Preço', cost_cents: 'Custo', active: 'Ativo', category_id: 'Categoria', min_stock_milli: 'Estoque mínimo', barcode: 'Código de barras', internal_code: 'Código interno', unit: 'Unidade', track_expiry: 'Controla validade' };
 
@@ -34,7 +34,7 @@ export default function Products() {
               <thead><tr><th>Produto</th><th className="r">Preço</th><th className="r">Custo</th><th className="r">Estoque</th><th>Situação</th><th /></tr></thead>
               <tbody>{data.map((p) => (
                 <tr key={p.id}>
-                  <td data-label="Produto"><div className="row" style={{ gap: 10 }}><ProductArt size="sm" image={p.image_url} category={p.category} /><div><b>{p.name}</b><div className="faint">{p.category} · {UNIT_LABEL[p.unit as Unit]}{p.pack_label ? ` · ${p.pack_label} c/ ${qty(p.pack_size_milli, p.unit)}` : ''}{p.stock_source_id ? ` · desconta ${qty(p.stock_source_qty_milli, p.stock_source_unit)} de ${p.stock_source_name}` : ''}{p.barcode ? ` · ${p.barcode}` : ''}</div></div></div></td>
+                  <td data-label="Produto"><div className="row" style={{ gap: 10 }}><ProductArt size="sm" image={p.image_url} category={p.category} name={p.name} /><div><b>{p.name}</b><div className="faint">{p.category} · {UNIT_LABEL[p.unit as Unit]}{p.pack_label ? ` · ${p.pack_label} c/ ${qty(p.pack_size_milli, p.unit)}` : ''}{p.stock_source_id ? ` · desconta ${qty(p.stock_source_qty_milli, p.stock_source_unit)} de ${p.stock_source_name}` : ''}{p.barcode ? ` · ${p.barcode}` : ''}</div></div></div></td>
                   <td data-label="Preço" className="r num">{money(p.price_cents)}</td>
                   <td data-label="Custo" className="r num">{money(p.cost_cents)}</td>
                   <td data-label="Estoque" className="r num"><span className={`badge num ${p.stock_milli <= 0 ? 'danger' : p.min_stock_milli > 0 && p.stock_milli <= p.min_stock_milli ? 'warning' : 'success'}`}>{qty(p.stock_milli, p.unit)}</span>{p.stock_source_id ? <div className="faint">pela origem</div> : null}</td>
@@ -141,8 +141,11 @@ function ProductForm({ p, catalog, onClose, onSaved }: { p: any; catalog: any[];
         </div>
       )}
       {!isNew && <div className="faint">Unidade não pode ser alterada após o cadastro. Estoque é alterado por entradas, ajustes ou inventário.</div>}
-      <Field group label="Imagem (opcional)" hint="Cole o link https:// de uma foto do produto. Sem foto, aparece a ilustração da categoria.">
-        <div className="row"><ProductArt size="sm" image={f.image || null} category={boot?.categories.find((c) => String(c.id) === f.category_id)?.name} /><input className="input" value={f.image} onChange={set('image')} placeholder="https://..." /></div>
+      <Field group label="Desenho do produto" hint="Já vem escolhido pelo nome (ex.: “Cerveja 600ml” usa a garrafa 600). Toque em outro para trocar.">
+        <ArtPicker value={f.image} name={f.name} onChange={(v) => setF({ ...f, image: v })} />
+      </Field>
+      <Field group label="Ou foto (link https, opcional)" hint="Se colar o link de uma foto, ela substitui o desenho.">
+        <div className="row"><ProductArt size="sm" image={f.image || null} name={f.name} category={boot?.categories.find((c) => String(c.id) === f.category_id)?.name} /><input className="input" value={f.image.startsWith('art:') ? '' : f.image} onChange={set('image')} placeholder="https://..." /></div>
       </Field>
       <label className="check"><input type="checkbox" checked={f.track_expiry} onChange={set('track_expiry')} /> Controlar validade nas entradas</label>
       <label className="check"><input type="checkbox" checked={f.active} onChange={set('active')} /> Produto ativo (pode ser vendido)</label>
