@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icon-192.png" />
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#07080c" />
@@ -70,11 +72,11 @@ h1,h2,h3{font-family:var(--display);letter-spacing:-.035em;line-height:1.05;marg
 .ph-card{background:#151927;border:1px solid #20263a;border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px}
 .ph-card small{color:var(--t3);font-size:8.5px}
 .ph-card strong{font-family:var(--display);font-size:16px;letter-spacing:-.03em}
-.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 8px;font-weight:650;font-size:8.5px;width:max-content}
-.pill::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
-.pill.ok{color:var(--ok);background:rgba(52,211,153,.12);box-shadow:inset 0 0 0 1px rgba(52,211,153,.3)}
-.pill.warn{color:var(--warn);background:rgba(251,191,36,.12);box-shadow:inset 0 0 0 1px rgba(251,191,36,.3)}
-.pill.bad{color:var(--bad);background:rgba(248,113,113,.12);box-shadow:inset 0 0 0 1px rgba(248,113,113,.3)}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px 3px 6px;font-weight:750;font-size:8.5px;width:max-content}
+.pill::before{content:"";width:1.25em;height:1.25em;flex:none;background:currentColor;-webkit-mask:var(--ico) center/contain no-repeat;mask:var(--ico) center/contain no-repeat}
+.pill.ok{background:#16a34a;color:#fff;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+.pill.warn{background:#f5b301;color:#2b1d00;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3.5L2.5 20h19z'/%3E%3Cpath d='M12 10v4.5M12 17.6v.1' stroke-width='3'/%3E%3C/svg%3E")}
+.pill.bad{background:#dc2626;color:#fff;--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7v6M12 16.6v.1' stroke-width='3'/%3E%3C/svg%3E")}
 .floater{position:absolute;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:rgba(18,21,31,.85);backdrop-filter:blur(12px);border:1px solid var(--line);box-shadow:0 20px 50px -20px #000;font-size:13px;font-weight:600;animation:float 6s ease-in-out infinite}
 .floater .pill{font-size:12px;padding:4px 10px}
 .f1{right:-6px;top:-6px;animation-delay:-1s}.f2{left:150px;top:150px;animation-delay:-2.5s}.f3{right:30px;bottom:-6px;animation-delay:-4s}
@@ -90,7 +92,7 @@ section{padding:96px 0}
 .fc{position:relative;padding:26px;border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));border:1px solid var(--line);overflow:hidden;transition:transform .25s,border-color .25s}
 .fc:hover{transform:translateY(-4px);border-color:#2e3550}
 .fc::after{content:"";position:absolute;inset:auto -40% -60% auto;width:240px;height:240px;background:radial-gradient(circle,var(--c,rgba(59,108,255,.22)),transparent 70%);pointer-events:none}
-.ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:22px;background:rgba(255,255,255,.05);border:1px solid var(--line);margin-bottom:18px}
+.ic{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#b9c8ff;background:rgba(255,255,255,.05);border:1px solid var(--line);margin-bottom:18px}
 .fc h3{font-size:21px;margin-bottom:8px;letter-spacing:-.02em}
 .fc p{color:var(--t2);margin:0;font-size:15px}
 .fc.big{grid-column:span 2}
@@ -116,7 +118,7 @@ section{padding:96px 0}
 /* pay */
 .paygrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .pm{padding:22px 18px;border-radius:18px;border:1px solid var(--line);background:var(--card);text-align:center}
-.pm .e{font-size:28px}.pm b{display:block;font-family:var(--display);font-size:18px;margin:8px 0 4px}.pm small{color:var(--t3)}
+.pm .e{width:52px;height:52px;margin:0 auto;border-radius:14px;display:grid;place-items:center;background:rgba(59,108,255,.12);color:#9fb3ff}.pm b{display:block;font-family:var(--display);font-size:18px;margin:8px 0 4px}.pm small{color:var(--t3)}
 @media(max-width:760px){.paygrid{grid-template-columns:1fr 1fr}}
 /* cta */
 .final{position:relative;text-align:center;padding:110px 0;overflow:hidden}
@@ -124,6 +126,9 @@ section{padding:96px 0}
 .final h2{position:relative;font-size:clamp(36px,5.5vw,64px);font-weight:800;margin-bottom:16px}
 .final p{position:relative;color:var(--t2);font-size:18px;margin:0 auto 30px;max-width:520px}
 .final .cta{position:relative;justify-content:center}
+.btn.wa{background:#25d366;color:#05230f}.btn.wa:hover{transform:translateY(-1px)}
+[data-wa][hidden]{display:none!important}
+.wa-float{position:fixed;right:18px;bottom:18px;z-index:60;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#05230f;box-shadow:0 12px 30px -8px rgba(37,211,102,.7)}
 footer{border-top:1px solid var(--line);padding:26px 0;color:var(--t3);font-size:13.5px}
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease}
@@ -145,7 +150,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
       <span class="eyebrow"><b>v1.5</b> Cartão de débito e crédito com acréscimo configurável</span>
       <h1><span class="grad">O caixa do seu bar,</span><br/>simples de verdade.</h1>
       <p class="lead">Vendas, mesas, fiado, estoque e relatórios em um lugar só. Funciona no celular, no tablet e no computador, sem instalar nada.</p>
-      <div class="cta"><a class="btn primary" href="/">Começar a vender →</a><a class="btn ghost" href="#recursos">Ver recursos</a></div>
+      <div class="cta"><a class="btn primary" href="/">Começar a vender →</a><a class="btn wa" data-wa hidden target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.8 11.9 11.9 0 004.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.4-.3z"/></svg>WhatsApp</a><a class="btn ghost" href="#recursos">Ver recursos</a></div>
       <div class="ticks"><span>Vários caixas ao mesmo tempo</span><span>Leitor de código e câmera</span><span>Fiado com controle de saldo</span></div>
     </div>
     <div class="stage" aria-hidden="true">
@@ -189,12 +194,12 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 <section id="recursos"><div class="wrap">
   <div class="sec-head reveal"><span class="kicker">Recursos</span><h2>Tudo o que o balcão precisa.<br/><span class="grad">Nada que atrapalhe.</span></h2><p>Feito para quem precisa atender rápido e fechar o dia sabendo exatamente onde está o dinheiro.</p></div>
   <div class="feat">
-    <div class="fc big reveal" style="--c:rgba(59,108,255,.28)"><div class="ic">⚡</div><h3>Venda em três toques</h3><p>Toque no produto, escolha a forma de pagamento e pronto. Leitor de código de barras, câmera do celular e busca por nome para quando o movimento aperta.</p></div>
-    <div class="fc reveal" style="--c:rgba(124,92,255,.28)"><div class="ic">🍽️</div><h3>Mesas e comandas</h3><p>Lance pedidos na mesa e feche a conta quando o cliente pedir. Cancelou? Os itens voltam para a mesa.</p></div>
-    <div class="fc reveal" style="--c:rgba(251,191,36,.22)"><div class="ic">📒</div><h3>Fiado sob controle</h3><p>Saldo por cliente, acréscimo por unidade e recebimentos registrados. Sem caderninho.</p></div>
-    <div class="fc reveal" style="--c:rgba(52,211,153,.22)"><div class="ic">📦</div><h3>Estoque que se ajusta</h3><p>Caixa, fardo e barril. O copo de chopp sai direto do barril, sem conta de cabeça.</p></div>
-    <div class="fc reveal" style="--c:rgba(248,113,113,.22)"><div class="ic">💵</div><h3>Vários caixas abertos</h3><p>Cada pessoa no seu caixa, com abertura e fechamento conferidos. O administrador vê quem está com caixa aberto.</p></div>
-    <div class="fc big reveal" style="--c:rgba(59,108,255,.24)"><div class="ic">📊</div><h3>Relatórios, análise e reposição</h3><p>Mais vendidos, margem, fiado a receber, validade dos lotes e sugestão do que comprar. Inventário com meta de acuracidade definida por você.</p></div>
+    <div class="fc big reveal" style="--c:rgba(59,108,255,.28)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div><h3>Venda em três toques</h3><p>Toque no produto, escolha a forma de pagamento e pronto. Leitor de código de barras, câmera do celular e busca por nome para quando o movimento aperta.</p></div>
+    <div class="fc reveal" style="--c:rgba(124,92,255,.28)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div><h3>Mesas e comandas</h3><p>Lance pedidos na mesa e feche a conta quando o cliente pedir. Cancelou? Os itens voltam para a mesa.</p></div>
+    <div class="fc reveal" style="--c:rgba(251,191,36,.22)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h12a2 2 0 012 2v16H7a2 2 0 01-2-2z"/><path d="M5 17a2 2 0 012-2h12M9 7h6"/></svg></div><h3>Fiado sob controle</h3><p>Saldo por cliente, acréscimo por unidade e recebimentos registrados. Sem caderninho.</p></div>
+    <div class="fc reveal" style="--c:rgba(52,211,153,.22)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></div><h3>Estoque que se ajusta</h3><p>Caixa, fardo e barril. O copo de chopp sai direto do barril, sem conta de cabeça.</p></div>
+    <div class="fc reveal" style="--c:rgba(248,113,113,.22)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></div><h3>Vários caixas abertos</h3><p>Cada pessoa no seu caixa, com abertura e fechamento conferidos. O administrador vê quem está com caixa aberto.</p></div>
+    <div class="fc big reveal" style="--c:rgba(59,108,255,.24)"><div class="ic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><h3>Relatórios, análise e reposição</h3><p>Mais vendidos, margem, fiado a receber, validade dos lotes e sugestão do que comprar. Inventário com meta de acuracidade definida por você.</p></div>
   </div>
 </div></section>
 
@@ -228,24 +233,26 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 <section id="pagamentos" class="signals"><div class="wrap">
   <div class="sec-head reveal"><span class="kicker">Pagamentos</span><h2>Todas as formas que o<br/>seu cliente usa.</h2><p>Acréscimos de cartão e fiado configurados pelo administrador e mostrados antes de confirmar a venda.</p></div>
   <div class="paygrid">
-    <div class="pm reveal"><div class="e">💵</div><b>Dinheiro</b><small>com cálculo do troco</small></div>
-    <div class="pm reveal"><div class="e">⚡</div><b>Pix</b><small>na hora</small></div>
-    <div class="pm reveal"><div class="e">💳</div><b>Débito e crédito</b><small>acréscimo em % ou por unidade</small></div>
-    <div class="pm reveal"><div class="e">📒</div><b>A prazo</b><small>fiado com saldo do cliente</small></div>
+    <div class="pm reveal"><div class="e"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></div><b>Dinheiro</b><small>com cálculo do troco</small></div>
+    <div class="pm reveal"><div class="e"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5-5 5 5-5 5zM7 17l5-5 5 5-5 5zM2 12l5-5 5 5-5 5zM12 12l5-5 5 5-5 5z" stroke-width="1.6"/></svg></div><b>Pix</b><small>na hora</small></div>
+    <div class="pm reveal"><div class="e"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg></div><b>Débito e crédito</b><small>acréscimo em % ou por unidade</small></div>
+    <div class="pm reveal"><div class="e"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h12a2 2 0 012 2v16H7a2 2 0 01-2-2z"/><path d="M5 17a2 2 0 012-2h12M9 7h6"/></svg></div><b>A prazo</b><small>fiado com saldo do cliente</small></div>
   </div>
 </div></section>
 
 <section class="final"><div class="glow"></div><div class="wrap">
   <h2 class="reveal"><span class="grad">Menos papel.</span><br/>Mais tempo no balcão.</h2>
-  <p class="reveal">Entre com a conta criada pelo administrador do seu estabelecimento.</p>
-  <div class="cta reveal"><a class="btn primary" href="/">Entrar no sistema →</a></div>
+  <p class="reveal">Quer usar no seu bar? Fale com a gente. Já tem conta? Entre com a conta criada pelo administrador do seu estabelecimento.</p>
+  <div class="cta reveal"><a class="btn primary" href="/">Entrar no sistema →</a><a class="btn wa" data-wa hidden target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.8 11.9 11.9 0 004.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.4-.3z"/></svg>Falar no WhatsApp</a></div>
 </div></section>
 
 <footer><div class="wrap"><span class="logo" style="font-size:16px">Central<span class="dot">.</span>PDV</span><span>Versão 1.5</span></div></footer>
 
 <script>
+fetch('/api/public/info').then(r=>r.ok?r.json():null).then(i=>{if(!i||!/^\d{10,13}$/.test(i.whatsapp||''))return;const n=i.whatsapp.length<=11?'55'+i.whatsapp:i.whatsapp;const u='https://wa.me/'+n+'?text='+encodeURIComponent('Olá! Quero conhecer o Central.PDV.');document.querySelectorAll('[data-wa]').forEach(a=>{a.href=u;a.hidden=false})}).catch(()=>{});
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4)*70+'ms';io.observe(el)});
 </script>
+<a class="wa-float" data-wa hidden target="_blank" rel="noopener" aria-label="Falar no WhatsApp"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.8 11.9 11.9 0 004.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.4-.3z"/></svg></a>
 </body>
 </html>

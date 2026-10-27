@@ -7,7 +7,7 @@ import { useSession } from './session';
 import { useHidScanner, CameraButton } from './scanner';
 import { ProductArt } from './ProductArt';
 
-export interface Product { id: number; name: string; image_url?: string | null; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null }
+export interface Product { id: number; name: string; image_url?: string | null; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null; low_stock?: boolean }
 
 /** Busca e seleção de produtos. Enter com código de barras/código interno adiciona direto. */
 export function ProductPicker({ onPick }: { onPick: (p: Product, qtyMilli: number) => void }) {
@@ -56,10 +56,11 @@ export function ProductPicker({ onPick }: { onPick: (p: Product, qtyMilli: numbe
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : !data?.length ? <Empty>Nenhum produto encontrado.</Empty> : (
         <div className="tiles">
           {data.map((p) => (
-            <button key={p.id} className="tile" onClick={() => pick(p)}>
+            <button key={p.id} className={`tile ${p.stock_milli <= 0 ? 'out' : p.low_stock ? 'low' : ''}`} onClick={() => pick(p)}>
               <ProductArt image={p.image_url} category={p.category} />
               <span className="name">{p.name}</span>
-              <span className="faint">{p.category}{p.stock_milli <= 0 ? ' · sem estoque' : ''}</span>
+              <span className="faint">{p.category}</span>
+              {p.stock_milli <= 0 ? <span className="badge danger">Sem estoque</span> : p.low_stock ? <span className="badge warning">Estoque baixo</span> : null}
               <span className="price num">{money(p.price_cents)}{p.unit !== 'UN' && <span className="faint"> / {UNIT_SHORT[p.unit]}</span>}</span>
             </button>
           ))}

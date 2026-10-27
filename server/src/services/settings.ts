@@ -4,6 +4,10 @@ import { DB, now, audit } from '../db.js';
 export const DEFAULT_SETTINGS = {
   /** Nome do estabelecimento exibido no topo do sistema e na tela de entrada. */
   store_name: '',
+  /** Link https da logo ou foto do estabelecimento (vazio = sem logo). */
+  store_logo_url: '',
+  /** WhatsApp de contato da página de apresentação (/conheca). Só o super administrador altera. */
+  contact_whatsapp: '',
   /** Acréscimo da venda a prazo por unidade vendida, em centavos (chopp/kg: por item lançado). */
   fiado_surcharge_cents: '50',
   /** Acréscimo no cartão de débito / crédito: modo UNIT (centavos por unidade) ou PERCENT (centésimos de %, ex.: 299 = 2,99%). 0 = sem acréscimo. */

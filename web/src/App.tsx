@@ -27,7 +27,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand" title={boot?.storeName || undefined}>{boot?.storeName || 'Meu estabelecimento'}</span>
+        {boot?.storeLogo && <img className="store-logo" src={boot.storeLogo} alt="" />}<span className="brand" title={boot?.storeName || undefined}>{boot?.storeName || 'Meu estabelecimento'}</span>
         <nav className="nav">
           <NavLink to="/" end>Vender</NavLink>
           {on('mesas') && <NavLink to="/mesas">Mesas</NavLink>}

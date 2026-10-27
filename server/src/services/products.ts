@@ -105,7 +105,10 @@ export function listProducts(db: DB, opts: { q?: string; includeInactive?: boole
     `SELECT p.*, c.name AS category, src.name AS stock_source_name, src.unit AS stock_source_unit,
        -- Para produtos que dão baixa em outro: quantas unidades ainda dá para vender com o estoque da origem.
        CASE WHEN p.stock_source_id IS NOT NULL THEN GREATEST(0, FLOOR(src.stock_milli::numeric / p.stock_source_qty_milli))::bigint * 1000 ELSE p.stock_milli END AS stock_milli,
-       p.stock_milli AS own_stock_milli
+       p.stock_milli AS own_stock_milli,
+       -- Estoque baixo: pela origem quando o produto dá baixa em outro.
+       CASE WHEN p.stock_source_id IS NOT NULL THEN (src.min_stock_milli > 0 AND src.stock_milli <= src.min_stock_milli)
+            ELSE (p.min_stock_milli > 0 AND p.stock_milli <= p.min_stock_milli) END AS low_stock
      FROM products p JOIN categories c ON c.id = p.category_id LEFT JOIN products src ON src.id = p.stock_source_id
      ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY p.name`,
     args,

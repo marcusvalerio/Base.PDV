@@ -194,7 +194,7 @@ function CodeModal({ title, path, onClose }: { title: string; path: string; onCl
 export function Settings() {
   const { data, loading, error, reload, setData } = useApi<any>('/settings');
   const cats = useApi<any[]>('/categories');
-  const { refreshBoot } = useSession();
+  const { refreshBoot, user } = useSession();
   const [f, setF] = useState<any>(null);
   const [codeOpen, setCodeOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -210,7 +210,7 @@ export function Settings() {
     const deb = cardOut(v.card_debit_surcharge_mode, v.debitTxt), cre = cardOut(v.card_credit_surcharge_mode, v.creditTxt);
     if (deb == null || cre == null) return toast('Acréscimo do cartão inválido.', 'error');
     try {
-      setData(await api('/settings', { method: 'PUT', body: { store_name: v.store_name ?? '', fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
+      setData(await api('/settings', { method: 'PUT', body: { store_name: v.store_name ?? '', store_logo_url: v.store_logo_url ?? '', ...(user?.superAdmin ? { contact_whatsapp: v.contact_whatsapp ?? '' } : {}), fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
       setF(null); await refreshBoot(); toast('Configurações salvas.', 'success');
     } catch (e: any) { toast(e.message, 'error'); }
   });
@@ -229,6 +229,12 @@ export function Settings() {
         <Field label="Nome do estabelecimento" hint="Aparece no topo do sistema e na tela de entrada.">
           <input className="input" style={{ maxWidth: 360 }} maxLength={60} placeholder="Ex.: Bar do Zé" value={v.store_name ?? ''} onChange={set('store_name')} />
         </Field>
+        <Field label="Logo ou foto (link https)" hint="Cole o link de uma imagem. Vazio = sem logo.">
+          <div className="row"><input className="input" inputMode="url" placeholder="https://…" value={v.store_logo_url ?? ''} onChange={set('store_logo_url')} />{v.store_logo_url && /^https:\/\//.test(v.store_logo_url) && <img className="store-logo lg" src={v.store_logo_url} alt="Prévia da logo" />}</div>
+        </Field>
+        {user?.superAdmin && <Field label="WhatsApp de contato da página de apresentação" hint="DDD + número. Aparece como botão em /conheca. Vazio = sem botão.">
+          <input className="input num" style={{ maxWidth: 240 }} inputMode="tel" placeholder="(11) 99999-9999" value={v.contact_whatsapp ?? ''} onChange={set('contact_whatsapp')} />
+        </Field>}
       </div>
       <div className="card stack">
         <h2>Venda a prazo (fiado)</h2>
