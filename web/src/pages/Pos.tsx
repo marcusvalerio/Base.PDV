@@ -5,6 +5,7 @@ import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product, surchar
 import { Modal, useToast, Empty } from '../components/ui';
 import { useAction } from '../lib/hooks';
 import { RegisterGate } from '../components/RegisterGate';
+import { ProductArt } from '../components/ProductArt';
 
 interface Line { product: Product; qtyMilli: number }
 const STORE = 'pdv.cart';
@@ -56,7 +57,8 @@ function PosInner() {
     <>
       <div className="cart-list">
         {!cart.length ? <Empty>Nenhum produto no pedido.<br />Toque em um produto para adicionar.</Empty> : cart.map((l, i) => (
-          <div className="cart-line" key={i}>
+          <div className="cart-line with-art" key={i}>
+            <ProductArt size="sm" image={l.product.image_url} category={l.product.category} name={l.product.name} />
             <b>{l.product.name}</b><b className="num">{money(lineTotal(l))}</b>
             <Stepper value={l.qtyMilli} unit={l.product.unit} onChange={(v) => setQty(i, v)} />
             <button className="btn ghost sm danger" onClick={() => setQty(i, 0)}>Remover</button>

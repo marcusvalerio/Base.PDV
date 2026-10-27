@@ -121,7 +121,7 @@ export async function getTab(db: DB, tabId: number) {
   const t = await db.one('SELECT t.*, u.name AS opened_by_name FROM tabs t JOIN users u ON u.id = t.opened_by WHERE t.id = ?', [tabId]);
   if (!t) throw notFound('Mesa não encontrada.');
   const people = await db.all('SELECT * FROM tab_people WHERE tab_id = ? ORDER BY id', [tabId]);
-  const items = await db.all('SELECT * FROM tab_items WHERE tab_id = ? ORDER BY id', [tabId]);
+  const items = await db.all('SELECT i.*, p.image_url FROM tab_items i LEFT JOIN products p ON p.id = i.product_id WHERE i.tab_id = ? ORDER BY i.id', [tabId]);
   for (const p of people) {
     p.items = items.filter((i) => i.person_id === p.id);
     p.pending_cents = p.items.filter((i: any) => i.status === 'PENDING').reduce((a: number, i: any) => a + i.total_cents, 0);

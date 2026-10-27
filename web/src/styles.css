@@ -304,3 +304,5 @@ html, body, #root { min-height: 100%; }
 .shell { min-height: 100vh; min-height: 100dvh; }
 .admin-layout { flex: 1; }
 .sys-footer { margin-top: auto; }
+.cart-line.with-art { grid-template-columns: 48px 1fr auto; align-items: center; }
+.cart-line.with-art > .product-art { grid-row: span 2; width: 48px; height: 48px; align-self: start; }

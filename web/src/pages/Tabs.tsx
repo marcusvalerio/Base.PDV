@@ -6,6 +6,7 @@ import { money, qty, dateTime } from '../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../components/ui';
 import { ProductPicker, CheckoutModal, CheckoutResult, Product, surchargeUnits } from '../components/pos';
 import { RegisterGate } from '../components/RegisterGate';
+import { ProductArt } from '../components/ProductArt';
 
 /** Desenho de mesa vista de cima, com o número no tampo. */
 export function TableArt({ label, people = 0 }: { label: string; people?: number }) {
@@ -132,6 +133,7 @@ function TabDetailInner() {
               <div className="stack" style={{ gap: 4 }}>
                 {p.items.map((i: any) => (
                   <div key={i.id} className="row" style={{ fontSize: 14, opacity: i.status === 'PENDING' ? 1 : 0.55 }}>
+                    <ProductArt size="sm" image={i.image_url} name={i.product_name} />
                     <span style={{ textDecoration: i.status === 'VOIDED' ? 'line-through' : undefined }}>{qty(i.qty_milli, i.unit)} {i.product_name}</span>
                     <span className="spacer" />
                     {i.status === 'PAID' && <span className="badge success">pago</span>}
