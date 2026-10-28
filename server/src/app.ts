@@ -615,9 +615,12 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   app.use('/api', (_req, _res, next) => next(new AppError(404, 'NOT_FOUND', 'Rota não encontrada.')));
 
   if (opts.staticDir && existsSync(opts.staticDir)) {
-    app.use(express.static(opts.staticDir, { index: false, maxAge: '1h' }));
-    app.get('/conheca', (_req, res) => res.sendFile(join(opts.staticDir!, 'conheca', 'index.html')));
-    app.get('*', async (_req, res) => res.sendFile(join(opts.staticDir!, 'index.html')));
+    // Página inicial = apresentação; sistema em /app; painel do admin central em /central.
+    app.get('/conheca', (_req, res) => res.redirect(301, '/'));
+    app.get(/^\/(mesas|fiado|caixa|inventario|admin)(\/.*)?$/, (req, res) => res.redirect(302, '/app' + req.path));
+    app.use(express.static(opts.staticDir, { index: 'index.html', maxAge: '1h' }));
+    app.get(/^\/(app|central)(\/.*)?$/, (_req, res) => res.sendFile(join(opts.staticDir!, 'app.html')));
+    app.get('*', (_req, res) => res.sendFile(join(opts.staticDir!, 'index.html')));
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

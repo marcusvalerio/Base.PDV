@@ -46,7 +46,7 @@ npm run typecheck
 | `SETUP_TOKEN` | — | Só no primeiro acesso ao painel central (`/central`) |
 | `STRIPE_SECRET_KEY` | — | Chave secreta do Stripe (`sk_live_…` / `sk_test_…`) |
 | `STRIPE_PRICE_ID` | — | Preço recorrente da assinatura (`price_…`) |
-| `STRIPE_SETUP_PRICE_ID` | — | Taxa de instalação, cobrada uma vez junto com a 1ª mensalidade (opcional) |
+| `STRIPE_SETUP_PRICE_ID` | — | Complemento da 1ª cobrança (instalação), cobrado uma vez junto com a 1ª mensalidade (opcional). Ex.: instalação de R$ 250 já com o 1º mês = mensalidade R$ 80 + complemento R$ 170 |
 | `STRIPE_WEBHOOK_SECRET` | — | Segredo do webhook (`whsec_…`) |
 | `APP_URL` | — | Endereço do site, ex.: `https://basepdv.vercel.app` (volta do Checkout) |
 
@@ -65,7 +65,7 @@ Mais detalhes: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) e [docs/PENDENCIAS.md]
    - `DB_POOL_MAX` — `3` (funções serverless abrem poucas conexões cada).
    - `SETUP_TOKEN` — texto longo e aleatório, usado só no primeiro acesso.
    - `BUSINESS_TZ` — `America/Sao_Paulo`.
-3. Faça o deploy e abra **/central**: no primeiro acesso, informe o `SETUP_TOKEN` e crie o administrador central (dono da plataforma).
+3. Faça o deploy e abra **/central** (o site em `/` é a apresentação; o sistema fica em `/app`): no primeiro acesso, informe o `SETUP_TOKEN` e crie o administrador central (dono da plataforma).
 4. No painel central, crie cada estabelecimento (com o administrador dele), escolha teste grátis / assinatura / isento e as liberações.
 5. O administrador do estabelecimento entra pela página inicial; em **Configurações** define o código do caixa e o de cancelamento.
 

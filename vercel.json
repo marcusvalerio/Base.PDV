@@ -14,12 +14,37 @@
       "destination": "/api"
     },
     {
-      "source": "/conheca",
-      "destination": "/conheca/index.html"
+      "source": "/app",
+      "destination": "/app.html"
     },
     {
-      "source": "/((?!assets/|conheca/).*)",
-      "destination": "/index.html"
+      "source": "/app/(.*)",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/central",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/central/(.*)",
+      "destination": "/app.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/conheca",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/:p(mesas|fiado|caixa|inventario|admin)/:rest*",
+      "destination": "/app/:p/:rest*",
+      "permanent": false
+    },
+    {
+      "source": "/:p(mesas|fiado|caixa|inventario|admin)",
+      "destination": "/app/:p",
+      "permanent": false
     }
   ]
 }

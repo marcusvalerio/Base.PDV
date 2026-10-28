@@ -80,7 +80,7 @@ function Routed() {
   const [onbDone, setOnbDone] = useState(false);
   if (!ready) return <Loading />;
   if (!user) return <Login />;
-  if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
+  if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/app/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
   if (user.role === 'ADMIN' && boot && !boot.storeName && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
   const A = (el: ReactNode) => <AdminLayout>{el}</AdminLayout>;
   return (
@@ -113,6 +113,7 @@ function Routed() {
 
 export default function App() {
   // Painel do administrador central: área separada, com login próprio.
-  if (location.pathname.startsWith('/central')) return <BrowserRouter><ToastProvider><Central /></ToastProvider></BrowserRouter>;
-  return <BrowserRouter><SessionProvider><ToastProvider><Routed /></ToastProvider></SessionProvider></BrowserRouter>;
+  if (location.pathname.startsWith('/central')) return <BrowserRouter basename="/central"><ToastProvider><Central /></ToastProvider></BrowserRouter>;
+  // O sistema do estabelecimento fica em /app; a página inicial do site é a apresentação.
+  return <BrowserRouter basename="/app"><SessionProvider><ToastProvider><Routed /></ToastProvider></SessionProvider></BrowserRouter>;
 }

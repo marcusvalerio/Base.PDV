@@ -34,9 +34,9 @@ function CentralLogin({ onDone }: { onDone: () => void }) {
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
   return (
-    <div className="login">
+    <div className="login central-login">
       <form className="card stack" onSubmit={submit}>
-        <div><span className="badge accent">Painel central</span><h1 style={{ marginTop: 10 }}>Central<span className="brand-dot">.</span>PDV</h1>
+        <div><span className="central-tag">Administração da plataforma</span><h1 style={{ marginTop: 10 }}>Central<span className="brand-dot">.</span>PDV</h1>
           <p className="muted" style={{ margin: '4px 0 8px' }}>{needed ? 'Primeiro acesso: crie a conta do administrador central.' : 'Acesso do administrador da plataforma.'}</p></div>
         {needed && !setup.data?.enabled && <div className="notice warning">Defina a variável <b>SETUP_TOKEN</b> no servidor (Vercel) e recarregue a página.</div>}
         {needed && <>
@@ -68,9 +68,9 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; 
   const [sel, setSel] = useState<any>(null);
   const blocked = data?.filter((t) => !t.access.ok).length ?? 0;
   return (
-    <div className="shell">
+    <div className="shell central-shell">
       <header className="topbar">
-        <span className="brand">Central<span className="brand-dot">.</span>PDV</span><span className="badge accent">Painel central</span>
+        <span className="brand">Central<span className="brand-dot">.</span>PDV</span><span className="central-tag">Administração da plataforma</span>
         <span className="spacer" /><span className="faint user-name">{me.admin.name}</span>
         <button className="btn ghost sm" onClick={onLogout}>Sair</button>
       </header>

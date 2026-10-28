@@ -1,7 +1,7 @@
 // Service worker do Central.PDV: guarda a "casca" do aplicativo para abrir sem internet.
 // Dados (vendas, produtos, caixa) nunca são guardados aqui: a API nunca passa pelo cache.
-const CACHE = 'pdv-shell-v2';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png'];
+const CACHE = 'pdv-shell-v3';
+const SHELL = ['/app', '/manifest.webmanifest', '/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()));
@@ -13,11 +13,12 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin === location.origin && (url.pathname.startsWith('/api/') || url.pathname.startsWith('/conheca'))) return;
-  // Páginas: tenta a rede; sem internet, abre a última versão guardada.
+  if (url.origin === location.origin && url.pathname.startsWith('/api/')) return;
+  // Telas do sistema (/app): tenta a rede; sem internet, abre a última versão guardada.
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('/', copy)); return r; })
-      .catch(() => caches.match('/')));
+    if (!/^\/app(\/|$)/.test(url.pathname)) return;
+    e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('/app', copy)); return r; })
+      .catch(() => caches.match('/app')));
     return;
   }
   // Arquivos com hash (/assets), ícones e fontes: cache primeiro.

@@ -53,7 +53,7 @@ export function InventoryList() {
             {!done.length ? <Empty>Nenhum inventário concluído.</Empty> : (
               <table className="table responsive"><thead><tr><th>Inventário</th><th>Concluído</th><th className="r">Itens contados</th><th className="r">Divergentes</th><th className="r">Acuracidade (item)</th><th className="r">Acuracidade (valor)</th><th>Meta</th><th>Estoque</th></tr></thead><tbody>
                 {done.map((s) => (
-                  <tr key={s.id} className="click" onClick={() => location.assign(`/inventario/${s.id}`)}>
+                  <tr key={s.id} className="click" onClick={() => location.assign(`/app/inventario/${s.id}`)}>
                     <td data-label="Inventário"><b>{s.name}</b><div className="faint">{SCOPE[s.scope]}{s.category ? `: ${s.category}` : ''}</div></td>
                     <td data-label="Concluído">{dateTime(s.finished_at)}</td>
                     <td data-label="Itens contados" className="r num">{s.summary?.countedItems ?? s.counted_items}</td>
@@ -246,7 +246,7 @@ function FinishModal({ s, target, onClose, onDone }: { s: any; target: number | 
   });
   const [cancel] = useAction(async () => {
     if (!window.confirm('Descartar este inventário? Nada será ajustado.')) return;
-    try { await api(`/inventory/${s.id}/cancel`, { body: {} }); location.assign('/inventario'); } catch (e: any) { toast(e.message, 'error'); }
+    try { await api(`/inventory/${s.id}/cancel`, { body: {} }); location.assign('/app/inventario'); } catch (e: any) { toast(e.message, 'error'); }
   });
   const a = s.accuracy;
   return (

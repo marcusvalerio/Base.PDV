@@ -55,7 +55,7 @@ export async function checkoutUrl(base: DB, f: Fetch, tenantId: number) {
     'line_items[0][price]': process.env.STRIPE_PRICE_ID, 'line_items[0][quantity]': 1,
     'line_items[1][price]': setup, 'line_items[1][quantity]': setup ? 1 : undefined,
     'subscription_data[metadata][tenant_id]': t.id, 'metadata[tenant_id]': t.id,
-    success_url: `${appUrl()}/admin/assinatura?ok=1`, cancel_url: `${appUrl()}/admin/assinatura`,
+    success_url: `${appUrl()}/app/admin/assinatura?ok=1`, cancel_url: `${appUrl()}/app/admin/assinatura`,
     locale: 'pt-BR', allow_promotion_codes: 'true',
   }));
   return s.url as string;
@@ -65,7 +65,7 @@ export async function checkoutUrl(base: DB, f: Fetch, tenantId: number) {
 export async function portalUrl(base: DB, f: Fetch, tenantId: number) {
   const t = await getTenant(base, tenantId);
   if (!t?.stripe_customer_id) throw badRequest('Ainda não há assinatura para gerenciar.');
-  const s = await stripeApi(f, 'POST', '/billing_portal/sessions', form({ customer: t.stripe_customer_id, return_url: `${appUrl()}/admin/assinatura` }));
+  const s = await stripeApi(f, 'POST', '/billing_portal/sessions', form({ customer: t.stripe_customer_id, return_url: `${appUrl()}/app/admin/assinatura` }));
   return s.url as string;
 }
 
