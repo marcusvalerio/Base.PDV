@@ -5,7 +5,8 @@ import { Tenant, getTenant, platformAudit } from './platform.js';
 
 /**
  * Assinatura via Stripe (Checkout + Portal do cliente + webhook).
- * Variáveis: STRIPE_SECRET_KEY, STRIPE_PRICE_ID, STRIPE_WEBHOOK_SECRET e APP_URL (ex.: https://basepdv.vercel.app).
+ * Variáveis: STRIPE_SECRET_KEY, STRIPE_PRICE_ID (mensalidade), STRIPE_SETUP_PRICE_ID (instalação, opcional),
+ * STRIPE_WEBHOOK_SECRET e APP_URL (ex.: https://basepdv.vercel.app).
  * O acesso do estabelecimento depende só do status salvo pelo webhook (ver platform.access).
  */
 export type Fetch = typeof fetch;
@@ -47,9 +48,12 @@ export async function checkoutUrl(base: DB, f: Fetch, tenantId: number) {
   const t = await getTenant(base, tenantId);
   if (!t) throw badRequest('Estabelecimento não encontrado.');
   const customer = await ensureCustomer(base, f, t);
+  // Taxa de instalação: cobrada uma única vez, junto com a 1ª mensalidade, só na primeira assinatura.
+  const setup = process.env.STRIPE_SETUP_PRICE_ID && !t.stripe_subscription_id ? process.env.STRIPE_SETUP_PRICE_ID : undefined;
   const s = await stripeApi(f, 'POST', '/checkout/sessions', form({
     mode: 'subscription', customer, client_reference_id: t.id,
     'line_items[0][price]': process.env.STRIPE_PRICE_ID, 'line_items[0][quantity]': 1,
+    'line_items[1][price]': setup, 'line_items[1][quantity]': setup ? 1 : undefined,
     'subscription_data[metadata][tenant_id]': t.id, 'metadata[tenant_id]': t.id,
     success_url: `${appUrl()}/admin/assinatura?ok=1`, cancel_url: `${appUrl()}/admin/assinatura`,
     locale: 'pt-BR', allow_promotion_codes: 'true',

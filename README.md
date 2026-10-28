@@ -46,6 +46,7 @@ npm run typecheck
 | `SETUP_TOKEN` | — | Só no primeiro acesso ao painel central (`/central`) |
 | `STRIPE_SECRET_KEY` | — | Chave secreta do Stripe (`sk_live_…` / `sk_test_…`) |
 | `STRIPE_PRICE_ID` | — | Preço recorrente da assinatura (`price_…`) |
+| `STRIPE_SETUP_PRICE_ID` | — | Taxa de instalação, cobrada uma vez junto com a 1ª mensalidade (opcional) |
 | `STRIPE_WEBHOOK_SECRET` | — | Segredo do webhook (`whsec_…`) |
 | `APP_URL` | — | Endereço do site, ex.: `https://basepdv.vercel.app` (volta do Checkout) |
 
@@ -76,7 +77,7 @@ Mais detalhes: [docs/ARQUITETURA.md](docs/ARQUITETURA.md) e [docs/PENDENCIAS.md]
 Cada estabelecimento tem um schema próprio no Postgres (`t_<nº>`); logins são únicos entre todos.
 
 ## Assinatura (Stripe)
-1. No Stripe, crie um produto com preço **recorrente** e copie o `price_…`.
+1. No Stripe, crie um produto com preço **recorrente** (mensalidade) e copie o `price_…`. Para a taxa de instalação, crie um preço **avulso** (one-time) e use em `STRIPE_SETUP_PRICE_ID`.
 2. Em **Developers → Webhooks**, adicione `https://SEU-SITE/api/stripe/webhook` com os eventos
    `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
    `customer.subscription.deleted` e `invoice.payment_failed`. Copie o `whsec_…`.

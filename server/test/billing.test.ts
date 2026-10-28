@@ -27,7 +27,7 @@ function fakeStripe() {
 }
 
 describe('assinatura (Stripe)', () => {
-  afterEach(() => { for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_PRICE_ID', 'STRIPE_WEBHOOK_SECRET']) delete process.env[k]; });
+  afterEach(() => { for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_PRICE_ID', 'STRIPE_SETUP_PRICE_ID', 'STRIPE_WEBHOOK_SECRET']) delete process.env[k]; });
 
   it('valida a assinatura do webhook', () => {
     const body = Buffer.from('{"a":1}');
@@ -41,7 +41,7 @@ describe('assinatura (Stripe)', () => {
   });
 
   it('checkout → webhook libera; falha de pagamento bloqueia na hora; evento repetido é ignorado', async () => {
-    process.env.STRIPE_SECRET_KEY = 'sk_test_x'; process.env.STRIPE_PRICE_ID = 'price_1'; process.env.STRIPE_WEBHOOK_SECRET = SECRET;
+    process.env.STRIPE_SECRET_KEY = 'sk_test_x'; process.env.STRIPE_PRICE_ID = 'price_1'; process.env.STRIPE_SETUP_PRICE_ID = 'price_setup'; process.env.STRIPE_WEBHOOK_SECRET = SECRET;
     const stripe = fakeStripe();
     const { app, base } = await setup({ fetch: stripe.f });
     const sup = await agent(app, 'super', true);
@@ -51,7 +51,10 @@ describe('assinatura (Stripe)', () => {
 
     const co = await dono.post('/api/billing/checkout');
     expect(co.body.url).toMatch(/^https:\/\/checkout\.stripe\.com/);
-    expect(stripe.calls.find((c) => c.url.endsWith('/checkout/sessions'))!.body).toContain(`client_reference_id=${tid}`);
+    const first = stripe.calls.find((c) => c.url.endsWith('/checkout/sessions'))!.body;
+    expect(first).toContain(`client_reference_id=${tid}`);
+    // 1ª assinatura: mensalidade + instalação.
+    expect(decodeURIComponent(first)).toContain('line_items[1][price]=price_setup');
 
     expect((await hook(app, { id: 'evt_1', type: 'checkout.session.completed', data: { object: { mode: 'subscription', subscription: 'sub_1', client_reference_id: String(tid) } } }, 't=1,v1=errado')).status).toBe(400);
     expect((await hook(app, { id: 'evt_1', type: 'checkout.session.completed', data: { object: { mode: 'subscription', subscription: 'sub_1', client_reference_id: String(tid) } } })).status).toBe(200);
@@ -71,6 +74,10 @@ describe('assinatura (Stripe)', () => {
     expect((await base.one('SELECT subscription_status FROM tenants WHERE id = ?', [tid])).subscription_status).toBe('canceled');
 
     expect((await dono.post('/api/billing/portal')).body.url).toMatch(/^https:\/\/billing\.stripe\.com/);
+    // Assinando de novo (após cancelar): só a mensalidade, sem instalação.
+    stripe.calls.length = 0;
+    await dono.post('/api/billing/checkout');
+    expect(decodeURIComponent(stripe.calls.find((c) => c.url.endsWith('/checkout/sessions'))!.body)).not.toContain('price_setup');
   });
 
   it('operador não mexe na assinatura; sem Stripe configurado avisa', async () => {
