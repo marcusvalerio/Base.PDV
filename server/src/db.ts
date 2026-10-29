@@ -70,8 +70,17 @@ function txOn(q: Querier, depth: number, execFn: (sql: string) => Promise<void>)
   };
 }
 
+/**
+ * O endereço "-pooler" do Neon (PgBouncer em modo transação) pode mandar cada consulta para uma conexão diferente,
+ * e o search_path do estabelecimento se perde ("relation ... does not exist"). Usa sempre o endereço direto.
+ */
+export function directUrl(url: string): string {
+  return url.replace(/(@[^/:?]*?)-pooler\./, '$1.');
+}
+
 /** Banco real (Neon) via pool de conexões. */
-export function pgDb(connectionString: string): DB {
+export function pgDb(rawUrl: string): DB {
+  const connectionString = directUrl(rawUrl);
   const pool = new pg.Pool({ connectionString: connectionString.replace(/([?&])sslmode=(require|prefer|verify-ca)/, '$1sslmode=verify-full'), max: Number(process.env.DB_POOL_MAX || 10), ssl: /sslmode=disable/.test(connectionString) ? false : { rejectUnauthorized: true } });
   const execFn = async (sql: string) => { await pool.query(sql); };
   const tx: DB['tx'] = async (fn) => {
