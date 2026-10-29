@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Onboarding, { onboardingSkipped } from './pages/Onboarding';
 import { BillingPage, Blocked } from './pages/Billing';
 import Central from './pages/central/Central';
+import Signup from './pages/Signup';
 import Pos from './pages/Pos';
 import { TabsList, TabDetail } from './pages/Tabs';
 import Fiado from './pages/Fiado';
@@ -79,7 +80,7 @@ function Routed() {
   const { user, ready, boot, access } = useSession();
   const [onbDone, setOnbDone] = useState(false);
   if (!ready) return <Loading />;
-  if (!user) return <Login />;
+  if (!user) return location.pathname === '/app/cadastro' ? <Signup /> : <Login />;
   if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/app/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
   if (user.role === 'ADMIN' && boot && (!boot.storeName || boot.setupPending) && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
   const A = (el: ReactNode) => <AdminLayout>{el}</AdminLayout>;

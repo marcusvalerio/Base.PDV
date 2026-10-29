@@ -1,10 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, ApiError } from '../../lib/api';
 import { useApi, useAction } from '../../lib/hooks';
-import { date, dateTime } from '../../lib/format';
-import { Modal, Loading, ErrorState, Empty, Field, Segmented, useToast } from '../../components/ui';
+import { date, dateTime, money } from '../../lib/format';
+import { Modal, Loading, ErrorState, Empty, Field, Segmented, Metric, useToast } from '../../components/ui';
 import { SystemFooter } from '../../components/SystemFooter';
-import { ShareButtons } from '../../components/ShareButtons';
+import { ShareButtons, waLink } from '../../components/ShareButtons';
 import { easyPassword, suggestLogin } from '../admin/Admin';
 
 type Admin = { id: number; name: string; username: string };
@@ -66,9 +66,13 @@ function AccessBadge({ t }: { t: any }) {
 
 function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; onLogout: () => void }) {
   const { data, loading, error, reload } = useApi<any[]>('/central/tenants');
+  const ov = useApi<any>('/central/overview');
+  const [showErrors, setShowErrors] = useState(false);
   const [creating, setCreating] = useState(false);
   const [sel, setSel] = useState<any>(null);
   const blocked = data?.filter((t) => !t.access.ok).length ?? 0;
+  const isQuiet = (t: any) => t.access.ok && (!t.lastSaleAt || Date.now() - Date.parse(t.lastSaleAt) > 7 * 864e5);
+  const quiet = data?.filter(isQuiet).length ?? 0;
   return (
     <div className="shell central-shell">
       <header className="topbar">
@@ -79,20 +83,29 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; 
       <main className="content stack">
         <div className="page-head"><h1>Estabelecimentos</h1><span className="spacer" /><button className="btn primary" onClick={() => setCreating(true)}>Novo estabelecimento</button></div>
         {!me.stripe && <div className="notice warning">Stripe ainda não configurado (STRIPE_SECRET_KEY, STRIPE_PRICE_ID e STRIPE_WEBHOOK_SECRET na Vercel). Até lá, use "Isento" ou período de teste.</div>}
+        {ov.data && <div className="metrics">
+          <Metric label="Receita mensal (assinantes)" value={money(ov.data.monthlyRevenueCents)} sub={`${ov.data.paying} assinante(s) × ${money(ov.data.priceCents)}`} />
+          <Metric label="Em teste grátis" value={ov.data.trial} sub="Vão precisar assinar" />
+          <Metric label="Isentos" value={ov.data.exempt} sub="Cortesia ou uso próprio" />
+          <Metric label="Fora do ar" value={ov.data.blocked} sub={ov.data.suspended ? `${ov.data.suspended} suspenso(s) por você` : 'Sem pagamento em dia'} />
+        </div>}
         {data && <div className="status-strip">
           <span className="badge lg success">{data.length - blocked} ativo(s)</span>
           {blocked > 0 && <span className="badge lg danger">{blocked} fora do ar</span>}
+          {quiet > 0 && <span className="badge lg warning">{quiet} sem vender há 7+ dias</span>}
+          {ov.data && <button className={`badge lg ${ov.data.errors24h ? 'danger' : 'success'} offline-pill`} onClick={() => setShowErrors(true)}>{ov.data.errors24h ? `${ov.data.errors24h} erro(s) nas últimas 24h` : 'Sem erros nas últimas 24h'}</button>}
         </div>}
         {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
           <div className="card flush">{!data?.length ? <Empty>Nenhum estabelecimento ainda.</Empty> : (
             <table className="table responsive"><thead><tr><th>Estabelecimento</th><th>Situação</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
               {data.map((t) => (
                 <tr key={t.id} className="click" onClick={() => setSel(t)}>
-                  <td data-label="Estabelecimento"><b>{t.name}</b><div className="faint">nº {t.id} · desde {date(t.created_at)}</div></td>
+                  <td data-label="Estabelecimento"><b>{t.name}</b><div className="faint">nº {t.id} · desde {date(t.created_at)}{t.signup_source === 'site' ? ' · pelo site' : ''}</div>
+                    {t.contact_phone && <a className="faint" href={waLink(`Olá, ${String(t.contact_name ?? '').split(' ')[0]}! Aqui é do Central.PDV.`, t.contact_phone)} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>{t.contact_name} · {t.contact_phone}</a>}</td>
                   <td data-label="Situação"><AccessBadge t={t} /></td>
                   <td data-label="Usuários" className="r num">{t.users}</td>
                   <td data-label="Vendas (30 dias)" className="r num">{t.salesLast30}</td>
-                  <td data-label="Última venda">{t.lastSaleAt ? dateTime(t.lastSaleAt) : '—'}</td>
+                  <td data-label="Última venda">{t.lastSaleAt ? dateTime(t.lastSaleAt) : '—'}{isQuiet(t) && <div><span className="badge warning">parado</span></div>}</td>
                 </tr>
               ))}
             </tbody></table>
@@ -100,6 +113,7 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; 
         )}
       </main>
       <SystemFooter />
+      {showErrors && <ErrorsModal onClose={() => setShowErrors(false)} />}
       {creating && <NewTenant onClose={() => setCreating(false)} onDone={() => { setCreating(false); reload(); }} />}
       {sel && <TenantModal t={sel} onClose={() => setSel(null)} onChanged={reload} />}
     </div>
@@ -109,7 +123,7 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; 
 const MOD_LABELS: Record<string, string> = { mesas: 'Mesas e comandas', fiado: 'Fiado e clientes', estoque: 'Estoque', inventario: 'Inventário', analise: 'Análise comercial', reposicao: 'Reposição', auditoria: 'Auditoria' };
 
 function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ name: '', adminName: '', username: '', password: easyPassword(), billing: 'trial', trialDays: '7' });
+  const [f, setF] = useState({ name: '', adminName: '', phone: '', username: '', password: easyPassword(), billing: 'trial', trialDays: '7' });
   const [mods, setMods] = useState<Record<string, boolean>>(Object.fromEntries(Object.keys(MOD_LABELS).map((k) => [k, k !== 'auditoria'])));
   const [err, setErr] = useState<string | null>(null);
   const toast = useToast();
@@ -119,7 +133,7 @@ function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => voi
     try {
       await api('/central/tenants', { body: {
         name: f.name, admin: { name: f.adminName, username: f.username, password: f.password },
-        exempt: f.billing === 'exempt', trialDays: f.billing === 'trial' ? Number(f.trialDays) || 0 : undefined, modules: mods,
+        exempt: f.billing === 'exempt', trialDays: f.billing === 'trial' ? Number(f.trialDays) || 0 : undefined, modules: mods, contact: f.phone ? { phone: f.phone } : undefined,
       } });
       toast('Estabelecimento criado.', 'success'); setCreated(true);
     } catch (e: any) { setErr(e instanceof ApiError ? e.message : 'Erro ao criar.'); }
@@ -131,7 +145,7 @@ function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => voi
       <Modal title="Estabelecimento criado" onClose={onDone} footer={<button className="btn primary" onClick={onDone}>Concluir</button>}>
         <div className="notice success">Envie o acesso para {f.adminName}. A senha não fica visível depois.</div>
         <pre className="statement">{text.replace(/\*/g, '')}</pre>
-        <ShareButtons title="Acesso ao Central.PDV" text={text} />
+        <ShareButtons title="Acesso ao Central.PDV" text={text} phone={f.phone} />
       </Modal>
     );
   }
@@ -143,6 +157,7 @@ function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => voi
         <Field label="Nome"><input className="input" value={f.adminName} onChange={(e) => setF({ ...f, adminName: e.target.value, username: suggestLogin(e.target.value) })} /></Field>
         <Field label="Login" hint="Único em toda a plataforma (ex.: ze.silva)."><input className="input" autoCapitalize="none" value={f.username} onChange={set('username')} /></Field>
       </div>
+      <Field label="Celular do responsável (WhatsApp)"><input className="input" inputMode="tel" value={f.phone} onChange={set('phone')} placeholder="(11) 98765-4321" /></Field>
       <Field label="Senha inicial" hint="Mín. 8 caracteres. Passe para o cliente trocar depois."><input className="input" value={f.password} onChange={set('password')} /></Field>
       <Field group label="Cobrança">
         <Segmented value={f.billing} onChange={(billing) => setF({ ...f, billing })} options={[{ value: 'trial', label: 'Teste grátis' }, { value: 'paid', label: 'Assinatura já' }, { value: 'exempt', label: 'Isento' }]} />
@@ -235,6 +250,21 @@ function ResetPassword({ tenantId, u, onClose }: { tenantId: number; u: any; onC
       <Field group label="Nova senha" hint="Mín. 8 caracteres. As sessões abertas desse usuário são encerradas.">
         <div className="row"><input className="input" value={p} onChange={(e) => setP(e.target.value)} autoFocus /><button className="btn" type="button" onClick={() => setP(easyPassword())}>Gerar outra</button></div>
       </Field>
+    </Modal>
+  );
+}
+
+/** Erros do servidor (últimos 30 dias): para você saber antes do cliente reclamar. */
+function ErrorsModal({ onClose }: { onClose: () => void }) {
+  const { data, loading } = useApi<any[]>('/central/errors');
+  return (
+    <Modal wide title="Erros do sistema" onClose={onClose}>
+      <div className="faint">Falhas inesperadas do servidor (ex.: banco fora do ar). Erros de digitação dos usuários não aparecem aqui.</div>
+      {loading && !data ? <Loading /> : !data?.length ? <Empty>Nenhum erro registrado. 🎉</Empty> : (
+        <div className="card flush"><table className="table responsive"><thead><tr><th>Quando</th><th>Estabelecimento</th><th>Onde</th><th>Erro</th></tr></thead><tbody>
+          {data.map((e) => <tr key={e.id}><td data-label="Quando">{dateTime(e.at)}</td><td data-label="Estabelecimento">{e.tenant_name ?? '—'}</td><td data-label="Onde" className="faint">{e.method} {e.path}</td><td data-label="Erro">{e.message}</td></tr>)}
+        </tbody></table></div>
+      )}
     </Modal>
   );
 }

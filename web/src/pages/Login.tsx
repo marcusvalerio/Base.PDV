@@ -31,6 +31,7 @@ function LoginForm({ login }: { login: (u: string, p: string) => Promise<void> }
         <Field label="Senha"><input className="input lg" type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} required /></Field>
         {err && <div className="notice danger" role="alert">{err}</div>}
         <button className="btn primary lg block" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        <div className="faint" style={{ textAlign: 'center' }}>Ainda não usa o Central.PDV? <a href="/app/cadastro">Contratar</a></div>
       </form>
       <SystemFooter />
     </div>

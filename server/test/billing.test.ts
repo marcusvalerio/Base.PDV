@@ -87,3 +87,25 @@ describe('assinatura (Stripe)', () => {
     expect(r.status).toBe(503);
   });
 });
+
+describe('cadastro pelo site e painel central', () => {
+  it('cria estabelecimento, entra e fica aguardando assinatura; aparece nos números do painel', async () => {
+    const { app } = await setup();
+    const body = { storeName: 'Bar Novo', name: 'Rafa Lima', phone: '11987654321', username: 'rafa.lima', password: 'senha-rafa-123' };
+    const r = await request(app).post('/api/signup').set('X-Requested-With', 'pdv').send(body);
+    expect(r.status).toBe(201);
+    const cookie = (r.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    const me = await request(app).get('/api/auth/me').set('Cookie', cookie);
+    expect(me.body.user.role).toBe('ADMIN');
+    expect(me.body.access.ok).toBe(false);
+    expect((await request(app).get('/api/products').set('Cookie', cookie)).status).toBe(402);
+    expect((await request(app).post('/api/signup').set('X-Requested-With', 'pdv').send(body)).status).toBe(409);
+    const sup = await agent(app, 'super', true);
+    const ov = (await sup.get('/api/central/overview')).body;
+    expect(ov.total).toBe(2);
+    expect(ov.blocked).toBe(1);
+    const t = (await sup.get('/api/central/tenants')).body.find((x: any) => x.name === 'Bar Novo');
+    expect(t.contact_phone).toBe('11987654321');
+    expect(t.signup_source).toBe('site');
+  });
+});

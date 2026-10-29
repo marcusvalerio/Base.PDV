@@ -10,6 +10,7 @@ import { setModules, MODULES } from './modules.js';
  * Tudo aqui roda no schema public, com o banco "base".
  */
 export interface Tenant {
+  contact_name?: string | null; contact_phone?: string | null; signup_source?: string | null;
   id: number; name: string; schema_name: string; status: 'ACTIVE' | 'SUSPENDED'; billing_exempt: number;
   trial_ends_at: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null;
   subscription_status: string | null; current_period_end: string | null; created_at: string;
@@ -46,10 +47,12 @@ export async function releaseUsername(base: DB, username: string) {
 export async function createTenant(base: DB, input: {
   name: string; admin?: { name: string; username: string; password: string };
   trialDays?: number; exempt?: boolean; modules?: Partial<Record<string, boolean>>;
+  contact?: { name?: string; phone?: string }; source?: 'central' | 'site';
 }, actorId: number | null) {
   const t = await base.one<{ id: number }>(
-    "INSERT INTO tenants (name, schema_name, billing_exempt, trial_ends_at, created_at) VALUES (?, 'pending', ?, ?, ?) RETURNING id",
-    [input.name.trim(), input.exempt ? 1 : 0, input.trialDays ? new Date(Date.now() + input.trialDays * 864e5).toISOString() : null, now()],
+    "INSERT INTO tenants (name, schema_name, billing_exempt, trial_ends_at, contact_name, contact_phone, signup_source, created_at) VALUES (?, 'pending', ?, ?, ?, ?, ?, ?) RETURNING id",
+    [input.name.trim(), input.exempt ? 1 : 0, input.trialDays ? new Date(Date.now() + input.trialDays * 864e5).toISOString() : null,
+      input.contact?.name ?? input.admin?.name ?? null, input.contact?.phone ?? null, input.source ?? 'central', now()],
   );
   const schema = `t_${t!.id}`;
   await base.run('UPDATE tenants SET schema_name = ? WHERE id = ?', [schema, t!.id]);
@@ -138,3 +141,33 @@ export async function platformAdminFromToken(base: DB, token: string | undefined
 export async function platformLogout(base: DB, token: string) {
   await base.run('DELETE FROM platform_sessions WHERE token_hash = ?', [sha256(token)]);
 }
+
+// ---------- Números da plataforma e erros ----------
+
+/** Resumo para o painel central: assinantes, teste, isentos, fora do ar, receita mensal estimada e erros recentes. */
+export async function overview(base: DB) {
+  const rows = await base.all<Tenant>('SELECT * FROM tenants');
+  const price = Number(process.env.MONTHLY_PRICE_CENTS || 8000);
+  const c = { total: rows.length, paying: 0, trial: 0, exempt: 0, blocked: 0, suspended: 0 };
+  for (const t of rows) {
+    const a = access(t);
+    if (t.status === 'SUSPENDED') c.suspended++;
+    else if (t.billing_exempt) c.exempt++;
+    else if (t.subscription_status === 'active') c.paying++;
+    else if (a.ok) c.trial++;
+    if (!a.ok) c.blocked++;
+  }
+  const since = new Date(Date.now() - 864e5).toISOString();
+  const errors24h = (await base.one('SELECT COUNT(*)::int AS n FROM platform_errors WHERE at >= ?', [since])).n as number;
+  return { ...c, monthlyRevenueCents: c.paying * price, priceCents: price, errors24h };
+}
+
+export async function logError(base: DB, e: { tenantId?: number | null; method?: string; path?: string; message: string; stack?: string }) {
+  await base.run('INSERT INTO platform_errors (tenant_id, method, path, message, stack, at) VALUES (?,?,?,?,?,?)',
+    [e.tenantId ?? null, e.method ?? null, e.path?.slice(0, 300) ?? null, e.message.slice(0, 1000), e.stack?.slice(0, 4000) ?? null, now()]);
+  // Mantém só os últimos 30 dias.
+  await base.run('DELETE FROM platform_errors WHERE at < ?', [new Date(Date.now() - 30 * 864e5).toISOString()]);
+}
+
+export const recentErrors = (base: DB) => base.all(
+  'SELECT e.id, e.tenant_id, t.name AS tenant_name, e.method, e.path, e.message, e.at FROM platform_errors e LEFT JOIN tenants t ON t.id = e.tenant_id ORDER BY e.id DESC LIMIT 100');

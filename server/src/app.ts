@@ -160,6 +160,28 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     storeLogo: await settings.getSetting(db, 'store_logo_url'),
   } : { storeName: '', storeLogo: '' }));
 
+  // ---------- Cadastro pelo site: cria o estabelecimento e já entra (fica fora do ar até assinar, salvo teste grátis) ----------
+  const signups = new Map<string, number[]>();
+  r.post('/signup', async (req, res) => {
+    const hits = (signups.get(req.ip ?? '') ?? []).filter((t) => t > Date.now() - 3600e3);
+    if (hits.length >= 3) throw new AppError(429, 'TOO_MANY', 'Muitos cadastros seguidos. Tente de novo mais tarde.');
+    const b = z.object({
+      storeName: z.string().trim().min(2, 'Informe o nome do estabelecimento.').max(60),
+      name: z.string().trim().min(2, 'Informe seu nome.').max(80),
+      phone: z.string().trim().min(10, 'Informe seu celular com DDD.').max(30),
+      username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/, 'Login: use letras, números, ponto, hífen ou _.'),
+      password: z.string().min(8, 'A senha precisa de pelo menos 8 caracteres.').max(200),
+    }).parse(req.body);
+    signups.set(req.ip ?? '', [...hits, Date.now()]);
+    const trialDays = Number(process.env.SIGNUP_TRIAL_DAYS || 0) || undefined;
+    const tid = await platform.createTenant(base, { name: b.storeName, admin: { name: b.name, username: b.username, password: b.password },
+      trialDays, contact: { name: b.name, phone: b.phone }, source: 'site' }, null);
+    const t = (await platform.getTenant(base, tid))!;
+    const result = await withSchema(base, t.schema_name, (tdb) => users.login(tdb, b.username, b.password));
+    res.cookie(COOKIE, `${t.id}.${result!.token}`, cookieOpts);
+    res.status(201).json({ user: { ...result!.user, tenantId: t.id } });
+  });
+
   // ---------- Autenticação (estabelecimento) ----------
   r.post('/auth/login', async (req, res) => {
     const body = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200) }).parse(req.body);
@@ -576,12 +598,14 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   const tenantId = (req: Request) => id.parse(req.params.id);
   const getT = async (req: Request) => { const t = await platform.getTenant(base, tenantId(req)); if (!t) throw new AppError(404, 'NOT_FOUND', 'Estabelecimento não encontrado.'); return t; };
   c.get('/tenants', central, async (_req, res) => res.json(await platform.listTenants(base)));
+  c.get('/overview', central, async (_req, res) => res.json(await platform.overview(base)));
+  c.get('/errors', central, async (_req, res) => res.json(await platform.recentErrors(base)));
   c.post('/tenants', central, async (req, res) => {
     const b = z.object({
       name: z.string().trim().min(2).max(60),
       admin: loginSchema.extend({ name: z.string().trim().min(2).max(80) }),
       trialDays: z.number().int().min(0).max(365).optional(), exempt: z.boolean().optional(),
-      modules: z.record(z.boolean()).optional(),
+      modules: z.record(z.boolean()).optional(), contact: z.object({ phone: z.string().trim().max(30).optional() }).optional(),
     }).parse(req.body);
     res.status(201).json({ id: await platform.createTenant(base, b, req.central!.id) });
   });
@@ -641,19 +665,22 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   if (opts.staticDir && existsSync(opts.staticDir)) {
     // Página inicial = apresentação; sistema em /app; painel do admin central em /central.
     app.get('/conheca', (_req, res) => res.redirect(301, '/'));
+    app.get('/termos', (_req, res) => res.sendFile(join(opts.staticDir!, 'termos.html')));
     app.get(/^\/(mesas|fiado|caixa|inventario|admin)(\/.*)?$/, (req, res) => res.redirect(302, '/app' + req.path));
     app.use(express.static(opts.staticDir, { index: 'index.html', maxAge: '1h' }));
     app.get(/^\/(app|central)(\/.*)?$/, (_req, res) => res.sendFile(join(opts.staticDir!, 'app.html')));
     app.get('*', (_req, res) => res.sendFile(join(opts.staticDir!, 'index.html')));
   }
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof ZodError) {
       return res.status(400).json({ error: { code: 'VALIDATION', message: err.issues[0]?.message ?? 'Dados inválidos.', issues: err.issues } });
     }
     if (err instanceof AppError) return res.status(err.status).json({ error: { code: err.code, message: err.message } });
     if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: { code: 'INVALID_JSON', message: 'Dados inválidos.' } });
     console.error(err);
+    // Registra para o painel central (sem dados do corpo da requisição).
+    platform.logError(base, { tenantId: req.tenant?.id, method: req.method, path: req.path, message: String(err?.message ?? err), stack: err?.stack }).catch(() => {});
     res.status(500).json({ error: { code: 'INTERNAL', message: 'Erro interno. Tente novamente.' } });
   });
   return app;
