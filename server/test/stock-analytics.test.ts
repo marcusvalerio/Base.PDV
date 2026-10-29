@@ -92,3 +92,19 @@ describe('movimentações de estoque com filtros', () => {
     expect((await admin.post('/api/products', { name: 'X', category_id: 1, unit: 'UN', price_cents: 100, image_url: 'art:../x' })).status).toBe(400);
   });
 });
+
+describe('produtos prontos (catálogo)', () => {
+  it('cria em lote, cria categoria que falta e pula nomes repetidos', async () => {
+    const { admin, op } = await setup();
+    const items = [
+      { name: 'Cerveja Lata 350ml', category: 'Cervejas', unit: 'UN', price_cents: 600, image_url: 'art:cerveja-lata' },
+      { name: 'Carvão (saco)', category: 'Churrasco', unit: 'PCT', price_cents: 1800, image_url: 'art:carvao' },
+    ];
+    expect((await op.post('/api/products/bulk', { items })).status).toBe(403);
+    expect((await admin.post('/api/products/bulk', { items })).body.created).toBe(2);
+    expect((await admin.post('/api/products/bulk', { items })).body.created).toBe(0);
+    const list = (await admin.get('/api/products?q=Carv')).body;
+    expect(list[0].category).toBe('Churrasco');
+    expect(list[0].image_url).toBe('art:carvao');
+  });
+});

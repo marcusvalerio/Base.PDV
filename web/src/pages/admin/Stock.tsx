@@ -7,6 +7,7 @@ import { Movements, MOV_LABEL } from './Products';
 import { useSession } from '../../components/session';
 import { useDebounced } from '../../lib/hooks';
 import { PRESETS } from '../../components/PeriodFilter';
+import { downloadCsv, csvDate, csvQty } from '../../lib/csv';
 
 export default function Stock() {
   const [tab, setTab] = useState<'alerts' | 'moves'>('alerts');
@@ -80,7 +81,7 @@ function Moves() {
         <div className="row wrap">
           <span className="faint">{data ? `${data.length}${data.length >= 300 ? '+' : ''} movimentação(ões)` : ''}</span>
           {active && <button className="btn ghost sm" onClick={() => setF(EMPTY_F)}>Limpar filtros</button>}
-          <span className="spacer" /><button className="btn" onClick={() => setAdj(true)}>Registrar ajuste ou perda</button>
+          <span className="spacer" />{!!data?.length && <button className="btn" onClick={() => downloadCsv('movimentacoes-estoque', data, [['Data', (m) => csvDate(m.at)], ['Produto', (m) => m.product_name], ['Tipo', (m) => MOV_LABEL[m.type]], ['Quantidade', (m) => csvQty(m.qty_milli)], ['Saldo depois', (m) => csvQty(m.balance_after_milli)], ['Unidade', (m) => m.unit], ['Usuário', (m) => m.user_name], ['Motivo', (m) => m.reason]])}>Exportar planilha</button>}<button className="btn" onClick={() => setAdj(true)}>Registrar ajuste ou perda</button>
         </div>
       </div>
       {!ready ? <div className="faint">Escolha as duas datas.</div> : error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : <div className="card flush"><Movements rows={data ?? []} showProduct /></div>}

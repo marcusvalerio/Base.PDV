@@ -9,6 +9,7 @@ import { useSession } from '../../components/session';
 import { SaleModal } from '../../components/CancelSale';
 import { SalesList } from '../../components/SalesList';
 import { ShareButtons } from '../../components/ShareButtons';
+import { downloadCsv, csvMoney, csvDate, csvQty } from '../../lib/csv';
 import { getPrinter, setPrinter, printSaleReceipt, PaperWidth } from '../../lib/print';
 
 export function Customers() {
@@ -20,7 +21,7 @@ export function Customers() {
   const total = (data ?? []).reduce((a, c) => a + c.balance_cents, 0);
   return (
     <div className="stack">
-      <div className="page-head"><h1>Clientes</h1><span className="spacer" /><span className="muted">Fiado pendente: <b className="num">{money(total)}</b></span><button className="btn primary" onClick={() => setEdit({})}>Novo cliente</button></div>
+      <div className="page-head"><h1>Clientes</h1><span className="spacer" /><span className="muted">Fiado pendente: <b className="num">{money(total)}</b></span>{!!data?.length && <button className="btn" onClick={() => downloadCsv('clientes-fiado', data, [['Cliente', (c) => c.name], ['Celular', (c) => c.phone], ['Saldo devedor (R$)', (c) => csvMoney(c.balance_cents)], ['Em aberto desde', (c) => csvDate(c.oldest_open_at)], ['Ativo', (c) => (c.active ? 'sim' : 'não')]])}>Exportar planilha</button>}<button className="btn primary" onClick={() => setEdit({})}>Novo cliente</button></div>
       <input className="input" placeholder="Buscar cliente" value={q} onChange={(e) => setQ(e.target.value)} />
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
         <div className="card flush">{!data?.length ? <Empty>Nenhum cliente.</Empty> : (

@@ -4,6 +4,7 @@ import { money } from '../lib/format';
 import { Loading, ErrorState, Empty, Segmented } from './ui';
 import { useSession } from './session';
 import { SaleModal } from './CancelSale';
+import { downloadCsv, csvDate, csvMoney } from '../lib/csv';
 
 const TZ = 'America/Sao_Paulo';
 const dayKey = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso));
@@ -79,6 +80,8 @@ export function SalesList({ admin = false, onChanged }: { admin?: boolean; onCha
         <div className="row wrap">
           {data && <span className="faint">{data.length}{data.length >= 500 ? '+' : ''} venda(s) · total {money(total(data))}</span>}
           {active && <button className="btn ghost sm" onClick={() => setF({ ...EMPTY, preset: f.preset })}>Limpar filtros</button>}
+          <span className="spacer" />
+          {!!data?.length && <button className="btn sm" onClick={() => downloadCsv('vendas', data, [['Nº', (s) => s.id], ['Data', (s) => csvDate(s.created_at)], ['Operador', (s) => s.user_name], ['Forma', (s) => s.payment_method], ['Cliente', (s) => s.customer_name], ['Origem', (s) => s.tab_label ?? 'Balcão'], ['Situação', (s) => (s.status === 'CANCELLED' ? 'Cancelada' : 'Concluída')], ['Acréscimo (R$)', (s) => csvMoney(s.surcharge_cents)], ['Total (R$)', (s) => csvMoney(s.total_cents)]])}>Exportar planilha</button>}
         </div>
       </div>
       {!ready ? <div className="faint">{f.preset === 'pick' ? 'Escolha o mês.' : 'Escolha as duas datas.'}</div>

@@ -6,6 +6,8 @@ import { Modal, Loading, ErrorState, Empty, Field, Segmented, useToast } from '.
 import { useSession } from '../../components/session';
 import { CameraButton } from '../../components/scanner';
 import { ProductArt, ArtPicker } from '../../components/ProductArt';
+import { downloadCsv, csvMoney, csvQty } from '../../lib/csv';
+import { CATALOG } from '../../lib/catalog';
 
 const FIELD_LABEL: Record<string, string> = { name: 'Nome', price_cents: 'Preço', cost_cents: 'Custo', active: 'Ativo', category_id: 'Categoria', min_stock_milli: 'Estoque mínimo', barcode: 'Código de barras', internal_code: 'Código interno', unit: 'Unidade', track_expiry: 'Controla validade' };
 
@@ -18,9 +20,11 @@ export default function Products() {
   const [edit, setEdit] = useState<any | null>(null);
   const [entry, setEntry] = useState<any | null>(null);
   const [history, setHistory] = useState<any | null>(null);
+  const [catalog, setCatalog] = useState(false);
   return (
     <div className="stack">
-      <div className="page-head"><h1>Produtos</h1><span className="spacer" /><button className="btn primary" onClick={() => setEdit({})}>Novo produto</button></div>
+      <div className="page-head"><h1>Produtos</h1><span className="spacer" />{!!data?.length && <button className="btn" onClick={() => downloadCsv('produtos-e-estoque', data, [['Código', (p) => p.internal_code], ['Código de barras', (p) => p.barcode], ['Produto', (p) => p.name], ['Categoria', (p) => p.category], ['Unidade', (p) => p.unit], ['Preço (R$)', (p) => csvMoney(p.price_cents)], ['Custo (R$)', (p) => csvMoney(p.cost_cents)], ['Estoque', (p) => csvQty(p.stock_milli)], ['Mínimo', (p) => csvQty(p.min_stock_milli)], ['Ativo', (p) => (p.active ? 'sim' : 'não')]])}>Exportar planilha</button>}<button className="btn" onClick={() => setCatalog(true)}>Produtos prontos</button><button className="btn primary" onClick={() => setEdit({})}>Novo produto</button></div>
+      {catalog && <CatalogModal existing={(data ?? []).map((p) => p.name.toLowerCase())} onClose={() => setCatalog(false)} onDone={() => { setCatalog(false); reload(); }} />}
       <div className="row wrap">
         <input className="input" style={{ flex: 1, minWidth: 200 }} placeholder="Buscar por nome ou código" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className="input" style={{ width: 'auto' }} value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Categoria">
@@ -216,5 +220,45 @@ export function Movements({ rows, showProduct }: { rows: any[]; showProduct?: bo
           <td data-label="Usuário">{m.user_name}</td><td data-label="Motivo" className="faint">{m.reason ?? ''}</td></tr>
       ))}
     </tbody></table>
+  );
+}
+
+/** Catálogo de produtos prontos: marca, ajusta o preço e adiciona de uma vez (com desenho e categoria). */
+function CatalogModal({ existing, onClose, onDone }: { existing: string[]; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const items = CATALOG.filter((c) => !existing.includes(c.name.toLowerCase()));
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [price, setPrice] = useState<Record<string, string>>(Object.fromEntries(items.map((c) => [c.name, (c.price_cents / 100).toFixed(2).replace('.', ',')])));
+  const chosen = items.filter((c) => sel[c.name]);
+  const [add, busy] = useAction(async () => {
+    const bad = chosen.find((c) => parseMoney(price[c.name]) == null);
+    if (bad) return toast(`Preço inválido em ${bad.name}.`, 'error');
+    try {
+      const r = await api<{ created: number }>('/products/bulk', { body: { items: chosen.map((c) => ({ name: c.name, category: c.category, unit: c.unit, price_cents: parseMoney(price[c.name]), image_url: `art:${c.art}` })) } });
+      toast(`${r.created} produto(s) adicionado(s). Lance o estoque em "Entrada".`, 'success'); onDone();
+    } catch (e: any) { toast(e.message, 'error'); }
+  });
+  const groups = [...new Set(items.map((c) => c.category))];
+  return (
+    <Modal wide title="Produtos prontos" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || !chosen.length} onClick={add}>Adicionar {chosen.length || ''} produto(s)</button></>}>
+      <div className="faint">Marque o que você vende e ajuste o preço. Depois é só lançar o estoque em "Entrada" e, se quiser, o código de barras.</div>
+      {!items.length && <div className="notice">Todos os produtos prontos já estão cadastrados.</div>}
+      {groups.map((g) => (
+        <div key={g} className="stack" style={{ gap: 6 }}>
+          <div className="row"><b>{g}</b><span className="spacer" /><button className="btn ghost sm" onClick={() => setSel({ ...sel, ...Object.fromEntries(items.filter((c) => c.category === g).map((c) => [c.name, true])) })}>Marcar todos</button></div>
+          <div className="card flush">
+            {items.filter((c) => c.category === g).map((c) => (
+              <label key={c.name} className="list-item" style={{ cursor: 'pointer' }}>
+                <input type="checkbox" style={{ width: 20, height: 20 }} checked={!!sel[c.name]} onChange={(e) => setSel({ ...sel, [c.name]: e.target.checked })} />
+                <ProductArt size="sm" image={`art:${c.art}`} name={c.name} />
+                <span>{c.name}</span><span className="spacer" />
+                <span className="faint">R$</span>
+                <input className="input num" style={{ width: 90, height: 34, textAlign: 'right' }} inputMode="decimal" value={price[c.name]} onChange={(e) => setPrice({ ...price, [c.name]: e.target.value })} onClick={(e) => e.stopPropagation()} aria-label={`Preço de ${c.name}`} />
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </Modal>
   );
 }

@@ -228,6 +228,25 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.json(isAdmin(req) ? list : list.map(products.publicProduct));
   });
   r.post('/products', admin, async (req, res) => res.status(201).json({ id: await products.createProduct(db, productSchema.parse(req.body) as any, uid(req)) }));
+  // Produtos prontos (catálogo): cria categorias que faltarem e pula nomes já cadastrados.
+  r.post('/products/bulk', admin, async (req, res) => {
+    const b = z.object({ items: z.array(z.object({
+      name: z.string().trim().min(1).max(120), category: z.string().trim().min(1).max(60), unit: z.enum(['UN', 'PCT']),
+      price_cents: cents, image_url: z.string().regex(/^art:[a-z0-9-]{1,40}$/).nullish(),
+    })).min(1).max(100) }).parse(req.body);
+    const created = await db.tx(async (t) => {
+      let n = 0;
+      for (const it of b.items) {
+        if (await t.one('SELECT 1 FROM products WHERE lower(name) = lower(?)', [it.name])) continue;
+        let cat = await t.one('SELECT id FROM categories WHERE lower(name) = lower(?)', [it.category]);
+        if (!cat) cat = await t.one('INSERT INTO categories (name) VALUES (?) RETURNING id', [it.category]);
+        await products.createProduct(t, { name: it.name, category_id: cat.id, unit: it.unit, price_cents: it.price_cents, image_url: it.image_url ?? null } as any, uid(req));
+        n++;
+      }
+      return n;
+    });
+    res.status(201).json({ created });
+  });
   r.patch('/products/:id', admin, async (req, res) => {
     await products.updateProduct(db, id.parse(req.params.id), productSchema.omit({ initial_stock_milli: true }).partial().parse(req.body) as any, uid(req));
     res.json({ ok: true });
