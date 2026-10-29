@@ -197,6 +197,7 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
             ? <button className="btn primary" onClick={() => patch({ status: 'ACTIVE' }, 'Estabelecimento reativado.')}>Reativar</button>
             : <button className="btn danger" onClick={() => window.confirm(`Suspender ${t.name}? O sistema sai do ar para todos de lá.`) && patch({ status: 'SUSPENDED' }, 'Estabelecimento suspenso.')}>Suspender</button>}
           <button className="btn" onClick={() => patch({ billing_exempt: !t.billing_exempt }, t.billing_exempt ? 'Agora depende da assinatura.' : 'Marcado como isento.')}>{t.billing_exempt ? 'Tirar isenção' : 'Marcar como isento'}</button>
+          <a className="btn" href={`/api/central/tenants/${t.id}/backup`} download>Baixar cópia de segurança</a>
         </div>
         <div className="row wrap">
           <input className="input num" style={{ width: 110 }} inputMode="numeric" placeholder="dias" value={trialDays} onChange={(e) => setTrialDays(e.target.value)} aria-label="Dias de teste" />

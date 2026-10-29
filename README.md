@@ -48,6 +48,8 @@ npm run typecheck
 | `STRIPE_PRICE_ID` | — | Preço recorrente da assinatura (`price_…`) |
 | `STRIPE_SETUP_PRICE_ID` | — | Complemento da 1ª cobrança (instalação), cobrado uma vez junto com a 1ª mensalidade (opcional). Ex.: instalação de R$ 250 já com o 1º mês = mensalidade R$ 80 + complemento R$ 170 |
 | `STRIPE_WEBHOOK_SECRET` | — | Segredo do webhook (`whsec_…`) |
+| `MONTHLY_PRICE_CENTS` | 8000 | Mensalidade usada na receita estimada do painel central |
+| `SIGNUP_TRIAL_DAYS` | 0 | Dias de teste grátis para quem contrata pelo site (0 = paga na hora) |
 | `APP_URL` | — | Endereço do site, ex.: `https://basepdv.vercel.app` (volta do Checkout) |
 
 Nenhum segredo é necessário em código. Senhas e códigos de caixa são guardados com hash scrypt.
@@ -91,3 +93,8 @@ o administrador vê o botão para pagar e volta assim que o Stripe confirma.
 O caixa continua vendendo sem internet (dinheiro, Pix e cartão): a venda fica guardada no aparelho e é
 enviada sozinha quando a conexão volta, com o horário real. Fiado, mesas, cadastros, relatórios e fechamento
 de caixa precisam de internet. É preciso ter aberto o sistema com internet pelo menos uma vez no aparelho.
+
+## Monitoramento e cópias de segurança
+- **Saúde:** `GET /api/health` responde `{"ok":true}` quando o servidor e o banco estão no ar. Aponte um monitor (ex.: UptimeRobot, grátis) para `https://SEU-SITE/api/health`.
+- **Erros:** falhas inesperadas aparecem no painel central (últimos 30 dias).
+- **Cópia de segurança:** no painel central, abra o estabelecimento → "Baixar cópia de segurança" (arquivo JSON com todas as tabelas). Além disso, ative backups automáticos no Neon quando o plano permitir.

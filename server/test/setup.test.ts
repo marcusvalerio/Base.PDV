@@ -82,3 +82,19 @@ describe('instalação antiga (um estabelecimento no schema public)', () => {
     expect(tenant.billing_exempt).toBe(1);
   });
 });
+
+describe('saúde e cópia de segurança', () => {
+  it('health responde; backup só para o admin central e sem sessões', async () => {
+    const { app, tenantId, admin } = await import('./helpers.js').then((h) => h.setup());
+    expect((await request(app).get('/api/health')).body.ok).toBe(true);
+    expect((await admin.get(`/api/central/tenants/${tenantId}/backup`)).status).toBe(401);
+    const { agent } = await import('./helpers.js');
+    const sup = await agent(app, 'super', true);
+    const b = await sup.get(`/api/central/tenants/${tenantId}/backup`);
+    expect(b.status).toBe(200);
+    expect(b.headers['content-disposition']).toContain('attachment');
+    expect(b.body.tables.users.length).toBeGreaterThan(0);
+    expect(b.body.tables.sessions).toBeUndefined();
+    expect(b.body.tables.payment_methods.length).toBeGreaterThan(0);
+  });
+});

@@ -548,6 +548,9 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
   r.post('/inventory/:id/cancel', admin, async (req, res) => { await inventory.cancelSession(db, id.parse(req.params.id), uid(req)); res.json({ ok: true }); });
 
+  // Saúde do sistema (para monitor de queda, ex.: UptimeRobot): testa o banco.
+  app.get('/api/health', (_req, res, next) => { base.one('SELECT 1 AS ok').then(() => res.json({ ok: true, at: new Date().toISOString() }), next); });
+
   // ---------- Painel do administrador central (dono da plataforma) ----------
   const c = express.Router();
   for (const m of ['get', 'post', 'put', 'patch', 'delete'] as const) {
@@ -605,7 +608,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       name: z.string().trim().min(2).max(60),
       admin: loginSchema.extend({ name: z.string().trim().min(2).max(80) }),
       trialDays: z.number().int().min(0).max(365).optional(), exempt: z.boolean().optional(),
-      modules: z.record(z.boolean()).optional(), contact: z.object({ phone: z.string().trim().max(30).optional() }).optional(),
+      modules: z.record(z.string(), z.boolean()).optional(), contact: z.object({ phone: z.string().trim().max(30).optional() }).optional(),
     }).parse(req.body);
     res.status(201).json({ id: await platform.createTenant(base, b, req.central!.id) });
   });
@@ -623,7 +626,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
   c.put('/tenants/:id/modules', central, async (req, res) => {
     const t = await getT(req);
-    const b = z.record(z.boolean()).parse(req.body);
+    const b = z.record(z.string(), z.boolean()).parse(req.body);
     const m = await withSchema(base, t.schema_name, (tdb) => modules.setModules(tdb, b, null));
     await platform.platformAudit(base, req.central!.id, 'tenant.modules', t.id, b);
     res.json({ modules: m, labels: modules.MODULES });
@@ -645,6 +648,21 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     });
     await platform.platformAudit(base, req.central!.id, 'tenant.user_password', t.id, { userId });
     res.json({ ok: true });
+  });
+  // Cópia de segurança de um estabelecimento (todas as tabelas, menos sessões abertas), para guardar fora do sistema.
+  c.get('/tenants/:id/backup', central, async (req, res) => {
+    const t = await getT(req);
+    const data = await withSchema(base, t.schema_name, async (tdb) => {
+      const tables = (await tdb.all<{ tablename: string }>('SELECT tablename FROM pg_tables WHERE schemaname = ? ORDER BY tablename', [t.schema_name]))
+        .map((r) => r.tablename).filter((n) => n !== 'sessions');
+      const out: Record<string, unknown[]> = {};
+      for (const n of tables) out[n] = await tdb.all(`SELECT * FROM "${n.replace(/"/g, '')}"`);
+      return out;
+    });
+    await platform.platformAudit(base, req.central!.id, 'tenant.backup', t.id);
+    const day = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Disposition', `attachment; filename="central-pdv-${t.id}-${day}.json"`);
+    res.json({ format: 'central-pdv-backup-v1', createdAt: new Date().toISOString(), tenant: { id: t.id, name: t.name }, tables: data });
   });
   app.use('/api/central', c);
 
