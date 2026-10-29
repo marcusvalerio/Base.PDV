@@ -3,6 +3,8 @@ import { api } from '../lib/api';
 import { useApi, useAction } from '../lib/hooks';
 import { money, qty, dateTime } from '../lib/format';
 import { Modal, Loading, Field, useToast } from './ui';
+import { printSaleReceipt, getPrinter } from '../lib/print';
+import { useSession } from './session';
 
 /** Detalhe da venda com cancelamento autorizado pelo código único de cancelamento. */
 export function SaleModal({ id, onClose, onChanged }: { id: number; onClose: () => void; onChanged: () => void }) {
@@ -11,6 +13,7 @@ export function SaleModal({ id, onClose, onChanged }: { id: number; onClose: () 
   const [code, setCode] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const toast = useToast();
+  const { boot } = useSession();
   const [cancel, busy] = useAction(async () => {
     setErr(null);
     try {
@@ -22,7 +25,7 @@ export function SaleModal({ id, onClose, onChanged }: { id: number; onClose: () 
   return (
     <Modal wide title={`Venda nº ${id}`} onClose={onClose}>
       {loading && !s ? <Loading /> : s && <>
-        <div className="row wrap"><span>{dateTime(s.created_at)} · {s.user_name} · {s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</span><span className="spacer" />{s.status === 'CANCELLED' && <span className="badge danger">cancelada</span>}</div>
+        <div className="row wrap"><span>{dateTime(s.created_at)} · {s.user_name} · {s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</span><span className="spacer" />{s.status === 'CANCELLED' ? <span className="badge danger">cancelada</span> : <button className="btn sm" onClick={() => printSaleReceipt(s, { storeName: boot?.storeName, width: getPrinter().width || '80' })}>Imprimir comprovante</button>}</div>
         <table className="table"><tbody>
           {s.items.map((i: any) => <tr key={i.id}><td>{qty(i.qty_milli, i.unit)} {i.product_name}</td><td className="r num">{money(i.total_cents)}</td></tr>)}
           {s.surcharge_cents > 0 && <tr><td>Acréscimo</td><td className="r num">{money(s.surcharge_cents)}</td></tr>}

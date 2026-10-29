@@ -5,6 +5,7 @@ import { money, parseMoney, dateTime } from '../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../components/ui';
 import { CashSummary } from '../components/CashSummary';
 import { SalesList } from '../components/SalesList';
+import { PrinterCard } from './admin/Admin';
 
 export default function Cash() {
   const { data: reg, loading, error, reload } = useApi<any>('/cash/current');
@@ -50,6 +51,7 @@ function OpenRegister({ reg, reload }: { reg: any; reload: () => void }) {
       <CashSummary s={reg} />
       <div><h2>Vendas deste caixa</h2><div className="faint">Toque em uma venda para ver os itens ou cancelar.</div></div>
       <SalesList onChanged={reload} />
+      <PrinterCard />
       {mov && <MovementModal type={mov} onClose={() => setMov(null)} onDone={() => { setMov(null); reload(); }} />}
       {closing && <CloseModal reg={reg} onClose={() => setClosing(false)} onDone={reload} />}
     </div>

@@ -7,6 +7,7 @@ import { useSession } from './session';
 import { useHidScanner, CameraButton } from './scanner';
 import { ProductArt } from './ProductArt';
 import { useOffline } from '../lib/offline';
+import { PixQr } from './PixQr';
 
 export interface Product { id: number; name: string; image_url?: string | null; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null; low_stock?: boolean }
 
@@ -226,6 +227,9 @@ export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm,
           </div>
         </div>
       )}
+      {pm?.kind === 'PIX' && (boot?.pix?.key
+        ? <PixQr pix={boot.pix} amountCents={total} />
+        : <div className="faint">Dica: cadastre a chave Pix em Administração → Configurações para mostrar o QR Code com o valor.</div>)}
       {pm?.kind === 'CASH' && (
         <div className="stack">
           <Field label="Valor recebido do cliente">

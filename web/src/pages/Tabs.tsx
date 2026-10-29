@@ -7,6 +7,8 @@ import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../component
 import { ProductPicker, CheckoutModal, CheckoutResult, Product, surchargeUnits } from '../components/pos';
 import { RegisterGate } from '../components/RegisterGate';
 import { ProductArt } from '../components/ProductArt';
+import { printTabBill, printSaleReceipt, getPrinter } from '../lib/print';
+import { useSession } from '../components/session';
 
 /** Desenho de mesa vista de cima, com o número no tampo. */
 export function TableArt({ label, people = 0 }: { label: string; people?: number }) {
@@ -79,6 +81,7 @@ function TabDetailInner() {
   const key = useRef(newKey());
   const toast = useToast();
   const nav = useNavigate();
+  const { boot } = useSession();
 
   const [addItem] = useAction(async (p: Product, m: number) => {
     if (!active) return;
@@ -98,6 +101,8 @@ function TabDetailInner() {
     try {
       const res = await api(`/tabs/${id}/close`, { body: { idempotencyKey: key.current, personId: closing!.personId, ...r } });
       setData(res.tab); setClosing(null);
+      const pr = getPrinter();
+      if (pr.auto && pr.width) printSaleReceipt(res.sale, { storeName: boot?.storeName, width: pr.width });
       toast(`Conta paga: ${money(res.sale.total_cents)}${res.sale.change_cents ? ` · troco ${money(res.sale.change_cents)}` : ''}`, 'success');
       if (res.tab.status !== 'OPEN') nav('/mesas');
     } catch (e: any) { setCloseErr(e.message); }
@@ -120,6 +125,7 @@ function TabDetailInner() {
         <h1>{tab.label}</h1>
         <span className="spacer" />
         <span className="muted num">Em aberto: <b>{money(tab.pending_cents)}</b></span>
+        {tab.pending_cents > 0 && <button className="btn" onClick={() => printTabBill(tab, { storeName: boot?.storeName, width: getPrinter().width || '80' })}>Imprimir conta</button>}
         {tab.pending_cents > 0
           ? <button className="btn primary" onClick={() => startClose(null, `Fechar ${tab.label} inteira`, tab.pending_cents)}>Fechar mesa inteira</button>
           : <button className="btn" onClick={finish}>Encerrar mesa</button>}

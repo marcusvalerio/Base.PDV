@@ -3,6 +3,7 @@ import { api, newKey } from '../lib/api';
 import { money, qty } from '../lib/format';
 import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product, surchargeUnits, previewSurcharge } from '../components/pos';
 import { enqueueSale, ownerOf } from '../lib/offline';
+import { printSaleReceipt, getPrinter } from '../lib/print';
 import { useSession } from '../components/session';
 import { Modal, useToast, Empty } from '../components/ui';
 import { useAction } from '../lib/hooks';
@@ -65,6 +66,8 @@ function PosInner() {
     try {
       const sale = await api('/sales', { body: { idempotencyKey: key.current, ...body } });
       setCart([]); setCheckout(false); setDone(sale);
+      const pr = getPrinter();
+      if (pr.auto && pr.width) printSaleReceipt(sale, { storeName: boot?.storeName, width: pr.width });
     } catch (e: any) {
       if (e?.code === 'NETWORK' && kind !== 'CREDIT') return saveOffline();
       // Mantém a mesma chave: tentar de novo não duplica a venda.
@@ -105,7 +108,7 @@ function PosInner() {
       {mobileCart && <Modal title="Pedido" onClose={() => setMobileCart(false)}><div className="card flush">{cartView}</div></Modal>}
       {checkout && <CheckoutModal title="Pagamento" subtotalCents={total} units={surchargeUnits(cart.map((l) => ({ unit: l.product.unit, qtyMilli: l.qtyMilli })))} busy={busy} error={error} onClose={() => !busy && setCheckout(false)} onConfirm={confirm} />}
       {done && (
-        <Modal title={done.offline ? "Venda guardada" : "Venda registrada"} onClose={() => setDone(null)} footer={<button className="btn primary lg block" autoFocus onClick={() => setDone(null)}>Nova venda</button>}>
+        <Modal title={done.offline ? "Venda guardada" : "Venda registrada"} onClose={() => setDone(null)} footer={<><button className="btn lg" onClick={() => printSaleReceipt(done, { storeName: boot?.storeName, width: getPrinter().width || '80' })}>Imprimir</button><button className="btn primary lg" style={{ flex: 1 }} autoFocus onClick={() => setDone(null)}>Nova venda</button></>}>
           {done.offline
             ? <div className="notice warning">Venda guardada no aparelho (sem internet) — {done.payment_method}. Ela será enviada sozinha quando a conexão voltar.</div>
             : <div className="notice success">Venda nº {done.id} concluída — {done.payment_method}{done.customer_name ? ` · ${done.customer_name}` : ''}.</div>}

@@ -6,6 +6,10 @@ export const DEFAULT_SETTINGS = {
   store_name: '',
   /** Link https da logo ou foto do estabelecimento (vazio = sem logo). */
   store_logo_url: '',
+  /** Pix da loja: chave, nome e cidade do recebedor (QR Code com o valor na hora de cobrar). Vazio = sem QR. */
+  pix_key: '',
+  pix_name: '',
+  pix_city: '',
   /** Acréscimo da venda a prazo por unidade vendida, em centavos (chopp/kg: por item lançado). */
   fiado_surcharge_cents: '50',
   /** Acréscimo no cartão de débito / crédito: modo UNIT (centavos por unidade) ou PERCENT (centésimos de %, ex.: 299 = 2,99%). 0 = sem acréscimo. */

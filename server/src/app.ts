@@ -207,6 +207,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       },
       cashCodeMode: await settings.getSetting(db, 'cash_code_mode'),
       storeName: await settings.getSetting(db, 'store_name'),
+      pix: { key: await settings.getSetting(db, 'pix_key'), name: await settings.getSetting(db, 'pix_name'), city: await settings.getSetting(db, 'pix_city') },
       // Primeiro acesso: falta definir o código do caixa (sem ele ninguém abre o caixa).
       setupPending: (await settings.getSetting(db, 'cash_code_mode')) === 'SHARED' && !(await settings.getSetting(db, 'shared_cash_code_hash')),
       storeLogo: await settings.getSetting(db, 'store_logo_url'),
@@ -445,6 +446,9 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     const optDays = z.union([z.literal(''), z.coerce.number().int().min(0).max(365).transform(String)]);
     const b = z.object({
       store_name: z.string().trim().max(60).optional(),
+      pix_key: z.string().trim().max(77).optional(),
+      pix_name: z.string().trim().max(25).optional(),
+      pix_city: z.string().trim().max(15).optional(),
       store_logo_url: z.union([z.literal(''), z.string().trim().max(500).url('Link da logo inválido.').refine((u) => /^https:\/\//.test(u), 'Use um link https://')]).optional(),
       fiado_surcharge_cents: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       cash_code_mode: z.enum(['SHARED', 'INDIVIDUAL']).optional(),

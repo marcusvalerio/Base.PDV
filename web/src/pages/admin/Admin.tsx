@@ -8,6 +8,7 @@ import { CashSummary } from '../../components/CashSummary';
 import { useSession } from '../../components/session';
 import { SaleModal } from '../../components/CancelSale';
 import { SalesList } from '../../components/SalesList';
+import { getPrinter, setPrinter, printSaleReceipt, PaperWidth } from '../../lib/print';
 
 export function Customers() {
   const [q, setQ] = useState('');
@@ -236,7 +237,7 @@ export function Settings() {
     const deb = cardOut(v.card_debit_surcharge_mode, v.debitTxt), cre = cardOut(v.card_credit_surcharge_mode, v.creditTxt);
     if (deb == null || cre == null) return toast('Acréscimo do cartão inválido.', 'error');
     try {
-      setData(await api('/settings', { method: 'PUT', body: { store_name: v.store_name ?? '', store_logo_url: v.store_logo_url ?? '', fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
+      setData(await api('/settings', { method: 'PUT', body: { store_name: v.store_name ?? '', pix_key: v.pix_key ?? '', pix_name: v.pix_name ?? '', pix_city: v.pix_city ?? '', store_logo_url: v.store_logo_url ?? '', fiado_surcharge_cents: s, card_debit_surcharge_mode: v.card_debit_surcharge_mode, card_debit_surcharge_value: deb, card_credit_surcharge_mode: v.card_credit_surcharge_mode, card_credit_surcharge_value: cre, cash_code_mode: v.cash_code_mode, expiry_alert_days: v.expiry_alert_days, restock_lead_time_days: v.restock_lead_time_days, restock_safety_days: v.restock_safety_days, allow_negative_stock: v.allow_negative_stock, inventory_accuracy_target: String(v.inventory_accuracy_target ?? '').replace(',', '.') } }));
       setF(null); await refreshBoot(); toast('Configurações salvas.', 'success');
     } catch (e: any) { toast(e.message, 'error'); }
   });
@@ -250,6 +251,7 @@ export function Settings() {
   return (
     <div className="stack" style={{ maxWidth: 720 }}>
       <div className="page-head"><h1>Configurações</h1></div>
+      <PrinterCard />
       <div className="card stack">
         <h2>Estabelecimento</h2>
         <Field label="Nome do estabelecimento" hint="Aparece no topo do sistema e na tela de entrada.">
@@ -258,6 +260,17 @@ export function Settings() {
         <Field label="Logo ou foto (link https)" hint="Cole o link de uma imagem. Vazio = sem logo.">
           <div className="row"><input className="input" inputMode="url" placeholder="https://…" value={v.store_logo_url ?? ''} onChange={set('store_logo_url')} />{v.store_logo_url && /^https:\/\//.test(v.store_logo_url) && <img className="store-logo lg" src={v.store_logo_url} alt="Prévia da logo" />}</div>
         </Field>
+      </div>
+      <div className="card stack">
+        <h2>Pix</h2>
+        <div className="faint">Com a chave preenchida, ao escolher Pix aparece um QR Code com o valor exato da venda. O dinheiro cai direto na conta da chave; confira o recebimento antes de confirmar.</div>
+        <Field label="Chave Pix" hint="CPF, CNPJ, e-mail, celular com +55 (ex.: +5511987654321) ou chave aleatória.">
+          <input className="input" style={{ maxWidth: 420 }} autoCapitalize="none" value={v.pix_key ?? ''} onChange={set('pix_key')} />
+        </Field>
+        <div className="grid2">
+          <Field label="Nome do recebedor" hint="Até 25 letras, como aparece no banco."><input className="input" maxLength={25} value={v.pix_name ?? ''} onChange={set('pix_name')} placeholder={v.store_name || 'Bar do Zé'} /></Field>
+          <Field label="Cidade"><input className="input" maxLength={15} value={v.pix_city ?? ''} onChange={set('pix_city')} placeholder="São Paulo" /></Field>
+        </div>
       </div>
       <div className="card stack">
         <h2>Venda a prazo (fiado)</h2>
@@ -341,3 +354,23 @@ export function Audit() {
   );
 }
 
+
+/** Impressora térmica: configurada por aparelho (cada caixa pode ter a sua). */
+export function PrinterCard() {
+  const [p, setP] = useState(getPrinter);
+  const { boot } = useSession();
+  const save = (v: typeof p) => { setP(v); setPrinter(v); };
+  const test = () => printSaleReceipt({ id: 0, created_at: new Date().toISOString(), items: [{ qty_milli: 2000, unit: 'UN', product_name: 'Teste de impressão', total_cents: 1000 }], total_cents: 1000, surcharge_cents: 0, payment_method: 'Dinheiro', received_cents: 2000, change_cents: 1000 },
+    { storeName: boot?.storeName, width: (p.width || '80') as PaperWidth });
+  return (
+    <div className="card stack">
+      <h2>Impressora (deste aparelho)</h2>
+      <div className="faint">Impressora térmica instalada neste computador ou tablet (USB, Bluetooth ou rede). No primeiro uso, escolha a impressora no quadro de impressão e marque-a como padrão.</div>
+      <div className="row wrap">
+        {(['', '58', '80'] as const).map((w) => <button key={w} className={`chip ${p.width === w ? 'active' : ''}`} onClick={() => save({ ...p, width: w })}>{w ? `Papel ${w} mm` : 'Sem impressora'}</button>)}
+      </div>
+      {p.width && <label className="check"><input type="checkbox" checked={p.auto} onChange={(e) => save({ ...p, auto: e.target.checked })} /> Imprimir o comprovante automaticamente após cada venda</label>}
+      {p.width && <div><button className="btn sm" onClick={test}>Imprimir teste</button></div>}
+    </div>
+  );
+}
