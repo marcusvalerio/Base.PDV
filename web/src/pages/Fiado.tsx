@@ -4,12 +4,14 @@ import { useApi, useAction, useDebounced } from '../lib/hooks';
 import { money, parseMoney, dateTime, qty } from '../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../components/ui';
 import { useSession } from '../components/session';
+import { ShareButtons, waPhone } from '../components/ShareButtons';
 
 export default function Fiado() {
   const [q, setQ] = useState('');
   const dq = useDebounced(q, 200);
   const { data, loading, error, reload } = useApi<any[]>(`/customers?q=${encodeURIComponent(dq)}`);
   const [sel, setSel] = useState<number | null>(null);
+  const [remind, setRemind] = useState<any>(null);
   const [onlyDebt, setOnlyDebt] = useState(true);
   const list = (data ?? []).filter((c) => !onlyDebt || c.balance_cents > 0);
   return (
@@ -22,14 +24,18 @@ export default function Fiado() {
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
         <div className="card flush">
           {!list.length ? <Empty>Nenhum cliente {onlyDebt ? 'com saldo em aberto' : 'encontrado'}.</Empty> : list.map((c) => (
-            <button key={c.id} className="list-item" onClick={() => setSel(c.id)}>
-              <span><b>{c.name}</b>{c.phone && <span className="faint"> · {c.phone}</span>}</span><span className="spacer" />
-              {c.balance_cents > 0 ? <span className="badge warning num">deve {money(c.balance_cents)}</span> : <span className="badge success">em dia</span>}
-            </button>
+            <div key={c.id} className="list-item" role="button" tabIndex={0} onClick={() => setSel(c.id)} onKeyDown={(e) => e.key === 'Enter' && setSel(c.id)}>
+              <span><b>{c.name}</b>{c.phone && <span className="faint"> · {c.phone}</span>}
+                {c.balance_cents > 0 && <div className="faint">em aberto há {daysSince(c.oldest_open_at)} dia(s)</div>}</span>
+              <span className="spacer" />
+              {c.balance_cents > 0 ? <span className={`badge ${daysSince(c.oldest_open_at) > 30 ? 'danger' : 'warning'} num`}>deve {money(c.balance_cents)}</span> : <span className="badge success">em dia</span>}
+              {c.balance_cents > 0 && <button className="btn sm wa-btn" onClick={(e) => { e.stopPropagation(); setRemind(c); }}>Cobrar</button>}
+            </div>
           ))}
         </div>
       )}
       {sel && <CustomerModal id={sel} onClose={() => { setSel(null); reload(); }} />}
+      {remind && <ReminderModal c={remind} onClose={() => setRemind(null)} />}
     </div>
   );
 }
@@ -134,38 +140,39 @@ export function statementText(data: any, storeName: string, scope: 'open' | 'all
   return lines.join('\n');
 }
 
-/** Telefone brasileiro para link do WhatsApp (só números, com 55). */
-const waPhone = (phone?: string | null) => {
-  const d = String(phone ?? '').replace(/\D/g, '');
-  if (d.length === 10 || d.length === 11) return '55' + d;
-  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return d;
-  return null;
-};
-
 function StatementModal({ data, onClose }: { data: any; onClose: () => void }) {
   const { boot } = useSession();
   const [scope, setScope] = useState<'open' | 'all'>('open');
-  const toast = useToast();
   const text = statementText(data, boot?.storeName ?? '', scope);
-  const phone = waPhone(data.customer.phone);
-  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
-  const open = (url: string) => window.open(url, '_blank', 'noopener');
-  const copy = async () => { try { await navigator.clipboard.writeText(text); toast('Extrato copiado.', 'success'); } catch { toast('Não foi possível copiar.', 'error'); } };
-  const share = async () => { try { await navigator.share({ title: `Extrato — ${data.customer.name}`, text }); } catch { /* cancelado */ } };
   return (
-    <Modal title={`Extrato — ${data.customer.name}`} onClose={onClose} footer={<>
-      <button className="btn" onClick={copy}>Copiar</button>
-      {canShare && <button className="btn" onClick={share}>Compartilhar</button>}
-      <button className="btn wa-btn" onClick={() => open(`https://wa.me/?text=${encodeURIComponent(text)}`)}>Enviar pelo WhatsApp</button>
-    </>}>
+    <Modal title={`Extrato — ${data.customer.name}`} onClose={onClose}>
       <div className="row wrap">
         <button className={`chip ${scope === 'open' ? 'active' : ''}`} onClick={() => setScope('open')}>Só o que está em aberto</button>
         <button className={`chip ${scope === 'all' ? 'active' : ''}`} onClick={() => setScope('all')}>Tudo (com pagamentos)</button>
       </div>
       <pre className="statement">{text.replace(/\*/g, '')}</pre>
-      {phone
-        ? <button className="btn wa-btn lg block" onClick={() => open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`)}>Enviar direto para {data.customer.phone}</button>
-        : <div className="faint">Cadastre o celular do cliente (Administração → Clientes) para enviar direto para ele. Sem número, o WhatsApp abre para você escolher o contato.</div>}
+      <ShareButtons title={`Extrato — ${data.customer.name}`} text={text} phone={data.customer.phone} />
+      {!waPhone(data.customer.phone) && <div className="faint">Cadastre o celular do cliente (Administração → Clientes) para enviar direto para ele. Sem número, o WhatsApp abre para você escolher o contato.</div>}
+    </Modal>
+  );
+}
+
+const daysSince = (iso?: string | null) => (iso ? Math.floor((Date.now() - Date.parse(iso)) / 864e5) : 0);
+
+/** Lembrete curto de cobrança (formatação do WhatsApp). */
+export function reminderText(c: any, storeName: string) {
+  const first = String(c.name).split(' ')[0];
+  return `Olá, ${first}! Tudo bem? Aqui é do *${storeName || 'nosso estabelecimento'}*.\nPassando para lembrar do seu fiado em aberto: *${money(c.balance_cents)}*.\nQuando puder, é só acertar com a gente (dinheiro, Pix ou cartão). Obrigado!`;
+}
+
+function ReminderModal({ c, onClose }: { c: any; onClose: () => void }) {
+  const { boot } = useSession();
+  const text = reminderText(c, boot?.storeName ?? '');
+  return (
+    <Modal title={`Cobrar ${c.name}`} onClose={onClose}>
+      <pre className="statement">{text.replace(/\*/g, '')}</pre>
+      <ShareButtons title="Lembrete de fiado" text={text} phone={c.phone} />
+      <div className="faint">Para mandar o detalhe das compras, abra o cliente e use "Gerar extrato".</div>
     </Modal>
   );
 }

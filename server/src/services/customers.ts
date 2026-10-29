@@ -27,7 +27,8 @@ export function listCustomers(db: DB, opts: { q?: string; includeInactive?: bool
   if (!opts.includeInactive) where.push('c.active = 1');
   if (opts.q) { where.push('(c.name ILIKE ? OR c.phone ILIKE ?)'); args.push(`%${opts.q}%`, `%${opts.q}%`); }
   return db.all(
-    `SELECT c.*, COALESCE((SELECT SUM(total_cents - paid_cents) FROM receivables r WHERE r.customer_id = c.id AND r.status = 'OPEN'),0)::bigint AS balance_cents
+    `SELECT c.*, COALESCE((SELECT SUM(total_cents - paid_cents) FROM receivables r WHERE r.customer_id = c.id AND r.status = 'OPEN'),0)::bigint AS balance_cents,
+       (SELECT MIN(created_at) FROM receivables r WHERE r.customer_id = c.id AND r.status = 'OPEN') AS oldest_open_at
      FROM customers c ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY c.name`,
     args,
   );

@@ -6,6 +6,8 @@ import { Modal, Loading, ErrorState, Empty, Field, useToast } from '../component
 import { CashSummary } from '../components/CashSummary';
 import { SalesList } from '../components/SalesList';
 import { PrinterCard } from './admin/Admin';
+import { ShareButtons } from '../components/ShareButtons';
+import { useSession } from '../components/session';
 
 export default function Cash() {
   const { data: reg, loading, error, reload } = useApi<any>('/cash/current');
@@ -79,6 +81,7 @@ function CloseModal({ reg, onClose, onDone }: { reg: any; onClose: () => void; o
   const [code, setCode] = useState('');
   const [step, setStep] = useState<1 | 2>(1);
   const [result, setResult] = useState<any>(null);
+  const storeName = useSession().boot?.storeName ?? '';
   const [err, setErr] = useState<string | null>(null);
   const cents = parseMoney(counted);
   const diff = cents == null ? null : cents - reg.expectedCashCents;
@@ -91,6 +94,7 @@ function CloseModal({ reg, onClose, onDone }: { reg: any; onClose: () => void; o
       <Modal wide title="Caixa fechado" onClose={onDone} footer={<button className="btn primary" onClick={onDone}>Concluir</button>}>
         <div className={`notice ${result.differenceCents === 0 ? 'success' : 'warning'}`}>Fechamento registrado. Diferença: {money(result.differenceCents)}.</div>
         <CashSummary s={result} />
+        <div className="stack" style={{ gap: 6 }}><b>Enviar o resumo para o dono</b><ShareButtons title="Fechamento de caixa" text={closingText(result, storeName, reg.openedByName)} /></div>
       </Modal>
     );
   }
@@ -110,4 +114,17 @@ function CloseModal({ reg, onClose, onDone }: { reg: any; onClose: () => void; o
       )}
     </Modal>
   );
+}
+
+/** Resumo do fechamento em texto (formatação do WhatsApp). */
+function closingText(s: any, storeName: string, who: string) {
+  const when = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+  const L: string[] = [`*${storeName || 'Fechamento de caixa'}*`, `Fechamento de caixa — ${when}`, who ? `Caixa de ${who}` : '', ''];
+  L.push('*Vendas*');
+  for (const m of s.salesByMethod) if (m.count) L.push(`• ${m.name} (${m.count}): ${money(m.total_cents)}`);
+  L.push(`*Total vendido: ${money(s.salesTotalCents)}*`);
+  if (s.cancelledCount) L.push(`Canceladas: ${s.cancelledCount} (${money(s.cancelledTotalCents)})`);
+  if (s.receiptsTotalCents) { L.push('', '*Fiado recebido*'); for (const m of s.receiptsByMethod) if (m.count) L.push(`• ${m.name}: ${money(m.total_cents)}`); }
+  L.push('', '*Dinheiro na gaveta*', `Esperado: ${money(s.expectedCashCents)}`, `Contado: ${money(s.countedCashCents)}`, `Diferença: ${money(s.differenceCents)}`);
+  return L.filter((x, i) => x !== '' || L[i - 1] !== '').join('\n');
 }

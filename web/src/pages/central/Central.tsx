@@ -4,6 +4,8 @@ import { useApi, useAction } from '../../lib/hooks';
 import { date, dateTime } from '../../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, Segmented, useToast } from '../../components/ui';
 import { SystemFooter } from '../../components/SystemFooter';
+import { ShareButtons } from '../../components/ShareButtons';
+import { easyPassword, suggestLogin } from '../admin/Admin';
 
 type Admin = { id: number; name: string; username: string };
 
@@ -107,7 +109,7 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; 
 const MOD_LABELS: Record<string, string> = { mesas: 'Mesas e comandas', fiado: 'Fiado e clientes', estoque: 'Estoque', inventario: 'Inventário', analise: 'Análise comercial', reposicao: 'Reposição', auditoria: 'Auditoria' };
 
 function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState({ name: '', adminName: '', username: '', password: '', billing: 'trial', trialDays: '7' });
+  const [f, setF] = useState({ name: '', adminName: '', username: '', password: easyPassword(), billing: 'trial', trialDays: '7' });
   const [mods, setMods] = useState<Record<string, boolean>>(Object.fromEntries(Object.keys(MOD_LABELS).map((k) => [k, k !== 'auditoria'])));
   const [err, setErr] = useState<string | null>(null);
   const toast = useToast();
@@ -119,15 +121,26 @@ function NewTenant({ onClose, onDone }: { onClose: () => void; onDone: () => voi
         name: f.name, admin: { name: f.adminName, username: f.username, password: f.password },
         exempt: f.billing === 'exempt', trialDays: f.billing === 'trial' ? Number(f.trialDays) || 0 : undefined, modules: mods,
       } });
-      toast('Estabelecimento criado.', 'success'); onDone();
+      toast('Estabelecimento criado.', 'success'); setCreated(true);
     } catch (e: any) { setErr(e instanceof ApiError ? e.message : 'Erro ao criar.'); }
   });
+  const [created, setCreated] = useState(false);
+  if (created) {
+    const text = `Olá, ${f.adminName.split(' ')[0]}! Bem-vindo ao *Central.PDV* 🎉\nSeu sistema do *${f.name}* está pronto:\n\nEndereço: ${location.origin}/app\nLogin: *${f.username}*\nSenha: *${f.password}*\n\nNo primeiro acesso, defina o código do caixa e cadastre sua equipe.`;
+    return (
+      <Modal title="Estabelecimento criado" onClose={onDone} footer={<button className="btn primary" onClick={onDone}>Concluir</button>}>
+        <div className="notice success">Envie o acesso para {f.adminName}. A senha não fica visível depois.</div>
+        <pre className="statement">{text.replace(/\*/g, '')}</pre>
+        <ShareButtons title="Acesso ao Central.PDV" text={text} />
+      </Modal>
+    );
+  }
   return (
     <Modal title="Novo estabelecimento" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || !f.name || !f.username || f.password.length < 8 || !f.adminName} onClick={save}>Criar</button></>}>
       <Field label="Nome do estabelecimento"><input className="input" value={f.name} onChange={set('name')} placeholder="Ex.: Bar do Zé" autoFocus /></Field>
       <div className="faint">Administrador do estabelecimento (quem vai usar e cadastrar a equipe):</div>
       <div className="grid2">
-        <Field label="Nome"><input className="input" value={f.adminName} onChange={set('adminName')} /></Field>
+        <Field label="Nome"><input className="input" value={f.adminName} onChange={(e) => setF({ ...f, adminName: e.target.value, username: suggestLogin(e.target.value) })} /></Field>
         <Field label="Login" hint="Único em toda a plataforma (ex.: ze.silva)."><input className="input" autoCapitalize="none" value={f.username} onChange={set('username')} /></Field>
       </div>
       <Field label="Senha inicial" hint="Mín. 8 caracteres. Passe para o cliente trocar depois."><input className="input" value={f.password} onChange={set('password')} /></Field>
@@ -204,14 +217,24 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
 }
 
 function ResetPassword({ tenantId, u, onClose }: { tenantId: number; u: any; onClose: () => void }) {
-  const [p, setP] = useState('');
+  const [p, setP] = useState(easyPassword);
+  const [done, setDone] = useState(false);
   const toast = useToast();
   const [save, busy] = useAction(async () => {
-    try { await api(`/central/tenants/${tenantId}/users/${u.id}/password`, { method: 'PUT', body: { password: p } }); toast('Senha redefinida.', 'success'); onClose(); } catch (e: any) { toast(e.message, 'error'); }
+    try { await api(`/central/tenants/${tenantId}/users/${u.id}/password`, { method: 'PUT', body: { password: p } }); setDone(true); } catch (e: any) { toast(e.message, 'error'); }
   });
+  const text = `Olá, ${String(u.name).split(' ')[0]}! Sua nova senha do Central.PDV:\n\nEndereço: ${location.origin}/app\nLogin: *${u.username}*\nSenha: *${p}*`;
+  if (done) return (
+    <Modal title="Senha redefinida" onClose={onClose} footer={<button className="btn primary" onClick={onClose}>Concluir</button>}>
+      <pre className="statement">{text.replace(/\*/g, '')}</pre>
+      <ShareButtons title="Nova senha" text={text} />
+    </Modal>
+  );
   return (
     <Modal title={`Nova senha para ${u.name}`} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || p.length < 8} onClick={save}>Salvar</button></>}>
-      <Field label="Nova senha" hint="Mín. 8 caracteres. As sessões abertas desse usuário são encerradas."><input className="input" value={p} onChange={(e) => setP(e.target.value)} autoFocus /></Field>
+      <Field group label="Nova senha" hint="Mín. 8 caracteres. As sessões abertas desse usuário são encerradas.">
+        <div className="row"><input className="input" value={p} onChange={(e) => setP(e.target.value)} autoFocus /><button className="btn" type="button" onClick={() => setP(easyPassword())}>Gerar outra</button></div>
+      </Field>
     </Modal>
   );
 }

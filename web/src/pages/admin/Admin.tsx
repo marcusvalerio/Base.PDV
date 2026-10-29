@@ -8,6 +8,7 @@ import { CashSummary } from '../../components/CashSummary';
 import { useSession } from '../../components/session';
 import { SaleModal } from '../../components/CancelSale';
 import { SalesList } from '../../components/SalesList';
+import { ShareButtons } from '../../components/ShareButtons';
 import { getPrinter, setPrinter, printSaleReceipt, PaperWidth } from '../../lib/print';
 
 export function Customers() {
@@ -180,27 +181,60 @@ export function Users() {
   );
 }
 
+const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z\s]/g, '').trim();
+/** Sugestão de login no formato nome.sobrenome. */
+export const suggestLogin = (name: string) => { const p = norm(name).split(/\s+/).filter(Boolean); return p.length ? (p.length > 1 ? `${p[0]}.${p[p.length - 1]}` : p[0]) : ''; };
+/** Senha fácil de ditar: só letras, sílabas alternadas (10 letras). */
+export function easyPassword() {
+  const c = 'bcdfghjklmnprstvz', v = 'aeiou';
+  const r = (n: number) => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+  let s = '';
+  for (let i = 0; i < 5; i++) s += c[r(c.length)] + v[r(v.length)];
+  return s;
+}
+
 function UserForm({ u, onClose, onSaved }: { u: any; onClose: () => void; onSaved: () => void }) {
   const isNew = !u.id;
-  const { user } = useSession();
-  const [f, setF] = useState({ name: u.name ?? '', username: u.username ?? '', password: '', role: u.role ?? 'OPERADOR', active: u.active === undefined ? true : !!u.active });
+  const [f, setF] = useState({ name: u.name ?? '', username: u.username ?? '', password: isNew ? easyPassword() : '', role: u.role ?? 'OPERADOR', active: u.active === undefined ? true : !!u.active });
+  const [loginTouched, setLoginTouched] = useState(!isNew);
   const [err, setErr] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ name: string; username: string; password: string } | null>(null);
   const [save, busy] = useAction(async () => {
     setErr(null);
     try {
       if (isNew) await api('/users', { body: f });
       else await api(`/users/${u.id}`, { method: 'PATCH', body: { name: f.name, role: f.role, active: f.active, ...(f.password ? { password: f.password } : {}) } });
-      onSaved();
+      if (f.password) setSent({ name: f.name, username: isNew ? f.username : u.username, password: f.password });
+      else onSaved();
     } catch (e: any) { setErr(e.message); }
   });
+  if (sent) return <CredentialsModal c={sent} isNew={isNew} onClose={onSaved} />;
   return (
     <Modal title={isNew ? 'Novo usuário' : `Editar ${u.name}`} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn primary" disabled={busy || f.name.trim().length < 2 || (isNew && (f.username.length < 3 || f.password.length < 8)) || (!!f.password && f.password.length < 8)} onClick={save}>Salvar</button></>}>
-      <Field label="Nome"><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} autoFocus /></Field>
-      {isNew && <Field label="Login" hint="Letras, números, ponto, hífen ou sublinhado."><input className="input" autoCapitalize="none" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} /></Field>}
-      <Field label={isNew ? 'Senha' : 'Nova senha (deixe em branco para manter)'} hint="Mínimo de 8 caracteres. Trocar a senha encerra as sessões abertas."><input className="input" type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+      <Field label="Nome"><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value, username: loginTouched ? f.username : suggestLogin(e.target.value) })} autoFocus /></Field>
+      {isNew && <Field label="Login" hint="Sugestão: nome.sobrenome. Precisa ser único em todo o Central.PDV; se já existir, acrescente algo (ex.: ana.souza.bar)."><input className="input" autoCapitalize="none" value={f.username} onChange={(e) => { setLoginTouched(true); setF({ ...f, username: e.target.value.toLowerCase() }); }} /></Field>}
+      <Field group label={isNew ? 'Senha' : 'Nova senha (deixe em branco para manter)'} hint="Gerada só com letras para facilitar. Trocar a senha encerra as sessões abertas.">
+        <div className="row"><input className="input num" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={isNew ? '' : 'manter a atual'} />
+          <button className="btn" type="button" onClick={() => setF({ ...f, password: easyPassword() })}>{isNew ? 'Gerar outra' : 'Gerar nova senha'}</button></div>
+      </Field>
       <Field label="Perfil"><select className="input" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}><option value="OPERADOR">Operador (PDV)</option><option value="ADMIN">Administrador</option></select></Field>
-      {!isNew && <label className="check"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativo (desmarque para bloquear o acesso)</label>}
+      {!isNew && <label className="check"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativo (desmarque para bloquear o acesso na hora)</label>}
       {err && <div className="notice danger">{err}</div>}
+    </Modal>
+  );
+}
+
+/** Depois de criar ou redefinir: mensagem pronta com endereço, login e senha para enviar pelo WhatsApp. */
+function CredentialsModal({ c, isNew, onClose }: { c: { name: string; username: string; password: string }; isNew: boolean; onClose: () => void }) {
+  const { boot } = useSession();
+  const [phone, setPhone] = useState('');
+  const text = `Olá, ${c.name.split(' ')[0]}! ${isNew ? 'Seu acesso' : 'Sua nova senha'} do *${boot?.storeName || 'Central.PDV'}*:\n\nEndereço: ${location.origin}/app\nLogin: *${c.username}*\nSenha: *${c.password}*\n\nGuarde com você e não compartilhe.`;
+  return (
+    <Modal title={isNew ? 'Usuário criado' : 'Senha redefinida'} onClose={onClose} footer={<button className="btn primary" onClick={onClose}>Concluir</button>}>
+      <div className="notice success">Envie o acesso para {c.name}. A senha não fica visível depois.</div>
+      <pre className="statement">{text.replace(/\*/g, '')}</pre>
+      <Field label="Celular (opcional)" hint="Para abrir o WhatsApp direto na conversa da pessoa."><input className="input" inputMode="tel" placeholder="(11) 98765-4321" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+      <ShareButtons title="Acesso ao Central.PDV" text={text} phone={phone} />
     </Modal>
   );
 }
