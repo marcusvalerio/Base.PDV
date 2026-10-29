@@ -164,3 +164,16 @@ describe('inventário e acuracidade', () => {
     expect((await admin.get('/api/bootstrap')).body.storeName).toBe('Bar do Teste');
   });
 });
+
+describe('primeiro acesso de estabelecimento novo', () => {
+  it('avisa que falta o código do caixa e informa o estabelecimento da sessão', async () => {
+    const { app } = await setup();
+    const sup = await agent(app, 'super', true);
+    const tid = (await sup.post('/api/central/tenants', { name: 'Loja Nova', admin: { name: 'Dona Nova', username: 'dona.nova', password: PASS }, exempt: true })).body.id;
+    const dona = await agent(app, 'dona.nova');
+    expect((await dona.get('/api/bootstrap')).body.setupPending).toBe(true);
+    expect((await dona.get('/api/auth/me')).body.user.tenantId).toBe(tid);
+    expect((await dona.put('/api/settings/cash-code', { code: '5678' })).status).toBe(200);
+    expect((await dona.get('/api/bootstrap')).body.setupPending).toBe(false);
+  });
+});

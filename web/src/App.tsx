@@ -81,7 +81,7 @@ function Routed() {
   if (!ready) return <Loading />;
   if (!user) return <Login />;
   if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/app/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
-  if (user.role === 'ADMIN' && boot && !boot.storeName && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
+  if (user.role === 'ADMIN' && boot && (!boot.storeName || boot.setupPending) && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
   const A = (el: ReactNode) => <AdminLayout>{el}</AdminLayout>;
   return (
     <Shell>

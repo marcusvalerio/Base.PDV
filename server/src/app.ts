@@ -159,7 +159,6 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     storeName: await settings.getSetting(db, 'store_name'),
     storeLogo: await settings.getSetting(db, 'store_logo_url'),
   } : { storeName: '', storeLogo: '' }));
-  r.get('/setup/status', async (_req, res) => res.json({ needed: false, enabled: false }));
 
   // ---------- Autenticação (estabelecimento) ----------
   r.post('/auth/login', async (req, res) => {
@@ -176,14 +175,14 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     }
     attempts.delete(key);
     res.cookie(COOKIE, `${t.id}.${result.token}`, cookieOpts);
-    res.json({ user: result.user });
+    res.json({ user: { ...result.user, tenantId: t.id } });
   });
   r.post('/auth/logout', async (req, res) => {
     if (req.token) await users.logout(db, req.token);
     res.clearCookie(COOKIE, { path: '/' });
     res.json({ ok: true });
   });
-  r.get('/auth/me', auth, async (req, res) => res.json({ user: req.user, access: platform.access(req.tenant!) }));
+  r.get('/auth/me', auth, async (req, res) => res.json({ user: { ...req.user, tenantId: req.tenant!.id }, access: platform.access(req.tenant!) }));
 
   // ---------- Assinatura do estabelecimento (administrador) ----------
   r.get('/billing/status', admin, async (req, res) => {
@@ -208,6 +207,8 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       },
       cashCodeMode: await settings.getSetting(db, 'cash_code_mode'),
       storeName: await settings.getSetting(db, 'store_name'),
+      // Primeiro acesso: falta definir o código do caixa (sem ele ninguém abre o caixa).
+      setupPending: (await settings.getSetting(db, 'cash_code_mode')) === 'SHARED' && !(await settings.getSetting(db, 'shared_cash_code_hash')),
       storeLogo: await settings.getSetting(db, 'store_logo_url'),
     });
   });

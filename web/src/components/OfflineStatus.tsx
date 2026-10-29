@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { money, dateTime } from '../lib/format';
-import { useOffline, syncOutbox, discardSale, retrySale } from '../lib/offline';
+import { useOffline, syncOutbox, discardSale, retrySale, ownerOf } from '../lib/offline';
 import { useSession } from './session';
 import { Modal, useToast } from './ui';
 
 /** Topo da tela: sem internet / vendas guardadas para enviar. Também envia a fila sozinho. */
 export function OfflineStatus() {
   const { user } = useSession();
-  const { online, pending, failed } = useOffline(user?.id);
+  const owner = ownerOf(user);
+  const { online, pending, failed } = useOffline(owner);
   const [open, setOpen] = useState(false);
   const toast = useToast();
   const sync = async (manual = false) => {
-    const n = await syncOutbox(user?.id, (body) => api('/sales', { body }));
+    const n = await syncOutbox(owner, (body) => api('/sales', { body }));
     if (n > 0) toast(`${n} venda(s) feita(s) sem internet enviada(s).`, 'success');
     else if (manual && !navigator.onLine) toast('Ainda sem internet.', 'error');
   };
@@ -22,7 +23,7 @@ export function OfflineStatus() {
     const t = setInterval(() => sync(), 20000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [owner]);
   if (online && !pending.length && !failed.length) return null;
   return (
     <>

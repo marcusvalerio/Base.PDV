@@ -43,6 +43,7 @@ export function CustomerModal({ id, onClose }: { id: number; onClose: () => void
   const key = useRef(newKey());
   const toast = useToast();
   const cents = parseMoney(amount);
+  const [statement, setStatement] = useState(false);
   const [pay, busy] = useAction(async () => {
     setErr(null);
     try {
@@ -58,6 +59,7 @@ export function CustomerModal({ id, onClose }: { id: number; onClose: () => void
       {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : data && (
         <>
           <div className="row"><span className="muted">Saldo devedor</span><span className="spacer" /><span className="total-big num">{money(data.balanceCents)}</span></div>
+          <button className="btn lg" onClick={() => setStatement(true)}>Gerar extrato para enviar</button>
           {data.balanceCents > 0 && (
             <div className="card stack">
               <h3>Registrar pagamento</h3>
@@ -97,6 +99,73 @@ export function CustomerModal({ id, onClose }: { id: number; onClose: () => void
           )}
         </>
       )}
+      {statement && data && <StatementModal data={data} onClose={() => setStatement(false)} />}
+    </Modal>
+  );
+}
+
+const TZ = 'America/Sao_Paulo';
+const dmy = (iso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(iso));
+
+/** Monta o texto do extrato (formatação do WhatsApp: *negrito*). */
+export function statementText(data: any, storeName: string, scope: 'open' | 'all') {
+  const recs = (data.receivables as any[]).filter((r) => r.status !== 'CANCELLED' && (scope === 'all' || r.status === 'OPEN')).slice().reverse();
+  const pays = scope === 'all' ? (data.payments as any[]).slice().reverse() : [];
+  const lines: string[] = [];
+  lines.push(`*${storeName || 'Extrato de fiado'}*`);
+  lines.push(`Extrato de fiado — ${data.customer.name}`);
+  lines.push(`Gerado em ${new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' }).format(new Date())}`);
+  lines.push('');
+  lines.push(scope === 'all' ? '*Compras a prazo*' : '*Compras em aberto*');
+  if (!recs.length) lines.push('Nenhuma.');
+  for (const r of recs) {
+    const items = r.items.map((i: any) => `${qty(i.qty_milli, i.unit)} ${i.product_name}`).join(', ');
+    const open = r.total_cents - r.paid_cents;
+    const extra = r.status === 'PAID' ? ' (quitado)' : r.paid_cents > 0 ? ` (pago ${money(r.paid_cents)}, falta ${money(open)})` : '';
+    lines.push(`• ${dmy(r.created_at)} — ${items} — ${money(r.total_cents)}${extra}`);
+  }
+  if (pays.length) {
+    lines.push('');
+    lines.push('*Pagamentos*');
+    for (const p of pays) lines.push(`• ${dmy(p.at)} — ${p.payment_method} — ${money(p.amount_cents)}`);
+  }
+  lines.push('');
+  lines.push(`*Saldo devedor: ${money(data.balanceCents)}*`);
+  return lines.join('\n');
+}
+
+/** Telefone brasileiro para link do WhatsApp (só números, com 55). */
+const waPhone = (phone?: string | null) => {
+  const d = String(phone ?? '').replace(/\D/g, '');
+  if (d.length === 10 || d.length === 11) return '55' + d;
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return d;
+  return null;
+};
+
+function StatementModal({ data, onClose }: { data: any; onClose: () => void }) {
+  const { boot } = useSession();
+  const [scope, setScope] = useState<'open' | 'all'>('open');
+  const toast = useToast();
+  const text = statementText(data, boot?.storeName ?? '', scope);
+  const phone = waPhone(data.customer.phone);
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  const open = (url: string) => window.open(url, '_blank', 'noopener');
+  const copy = async () => { try { await navigator.clipboard.writeText(text); toast('Extrato copiado.', 'success'); } catch { toast('Não foi possível copiar.', 'error'); } };
+  const share = async () => { try { await navigator.share({ title: `Extrato — ${data.customer.name}`, text }); } catch { /* cancelado */ } };
+  return (
+    <Modal title={`Extrato — ${data.customer.name}`} onClose={onClose} footer={<>
+      <button className="btn" onClick={copy}>Copiar</button>
+      {canShare && <button className="btn" onClick={share}>Compartilhar</button>}
+      <button className="btn wa-btn" onClick={() => open(`https://wa.me/?text=${encodeURIComponent(text)}`)}>Enviar pelo WhatsApp</button>
+    </>}>
+      <div className="row wrap">
+        <button className={`chip ${scope === 'open' ? 'active' : ''}`} onClick={() => setScope('open')}>Só o que está em aberto</button>
+        <button className={`chip ${scope === 'all' ? 'active' : ''}`} onClick={() => setScope('all')}>Tudo (com pagamentos)</button>
+      </div>
+      <pre className="statement">{text.replace(/\*/g, '')}</pre>
+      {phone
+        ? <button className="btn wa-btn lg block" onClick={() => open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`)}>Enviar direto para {data.customer.phone}</button>
+        : <div className="faint">Cadastre o celular do cliente (Administração → Clientes) para enviar direto para ele. Sem número, o WhatsApp abre para você escolher o contato.</div>}
     </Modal>
   );
 }

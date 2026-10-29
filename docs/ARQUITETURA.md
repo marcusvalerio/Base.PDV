@@ -48,10 +48,17 @@ O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco
 - Cancelamento de vendas de caixas já fechados não está disponível (exige procedimento administrativo a definir).
 - Ajuste de quantidade de chopp no estoque é feito em litros como qualquer produto; o método real de controle (barril, medidor) ainda será avaliado.
 
-## Super administrador e liberação de módulos
-- `users.is_super_admin` (migration 003). Criado pela linha de comando (`--super`) ou por outro super admin. Admin comum não altera, bloqueia nem cria super admin.
-- Módulos liberáveis (`services/modules.ts`): mesas, fiado, estoque, inventario, analise, reposicao, auditoria. Começam **bloqueados**. O bloqueio é aplicado no servidor (middleware `mod()` por rota; venda/fechamento a prazo exigem `fiado`) e a interface esconde menus e telas.
-- Sempre disponíveis: Vender, Caixa, Produtos, Vendas, Caixas, Usuários, Configurações, Painel.
+## Plataforma: estabelecimentos, admin central e assinatura
+- **Schemas por estabelecimento:** cada estabelecimento tem o schema `t_<id>` com todas as tabelas do sistema; o schema `public` guarda a plataforma (`tenants`, `user_directory`, `platform_admins`, `platform_sessions`, `platform_audit`, `stripe_events`). Migrações: `migrations/platform/*` no public e `migrations/*.sql` em cada schema (`db.migrate`).
+- **Conexão por requisição:** o cookie `pdv_session` = `<id do estabelecimento>.<token>`. O middleware abre uma conexão com `search_path` do estabelecimento e a deixa disponível via `AsyncLocalStorage` (`tenantAware`), então os serviços não mudam.
+- **Login único:** `user_directory` reserva o login entre todos os estabelecimentos.
+- **Admin central** (`/central`, cookie `pdv_central`): cria estabelecimentos, libera módulos (só ele), suspende, isenta, dá dias de teste e redefine senhas. A antiga coluna `users.is_super_admin` não é mais usada.
+- **Assinatura:** `platform.access()` libera quando isento, em teste, ou com assinatura Stripe `active`/`trialing`; qualquer outro status bloqueia na hora (HTTP 402), exceto login, `/bootstrap` e `/billing/*`. Webhook com assinatura HMAC verificada e idempotente (`stripe_events`).
+- **Módulos liberáveis** (`services/modules.ts`): mesas, fiado, estoque, inventario, analise, reposicao, auditoria — bloqueio aplicado no servidor (`mod()`).
+
+## Modo offline
+- Service worker guarda a casca do app (`/app`, `/assets`); a API nunca passa pelo cache.
+- `web/src/lib/offline.ts`: cópia local de produtos/configurações/caixa e fila de vendas (dinheiro, Pix, cartão) por estabelecimento+usuário; reenvio com a mesma chave de idempotência e `offlineAt` (horário real, até 3 dias).
 
 ## Inventário e acuracidade
 - Sessões (`inventory_sessions` / `inventory_session_items`): **Geral**, **Por categoria** ou **Parcial (cíclico)**; **contagem cega** opcional (padrão).

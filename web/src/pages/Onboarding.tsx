@@ -9,8 +9,9 @@ export const onboardingSkipped = () => { try { return sessionStorage.getItem(SKI
 
 /** Primeiro acesso do administrador: nome do estabelecimento e código do caixa. Depois vai direto para o sistema. */
 export default function Onboarding({ onDone }: { onDone: () => void }) {
-  const { user, refreshBoot } = useSession();
-  const [name, setName] = useState('');
+  const { user, boot, refreshBoot } = useSession();
+  const [name, setName] = useState(boot?.storeName ?? '');
+  const [cancel, setCancel] = useState('');
   const [code, setCode] = useState('');
   const [needCode, setNeedCode] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -20,10 +21,12 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     if (busy) return;
     if (needCode && !/^\d{4,8}$/.test(code)) return setErr('O código do caixa deve ter de 4 a 8 números.');
+    if (cancel && !/^\d{4,8}$/.test(cancel)) return setErr('O código de cancelamento deve ter de 4 a 8 números.');
     setBusy(true); setErr(null);
     try {
       await api('/settings', { method: 'PUT', body: { store_name: name.trim() } });
       if (needCode) await api('/settings/cash-code', { method: 'PUT', body: { code } });
+      if (cancel) await api('/settings/cancel-code', { method: 'PUT', body: { code: cancel } });
       await refreshBoot();
       onDone();
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
@@ -42,6 +45,9 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         </Field>
         {needCode && <Field label="Código para abrir o caixa" hint="De 4 a 8 números. A equipe usa para abrir e fechar o caixa.">
           <input className="input lg num" type="password" inputMode="numeric" autoComplete="off" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} required />
+        </Field>}
+        {needCode && <Field label="Código para cancelar vendas (opcional)" hint="Pedido para cancelar uma venda. Pode ser diferente do código do caixa. Dá para definir depois.">
+          <input className="input lg num" type="password" inputMode="numeric" autoComplete="off" maxLength={8} value={cancel} onChange={(e) => setCancel(e.target.value.replace(/\D/g, ''))} />
         </Field>}
         {err && <div className="notice danger" role="alert">{err}</div>}
         <button className="btn primary lg block" disabled={busy || !name.trim()}>{busy ? 'Salvando…' : 'Começar a vender'}</button>

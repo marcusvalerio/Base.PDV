@@ -318,3 +318,6 @@ html, body, #root { min-height: 100%; }
 .central-shell .topbar .brand, .central-shell .topbar .btn.ghost { color: #f4f5f8; }
 .central-shell .topbar .user-name { color: #a8adbd; }
 .central-login { background: radial-gradient(700px 400px at 50% 0%, rgba(59,108,255,.18), transparent 70%), var(--bg); }
+.statement { white-space: pre-wrap; font-family: var(--font); font-size: 14px; line-height: 1.5; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin: 0; max-height: 46vh; overflow: auto; }
+.btn.wa-btn { background: #1faa53; border-color: #1faa53; color: #fff; }
+.btn.wa-btn:hover { background: #178a43; }

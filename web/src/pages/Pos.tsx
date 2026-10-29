@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, newKey } from '../lib/api';
 import { money, qty } from '../lib/format';
 import { ProductPicker, Stepper, CheckoutModal, CheckoutResult, Product, surchargeUnits, previewSurcharge } from '../components/pos';
-import { enqueueSale } from '../lib/offline';
+import { enqueueSale, ownerOf } from '../lib/offline';
 import { useSession } from '../components/session';
 import { Modal, useToast, Empty } from '../components/ui';
 import { useAction } from '../lib/hooks';
@@ -56,7 +56,7 @@ function PosInner() {
       const units = surchargeUnits(cart.map((l) => ({ unit: l.product.unit, qtyMilli: l.qtyMilli })));
       const totalCents = total + previewSurcharge(boot, r.paymentMethodCode, total, units);
       const method = boot?.paymentMethods.find((m) => m.code === r.paymentMethodCode)?.name ?? '';
-      enqueueSale({ key: key.current, userId: user!.id, body, at: new Date().toISOString(), totalCents, label: `${method} · ${cart.map((l) => `${qty(l.qtyMilli, l.product.unit)} ${l.product.name}`).join(', ')}` });
+      enqueueSale({ key: key.current, owner: ownerOf(user)!, body, at: new Date().toISOString(), totalCents, label: `${method} · ${cart.map((l) => `${qty(l.qtyMilli, l.product.unit)} ${l.product.name}`).join(', ')}` });
       setCart([]); setCheckout(false);
       setDone({ offline: true, total_cents: totalCents, payment_method: method, change_cents: r.receivedCents != null ? r.receivedCents - totalCents : null,
         items: cart.map((l) => ({ qty_milli: l.qtyMilli, unit: l.product.unit, product_name: l.product.name })) });

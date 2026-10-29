@@ -49,7 +49,8 @@ export function offlineAnswer(path: string): unknown | undefined {
 // ---------- Fila de vendas offline ----------
 
 export interface QueuedSale {
-  key: string; userId: number; body: any; at: string; totalCents: number; label: string; error?: string;
+  /** Dono da venda: "<estabelecimento>:<usuário>" (o nº do usuário se repete entre estabelecimentos). */
+  key: string; owner: string; body: any; at: string; totalCents: number; label: string; error?: string;
 }
 
 function read(): QueuedSale[] {
@@ -71,12 +72,14 @@ let syncing = false;
  * Envia a fila do usuário atual. Para no primeiro erro de rede (tenta de novo depois).
  * Recusa definitiva do servidor (ex.: caixa fechado) fica marcada para a pessoa ver e decidir.
  */
-export async function syncOutbox(userId: number | undefined, post: (body: any) => Promise<unknown>): Promise<number> {
-  if (syncing || !userId || !navigator.onLine) return 0;
+export const ownerOf = (u?: { id: number; tenantId: number } | null) => (u ? `${u.tenantId}:${u.id}` : undefined);
+
+export async function syncOutbox(owner: string | undefined, post: (body: any) => Promise<unknown>): Promise<number> {
+  if (syncing || !owner || !navigator.onLine) return 0;
   syncing = true;
   let sent = 0;
   try {
-    for (const item of read().filter((x) => x.userId === userId && !x.error)) {
+    for (const item of read().filter((x) => x.owner === owner && !x.error)) {
       try {
         await post({ ...item.body, idempotencyKey: item.key, offlineAt: item.at });
         write(read().filter((x) => x.key !== item.key));
@@ -93,7 +96,7 @@ export async function syncOutbox(userId: number | undefined, post: (body: any) =
 export function retrySale(key: string) { write(read().map((x) => (x.key === key ? { ...x, error: undefined } : x))); }
 
 /** Estado da conexão e da fila, para a barra do topo e o caixa. */
-export function useOffline(userId?: number) {
+export function useOffline(owner?: string) {
   const [online, setOnline] = useState(navigator.onLine);
   const [list, setList] = useState(read);
   useEffect(() => {
@@ -102,6 +105,6 @@ export function useOffline(userId?: number) {
     addEventListener('pdv:outbox', upd); addEventListener('storage', upd);
     return () => { removeEventListener('online', on); removeEventListener('offline', off); removeEventListener('pdv:outbox', upd); removeEventListener('storage', upd); };
   }, []);
-  const mine = list.filter((x) => !userId || x.userId === userId);
+  const mine = list.filter((x) => !owner || x.owner === owner);
   return { online, pending: mine.filter((x) => !x.error), failed: mine.filter((x) => x.error) };
 }

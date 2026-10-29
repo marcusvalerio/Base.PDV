@@ -2,10 +2,10 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useState 
 import { api } from '../lib/api';
 import { cacheClear } from '../lib/offline';
 
-export interface User { id: number; name: string; username: string; role: 'ADMIN' | 'OPERADOR' }
+export interface User { id: number; name: string; username: string; role: 'ADMIN' | 'OPERADOR'; tenantId: number }
 export interface Access { ok: boolean; reason: 'OK' | 'SUSPENDED' | 'NO_SUBSCRIPTION' | 'UNPAID'; trialEndsAt: string | null }
 export type ModuleKey = 'mesas' | 'fiado' | 'estoque' | 'inventario' | 'analise' | 'reposicao' | 'auditoria';
-export interface Boot { modules: Record<ModuleKey, boolean>; paymentMethods: { code: string; name: string; kind: 'CASH' | 'PIX' | 'CARD' | 'CREDIT' }[]; categories: { id: number; name: string }[]; fiadoSurchargeCents: number; cardSurcharge?: Record<string, { mode: 'UNIT' | 'PERCENT'; value: number }>; cashCodeMode: string; storeName?: string; storeLogo?: string }
+export interface Boot { modules: Record<ModuleKey, boolean>; paymentMethods: { code: string; name: string; kind: 'CASH' | 'PIX' | 'CARD' | 'CREDIT' }[]; categories: { id: number; name: string }[]; fiadoSurchargeCents: number; cardSurcharge?: Record<string, { mode: 'UNIT' | 'PERCENT'; value: number }>; cashCodeMode: string; storeName?: string; storeLogo?: string; setupPending?: boolean }
 
 interface Ctx { user: User | null; boot: Boot | null; ready: boolean; access: Access | null; refreshAccess: () => Promise<void>; login: (u: string, p: string) => Promise<void>; logout: () => Promise<void>; refreshBoot: () => Promise<void> }
 const SessionCtx = createContext<Ctx>(null as any);

@@ -157,9 +157,45 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s ease}
 .reveal.in{opacity:1;transform:none}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+/* ===== camada "transcendental" ===== */
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.9}
+body>header,body>section,body>footer{position:relative;z-index:1}
+.aurora{position:absolute;inset:-30% -20% auto;height:900px;pointer-events:none;filter:blur(70px) saturate(140%);opacity:.75;z-index:0}
+.aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen;animation:drift 18s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:620px;height:420px;left:8%;top:12%;background:radial-gradient(circle,rgba(59,108,255,.75),transparent 65%)}
+.aurora i:nth-child(2){width:560px;height:480px;right:6%;top:4%;background:radial-gradient(circle,rgba(124,92,255,.7),transparent 65%);animation-duration:22s;animation-delay:-6s}
+.aurora i:nth-child(3){width:520px;height:360px;left:38%;top:34%;background:radial-gradient(circle,rgba(34,211,238,.45),transparent 65%);animation-duration:26s;animation-delay:-12s}
+.aurora i:nth-child(4){width:420px;height:320px;left:22%;top:48%;background:radial-gradient(circle,rgba(236,72,153,.32),transparent 65%);animation-duration:30s;animation-delay:-3s}
+@keyframes drift{0%{transform:translate(0,0) scale(1) rotate(0)}50%{transform:translate(60px,-40px) scale(1.15) rotate(20deg)}100%{transform:translate(-50px,30px) scale(.92) rotate(-15deg)}}
+.halo{position:absolute;left:50%;top:150px;width:min(900px,120vw);aspect-ratio:1;transform:translateX(-50%);border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 0deg,transparent 0 10%,rgba(59,108,255,.22) 18%,transparent 28%,rgba(124,92,255,.2) 45%,transparent 55%,rgba(34,211,238,.16) 72%,transparent 82%);
+  mask:radial-gradient(circle,transparent 46%,#000 47%,#000 49%,transparent 50%);-webkit-mask:radial-gradient(circle,transparent 46%,#000 47%,#000 49%,transparent 50%);animation:spin 40s linear infinite;opacity:.8}
+.halo.h2{width:min(640px,90vw);top:300px;animation-direction:reverse;animation-duration:28s;opacity:.55}
+@keyframes spin{to{transform:translateX(-50%) rotate(360deg)}}
+.hero h1 .w{display:inline-block;opacity:0;filter:blur(14px);transform:translateY(24px) scale(.96);animation:wordin .9s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes wordin{to{opacity:1;filter:blur(0);transform:none}}
+.hero h1 .w.grad{animation:wordin .9s cubic-bezier(.2,.8,.2,1) forwards,shimmer 7s ease-in-out 1s infinite}
+.grad{background-size:220% 100%;animation:shimmer 7s ease-in-out infinite}
+@keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.spot{position:fixed;z-index:0;width:520px;height:520px;border-radius:50%;pointer-events:none;left:0;top:0;transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(124,92,255,.14),transparent 60%);transition:opacity .4s;opacity:0}
+.progress-top{position:fixed;left:0;top:0;height:2px;width:0;z-index:60;background:linear-gradient(90deg,#3b6cff,#7c5cff,#22d3ee);box-shadow:0 0 12px rgba(124,92,255,.8)}
+.fc::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(124,92,255,.8),transparent 40%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.fc:hover::before{opacity:1}
+.marquee{position:relative;z-index:1;overflow:hidden;border-block:1px solid var(--line);background:rgba(255,255,255,.02);padding:18px 0;mask:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);-webkit-mask:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.marquee div{display:flex;gap:42px;width:max-content;animation:roll 38s linear infinite;font-family:var(--display);font-weight:700;font-size:clamp(18px,2.4vw,26px);letter-spacing:-.02em;color:#c9d2ff;white-space:nowrap}
+.marquee span::after{content:"✦";margin-left:42px;color:#7c5cff}
+@keyframes roll{to{transform:translateX(-50%)}}
+.btn.primary{position:relative;overflow:hidden}
+.btn.primary::after{content:"";position:absolute;inset:-2px;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);animation:sheen 4.5s ease-in-out infinite}
+@keyframes sheen{0%,60%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+@media(prefers-reduced-motion:reduce){.hero h1 .w{opacity:1;filter:none;transform:none}#sky,.spot{display:none}}
 </style>
 </head>
 <body>
+<canvas id="sky" aria-hidden="true"></canvas><div class="spot" aria-hidden="true"></div><div class="progress-top" aria-hidden="true"></div>
 <header class="nav"><div class="wrap">
   <a class="logo" href="#">Central<span class="dot">.</span>PDV</a>
   <nav><a href="#por-dentro">Por dentro</a><a href="#recursos">Recursos</a><a href="#sinais">Sinalização</a><a href="#como">Como funciona</a><a href="#pagamentos">Pagamentos</a></nav>
@@ -167,10 +203,10 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
 </div></header>
 
 <section class="hero">
-  <div class="glow"></div><div class="grid-bg"></div>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="halo" aria-hidden="true"></div><div class="halo h2" aria-hidden="true"></div><div class="grid-bg"></div>
   <div class="wrap hero-text">
-    <span class="eyebrow"><b>v1.5</b> Cartão de débito e crédito com acréscimo configurável</span>
-    <h1><span class="grad">Adeus, papel.</span><br/>Sua loja toda no sistema.</h1>
+    <span class="eyebrow"><b>v1.5</b> Extrato do fiado pelo WhatsApp e venda sem internet</span>
+    <h1><span class="w grad">Adeus,</span> <span class="w grad">papel.</span><br/><span class="w">Sua</span> <span class="w">loja</span> <span class="w">toda</span> <span class="w">no</span> <span class="w">sistema.</span></h1>
     <p class="lead">Comanda, caderninho do fiado, controle de estoque e fechamento de caixa: tudo sistematizado em um lugar só. Funciona no celular, no tablet e no computador, sem instalar nada.</p>
     <div class="cta"><a class="btn primary" href="/app">Começar a vender →</a><a class="btn ghost" href="#por-dentro">Ver o sistema por dentro</a></div>
     <div class="ticks"><span>Vários caixas ao mesmo tempo</span><span>Leitor de código e câmera</span><span>Fiado com controle de saldo</span></div>
@@ -180,23 +216,25 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
       <div class="device">
         <div class="device-bar"><i></i><i></i><i></i><span>Vender · uma venda do começo ao fim</span><em id="demo-step">Toque no produto</em></div>
         <div class="screen">
-          <img class="frame on" src="/conheca/img/t-pos.webp" alt="Tela de vender com os produtos" />
-          <img class="frame" src="/conheca/img/t-cart.webp" alt="Pedido com 3 cervejas lata e 1 cerveja 600 ml" />
-          <img class="frame" src="/conheca/img/t-checkout.webp" alt="Formas de pagamento" />
-          <img class="frame" src="/conheca/img/t-card.webp" alt="Escolha entre débito e crédito" />
-          <img class="frame" src="/conheca/img/t-credit.webp" alt="Crédito selecionado com acréscimo" />
-          <img class="frame" src="/conheca/img/t-done.webp" alt="Venda registrada" />
+          <img class="frame on" src="/site/t-pos.webp" alt="Tela de vender com os produtos" />
+          <img class="frame" src="/site/t-cart.webp" alt="Pedido com 3 cervejas lata e 1 cerveja 600 ml" />
+          <img class="frame" src="/site/t-checkout.webp" alt="Formas de pagamento" />
+          <img class="frame" src="/site/t-card.webp" alt="Escolha entre débito e crédito" />
+          <img class="frame" src="/site/t-credit.webp" alt="Crédito selecionado com acréscimo" />
+          <img class="frame" src="/site/t-done.webp" alt="Venda registrada" />
           <span class="tap" id="tap"></span>
         </div>
         <div class="progress"><span id="demo-bar"></span></div>
       </div>
-      <div class="phone"><img src="/conheca/img/m-dash.webp" alt="Painel no celular" /></div>
+      <div class="phone"><img src="/site/m-dash.webp" alt="Painel no celular" /></div>
       <div class="floater f1"><span class="pill ok">Venda concluída</span>R$ 31,05</div>
       <div class="floater f2"><span class="pill warn">Atenção</span>Lote vencendo</div>
       <div class="floater f3"><span class="pill bad">Sem estoque</span>Porção de Fritas</div>
     </div>
   </div>
 </section>
+
+<div class="marquee" aria-hidden="true"><div><span>Vendas em três toques</span><span>Mesas e comandas</span><span>Fiado com extrato no WhatsApp</span><span>Estoque automático</span><span>Vários caixas</span><span>Funciona sem internet</span><span>Relatórios na hora</span><span>Leitor de código e câmera</span><span>Vendas em três toques</span><span>Mesas e comandas</span><span>Fiado com extrato no WhatsApp</span><span>Estoque automático</span><span>Vários caixas</span><span>Funciona sem internet</span><span>Relatórios na hora</span><span>Leitor de código e câmera</span></div></div>
 
 <section class="nopaper"><canvas class="paper-fx" data-papers="22" aria-hidden="true"></canvas><div class="wrap">
   <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">Do papel para o sistema</span><h2>Tudo que hoje está no papel,<br/><span class="grad">sistematizado.</span></h2><p>Nada de comanda perdida, conta errada ou caderno rasgado.</p></div>
@@ -214,21 +252,21 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
     <button class="tab on" data-i="0">Vender</button><button class="tab" data-i="1">Mesas</button><button class="tab" data-i="2">Fiado</button><button class="tab" data-i="3">Painel</button><button class="tab" data-i="4">Produtos</button><button class="tab" data-i="5">Análise</button>
   </div>
   <div class="gal-wrap"><div class="gallery" id="gallery">
-    <figure class="on"><img loading="lazy" src="/conheca/img/t-cart.webp" alt="Tela de vender" /><figcaption>Toque no produto e ele entra no pedido. Sem estoque aparece em vermelho.</figcaption></figure>
-    <figure><img loading="lazy" src="/conheca/img/t-mesas.webp" alt="Mesas abertas" /><figcaption>Cada mesa com quanto já consumiu e há quanto tempo está aberta.</figcaption></figure>
-    <figure><img loading="lazy" src="/conheca/img/t-fiado.webp" alt="Clientes do fiado" /><figcaption>Quem deve e quanto, na hora. Receba direto pelo caixa.</figcaption></figure>
-    <figure><img loading="lazy" src="/conheca/img/t-dash.webp" alt="Painel do administrador" /><figcaption>O dia em um olhar: faturamento, caixas abertos e o que precisa de atenção.</figcaption></figure>
-    <figure><img loading="lazy" src="/conheca/img/t-prod.webp" alt="Lista de produtos" /><figcaption>Estoque de cada produto com a cor certa: verde, amarelo ou vermelho.</figcaption></figure>
-    <figure><img loading="lazy" src="/conheca/img/t-analise.webp" alt="Análise de vendas" /><figcaption>Faturamento, custo e lucro bruto por período, comparado com o anterior.</figcaption></figure>
+    <figure class="on"><img loading="lazy" src="/site/t-cart.webp" alt="Tela de vender" /><figcaption>Toque no produto e ele entra no pedido. Sem estoque aparece em vermelho.</figcaption></figure>
+    <figure><img loading="lazy" src="/site/t-mesas.webp" alt="Mesas abertas" /><figcaption>Cada mesa com quanto já consumiu e há quanto tempo está aberta.</figcaption></figure>
+    <figure><img loading="lazy" src="/site/t-fiado.webp" alt="Clientes do fiado" /><figcaption>Quem deve e quanto, na hora. Receba direto pelo caixa.</figcaption></figure>
+    <figure><img loading="lazy" src="/site/t-dash.webp" alt="Painel do administrador" /><figcaption>O dia em um olhar: faturamento, caixas abertos e o que precisa de atenção.</figcaption></figure>
+    <figure><img loading="lazy" src="/site/t-prod.webp" alt="Lista de produtos" /><figcaption>Estoque de cada produto com a cor certa: verde, amarelo ou vermelho.</figcaption></figure>
+    <figure><img loading="lazy" src="/site/t-analise.webp" alt="Análise de vendas" /><figcaption>Faturamento, custo e lucro bruto por período, comparado com o anterior.</figcaption></figure>
   </div></div>
 </div></section>
 
 <section class="phones-sec"><div class="wrap">
   <div class="sec-head reveal" style="text-align:center;margin-inline:auto"><span class="kicker">No bolso</span><h2>O mesmo sistema<br/>no celular.</h2><p>Venda no caixa, confira o painel em casa, feche o caixa de qualquer lugar.</p></div>
   <div class="phones">
-    <div class="phone p1" data-par="-0.06"><img loading="lazy" src="/conheca/img/m-pos.webp" alt="Vender pelo celular" /></div>
-    <div class="phone p2" data-par="0.04"><img loading="lazy" src="/conheca/img/m-dash.webp" alt="Painel pelo celular" /></div>
-    <div class="phone p3" data-par="-0.03"><img loading="lazy" src="/conheca/img/m-caixa.webp" alt="Caixa pelo celular" /></div>
+    <div class="phone p1" data-par="-0.06"><img loading="lazy" src="/site/m-pos.webp" alt="Vender pelo celular" /></div>
+    <div class="phone p2" data-par="0.04"><img loading="lazy" src="/site/m-dash.webp" alt="Painel pelo celular" /></div>
+    <div class="phone p3" data-par="-0.03"><img loading="lazy" src="/site/m-caixa.webp" alt="Caixa pelo celular" /></div>
   </div>
 </div></section>
 
@@ -348,6 +386,27 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-con
     size();ps=Array.from({length:N},()=>mk(true));addEventListener('resize',size);
     new IntersectionObserver(e=>vis=e[0].isIntersecting).observe(cv);requestAnimationFrame(tick);
   });
+})();
+
+// Céu de partículas: estrelas que piscam e se movem devagar com a rolagem.
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const cv=document.getElementById('sky'),ctx=cv.getContext('2d');let W,H,stars=[];
+  const size=()=>{const d=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);
+    stars=Array.from({length:Math.round(W*H/9000)},()=>({x:Math.random()*W,y:Math.random()*H*1.6,r:Math.random()*1.3+.2,t:Math.random()*6.28,s:.4+Math.random()*1.2,c:Math.random()<.15?'164,140,255':Math.random()<.3?'140,200,255':'255,255,255'}))};
+  size();addEventListener('resize',size);
+  const tick=(time)=>{ctx.clearRect(0,0,W,H);const off=scrollY*.15;
+    for(const p of stars){const y=((p.y-off)%(H*1.6)+H*1.6)%(H*1.6);if(y>H)continue;const a=.25+.55*(.5+.5*Math.sin(p.t+time/1000*p.s));
+      ctx.beginPath();ctx.arc(p.x,y,p.r,0,6.28);ctx.fillStyle=`rgba(${p.c},${a})`;ctx.fill()}
+    requestAnimationFrame(tick)};requestAnimationFrame(tick);
+})();
+// Título palavra por palavra; brilho que segue o cursor; barra de progresso; borda luminosa nos cartões.
+(function(){
+  document.querySelectorAll('.hero h1 .w').forEach((w,i)=>w.style.animationDelay=(.15+i*.12)+'s');
+  const spot=document.querySelector('.spot'),bar=document.querySelector('.progress-top');
+  if(matchMedia('(pointer:fine)').matches){addEventListener('pointermove',e=>{spot.style.opacity=1;spot.style.left=e.clientX+'px';spot.style.top=e.clientY+'px'},{passive:true})}
+  addEventListener('scroll',()=>{const h=document.documentElement;bar.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'},{passive:true});
+  document.querySelectorAll('.fc').forEach(c=>c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect();c.style.setProperty('--mx',(e.clientX-r.left)+'px');c.style.setProperty('--my',(e.clientY-r.top)+'px')}));
 })();
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%4)*70+'ms';io.observe(el)});
