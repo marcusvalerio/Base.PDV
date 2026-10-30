@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/icon-192.png" />
+<meta name="theme-color" content="#0f0d0b" />
+<title>Central.PDV · Experimente o caixa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet" />
+<style>
+/* Balcão à noite: madeira escura, luz quente de cima, papel térmico como a única coisa clara da página. */
+:root{--bar:#0f0d0b;--bar2:#171310;--wood:#231b15;--line:#2f261f;--text:#f3ebe1;--t2:#b9ab9b;--t3:#7d7064;
+--amber:#ffb547;--amber2:#ff8a3d;--paper:#f6f3ec;--ink:#1d1b18;--ink2:#6b655c;--ok:#2fa866;--bad:#d9453b;
+--display:"Archivo",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bar);color:var(--text);font-family:var(--display);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--amber);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+
+/* luz de pendente sobre o balcão */
+.lamp{position:fixed;left:50%;top:-30vh;width:120vw;height:110vh;transform:translateX(-50%);pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 38% 46% at 50% 30%,rgba(255,181,71,.16),transparent 70%)}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+header,main,footer{position:relative;z-index:1}
+
+.nav{display:flex;align-items:center;gap:18px;height:68px}
+.logo{font-weight:900;font-size:20px;letter-spacing:-.02em;font-stretch:115%}
+.logo i{font-style:normal;color:var(--amber)}
+.nav .sp{flex:1}
+.nav a.in{color:var(--t2);font-weight:600;font-size:15px}.nav a.in:hover{color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 22px;border-radius:12px;font-weight:800;font-size:16px;border:0}
+.btn.amber{background:var(--amber);color:#2a1700;box-shadow:0 0 0 1px rgba(255,255,255,.15) inset,0 10px 30px -10px rgba(255,160,60,.8)}
+.btn.amber:hover{background:#ffc266}
+.btn.sm{min-height:40px;padding:0 16px;font-size:15px}
+
+/* ===== abertura: título + caixa de verdade ===== */
+.hero{display:grid;grid-template-columns:4.4fr 7.6fr;gap:48px;align-items:center;padding:36px 0 80px}
+.hero h1{font-size:clamp(46px,6.4vw,92px);line-height:.92;letter-spacing:-.035em;margin:0;font-weight:900;font-stretch:80%;text-transform:uppercase}
+.hero h1 span{display:block;color:var(--amber);font-stretch:125%;font-size:.62em;letter-spacing:-.01em;margin-top:.12em}
+.hero p{color:var(--t2);font-size:19px;line-height:1.55;max-width:31em;margin:22px 0 28px}
+.hint{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;color:var(--amber);margin-top:26px}
+.hint b{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 12px var(--amber)}
+@media(max-width:940px){.hero{grid-template-columns:1fr;gap:28px;padding:16px 0 56px}.hero p{font-size:17px}}
+
+/* o caixa */
+.till{position:relative;display:grid;grid-template-columns:1fr 230px;gap:18px;padding:18px;border-radius:22px;background:linear-gradient(180deg,var(--wood),var(--bar2));border:1px solid var(--line);box-shadow:0 50px 100px -40px #000,0 0 0 1px rgba(255,255,255,.03) inset}
+.till-top{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12.5px;color:var(--t3)}
+.till-top .led{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.till-top .sp{flex:1}
+.prods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-content:start}
+.prod{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:88px;padding:12px;border-radius:14px;background:#2a2119;border:1px solid #3a2f25;text-align:left;transition:transform .12s ease-out,background .15s}
+.prod:hover{background:#33281e}
+.prod:active{transform:scale(.96)}
+.prod .e{font-size:22px;line-height:1}
+.prod b{font-size:14.5px;font-weight:700;margin-top:auto;line-height:1.2}
+.prod small{font-family:var(--mono);font-size:12.5px;color:var(--amber);white-space:nowrap}
+.prod .q{position:absolute;top:8px;right:8px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--amber);color:#2a1700;font:800 12px/22px var(--mono);text-align:center;display:none}
+.prod.has .q{display:block}
+.pay{grid-column:1/2;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pm{min-height:48px;border-radius:12px;border:1px solid #3a2f25;background:transparent;font-weight:700;font-size:15px}
+.pm[aria-pressed="true"]{background:#3a2c1f;border-color:var(--amber);color:var(--amber)}
+.close{grid-column:1/2;min-height:56px;border-radius:14px;border:0;background:var(--amber);color:#2a1700;font-weight:900;font-size:18px;letter-spacing:.01em;font-stretch:110%}
+.close:disabled{background:#3a2f25;color:var(--t3);cursor:not-allowed}
+
+/* impressora + papel */
+.printer{grid-column:2;grid-row:2/5;position:relative;display:flex;flex-direction:column;align-items:center}
+.slot{width:100%;height:16px;border-radius:8px;background:#0b0907;box-shadow:0 2px 0 #3a2f25 inset}
+.paper-wrap{width:88%;height:380px;overflow:hidden;position:relative;margin-top:-6px}
+.paper{position:absolute;left:0;right:0;top:0;background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:12px;line-height:1.5;padding:14px 14px 18px;
+  box-shadow:0 18px 30px -12px rgba(0,0,0,.6);transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.paper::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:linear-gradient(-45deg,transparent 6px,var(--paper) 0) 0 0/12px 8px,linear-gradient(45deg,transparent 6px,var(--paper) 0) 0 0/12px 8px}
+.paper .c{text-align:center}.paper .hr{border-top:1px dashed #b9b2a6;margin:8px 0}
+.paper .ln{display:flex;gap:6px;animation:type .25s ease-out}
+.paper .ln span:first-child{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.paper .tot{display:flex;font-weight:800;font-size:15px}.paper .tot span:first-child{flex:1}
+.paper .muted{color:var(--ink2)}
+.paper .stamp{margin:10px auto 0;width:max-content;padding:4px 10px;border:2px solid var(--ok);color:var(--ok);font-weight:800;transform:rotate(-4deg);border-radius:4px}
+.paper.fall{transition:transform .9s cubic-bezier(.5,0,.8,.4),opacity .9s;transform:translateY(140%) rotate(8deg);opacity:0}
+@keyframes type{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.qr{width:96px;height:96px;margin:8px auto 2px;display:block}
+@media(max-width:940px){.till{grid-template-columns:1fr}.printer{grid-column:1;grid-row:auto;order:5}.paper-wrap{height:300px;width:min(320px,90%)}.pay,.close{grid-column:1}}
+@media(max-width:420px){.prods{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== a nota comprida ===== */
+.receipt-sec{padding:40px 0 100px}
+.receipt-sec .lead{text-align:center;max-width:620px;margin:0 auto 40px}
+.receipt-sec h2{font-size:clamp(34px,4.6vw,60px);line-height:.95;letter-spacing:-.03em;margin:0;font-weight:900;font-stretch:80%;text-transform:uppercase}
+.receipt-sec .lead p{color:var(--t2);font-size:18px;margin:14px 0 0}
+.long{position:relative;max-width:640px;margin:0 auto;background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:14.5px;line-height:1.6;padding:34px 34px 46px;
+  box-shadow:0 60px 120px -50px rgba(255,160,60,.35),0 30px 60px -30px #000;transform:rotate(-.6deg)}
+.long::before,.long::after{content:"";position:absolute;left:0;right:0;height:10px}
+.long::before{top:-10px;background:linear-gradient(-135deg,var(--paper) 7px,transparent 0) 0 0/14px 10px,linear-gradient(135deg,var(--paper) 7px,transparent 0) 0 0/14px 10px}
+.long::after{bottom:-10px;background:linear-gradient(-45deg,transparent 7px,var(--paper) 0) 0 0/14px 10px,linear-gradient(45deg,transparent 7px,var(--paper) 0) 0 0/14px 10px}
+.long .c{text-align:center}.long .big{font-size:22px;font-weight:800;letter-spacing:.06em}
+.long .hr{border-top:1px dashed #b9b2a6;margin:16px 0}
+.long .hr2{border-top:3px double #8f887d;margin:18px 0}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;margin-top:14px}
+.item .n{font-weight:800}
+.item .dots{border-bottom:2px dotted #b9b2a6;transform:translateY(-4px)}
+.item .v{font-weight:800}
+.item .v.ok{color:var(--ok)}
+.desc{color:var(--ink2);font-size:13.5px;margin:2px 0 0;padding-left:0}
+.cat{margin-top:26px;font-weight:800;letter-spacing:.14em;font-size:12.5px;color:var(--ink2)}
+.total{display:flex;align-items:baseline;font-size:22px;font-weight:800}.total span:first-child{flex:1}
+.bars{display:flex;gap:2px;height:54px;justify-content:center;margin:20px 0 6px}
+.bars i{display:block;background:var(--ink)}
+.long .cta{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:24px;font-family:var(--display)}
+.long .cta .btn{min-height:58px;font-size:18px;padding:0 30px}
+.long .cta small{font-family:var(--mono);color:var(--ink2);font-size:12.5px}
+/* impressão conforme rola */
+.pr{opacity:0;transform:translateY(-8px);transition:opacity .35s ease-out,transform .35s ease-out}
+.pr.in{opacity:1;transform:none}
+@media(max-width:600px){.long{padding:26px 18px 38px;font-size:13.5px;transform:none}.item{grid-template-columns:1fr auto}.item .dots{display:none}}
+
+/* dúvidas: anotações à caneta no verso */
+.notes{max-width:640px;margin:70px auto 0}
+.notes h3{font-size:28px;font-weight:900;font-stretch:80%;text-transform:uppercase;margin:0 0 10px}
+.notes details{border-top:1px solid var(--line)}
+.notes details:last-child{border-bottom:1px solid var(--line)}
+.notes summary{cursor:pointer;list-style:none;padding:18px 34px 18px 0;font-weight:700;font-size:17.5px;position:relative}
+.notes summary::-webkit-details-marker{display:none}
+.notes summary::after{content:"+";position:absolute;right:4px;top:12px;font-size:26px;color:var(--amber);font-weight:400}
+.notes details[open] summary::after{content:"−"}
+.notes p{margin:0 0 18px;color:var(--t2);line-height:1.6}
+
+footer{border-top:1px solid var(--line);padding:26px 0;color:var(--t3);font-size:14px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}
+footer .logo{font-size:16px;color:var(--text);margin-right:auto}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.pr{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="lamp" aria-hidden="true"></div><div class="grain" aria-hidden="true"></div>
+<header class="wrap nav">
+  <span class="logo">Central<i>.</i>PDV</span><span class="sp"></span>
+  <a class="in" href="/app">Entrar</a>
+  <a class="btn amber sm" href="/app/cadastro">Criar conta</a>
+</header>
+
+<main>
+<section class="wrap hero">
+  <div>
+    <h1>Experimente o caixa<span>antes de ler qualquer coisa.</span></h1>
+    <p>Este é o Central.PDV de verdade, só que em miniatura. Toque nos produtos, escolha como o cliente paga e feche a venda. No seu bar ou mercearia é igual: no celular, tablet ou computador.</p>
+    <a class="btn amber" href="/app/cadastro">Criar a conta do meu estabelecimento</a>
+    <div class="hint"><b></b><span id="hint">Toque em um produto para começar</span></div>
+  </div>
+
+  <div class="till" id="till" aria-label="Caixa de demonstração">
+    <div class="till-top"><span class="led"></span><span>CAIXA 01 · ABERTO</span><span class="sp"></span><span id="clock"></span></div>
+    <div class="prods" role="group" aria-label="Produtos"></div>
+    <div class="pay" role="group" aria-label="Forma de pagamento">
+      <button class="pm" data-m="PIX" aria-pressed="true">Pix</button>
+      <button class="pm" data-m="DINHEIRO" aria-pressed="false">Dinheiro</button>
+      <button class="pm" data-m="FIADO" aria-pressed="false">Fiado</button>
+    </div>
+    <button class="close" id="close" disabled>Cobrar</button>
+    <div class="printer" aria-live="polite">
+      <div class="slot"></div>
+      <div class="paper-wrap"><div class="paper" id="paper"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="receipt-sec" id="nota">
+  <div class="wrap">
+    <div class="lead"><h2>Tudo que vem junto,<br/>na nota.</h2><p>Role devagar: a impressora está ligada.</p></div>
+    <div class="long" id="long">
+      <div class="c pr"><div class="big">CENTRAL.PDV</div>SISTEMA DE CAIXA PARA BAR E MERCEARIA<br/>CELULAR · TABLET · COMPUTADOR</div>
+      <div class="hr pr"></div>
+      <div class="pr">CUPOM DE RECURSOS<br/><span class="muted" style="color:var(--ink2)">Nº 000001 · VIA DO CLIENTE</span></div>
+
+      <div class="cat pr">— NO BALCÃO</div>
+      <div class="pr"><div class="item"><span class="n">VENDA EM TRÊS TOQUES</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Produto, forma de pagamento, pronto. Leitor de código de barras e câmera do celular.</p></div>
+      <div class="pr"><div class="item"><span class="n">PIX COM QR CODE</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">O cliente lê o código na tela, já com o valor da venda.</p></div>
+      <div class="pr"><div class="item"><span class="n">MESAS E COMANDAS</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Lança na mesa, fecha a conta quando o cliente pedir.</p></div>
+      <div class="pr"><div class="item"><span class="n">VÁRIOS CAIXAS ABERTOS</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Cada atendente com o seu login e o seu caixa.</p></div>
+
+      <div class="cat pr">— NO CADERNINHO</div>
+      <div class="pr"><div class="item"><span class="n">FIADO COM SALDO</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Quem deve, quanto e desde quando. Extrato e lembrete pelo WhatsApp.</p></div>
+
+      <div class="cat pr">— NO ESTOQUE</div>
+      <div class="pr"><div class="item"><span class="n">BAIXA AUTOMÁTICA</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Cada venda tira do estoque. O chope sai do barril, a lata sai do fardo.</p></div>
+      <div class="pr"><div class="item"><span class="n">CATÁLOGO PRONTO</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Bebidas e itens de mercearia para importar e só ajustar o preço.</p></div>
+
+      <div class="cat pr">— NO FIM DO DIA</div>
+      <div class="pr"><div class="item"><span class="n">FECHAMENTO CONFERIDO</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Dinheiro, Pix e cartão separados. Resumo no WhatsApp.</p></div>
+      <div class="pr"><div class="item"><span class="n">RELATÓRIOS E REPOSIÇÃO</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Mais vendidos, margem e sugestão do que comprar.</p></div>
+      <div class="pr"><div class="item"><span class="n">IMPRESSORA TÉRMICA</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">Comprovante em impressora de 58 ou 80 mm. Como este.</p></div>
+
+      <div class="cat pr">— QUANDO A INTERNET CAI</div>
+      <div class="pr"><div class="item"><span class="n">CAIXA CONTINUA VENDENDO</span><span class="dots"></span><span class="v ok">INCLUSO</span></div><p class="desc">As vendas ficam no aparelho e sobem sozinhas quando a conexão volta.</p></div>
+
+      <div class="hr2 pr"></div>
+      <div class="pr total"><span>COMANDAS DE PAPEL</span><span>0</span></div>
+      <div class="pr total"><span>CADERNINHO</span><span>0</span></div>
+      <div class="pr total"><span>CONTA DE CABEÇA</span><span>0</span></div>
+      <div class="hr pr"></div>
+      <div class="pr c muted" style="color:var(--ink2)">SEM FIDELIDADE · CANCELE QUANDO QUISER</div>
+      <div class="pr bars" id="bars" aria-hidden="true"></div>
+      <div class="pr c" style="font-size:12px;letter-spacing:.3em">CENTRALPDV</div>
+      <div class="pr cta"><a class="btn amber" href="/app/cadastro">Abrir o meu caixa</a><small>OBRIGADO PELA PREFERÊNCIA · VOLTE SEMPRE</small></div>
+    </div>
+
+    <div class="notes">
+      <h3>Anotado no verso</h3>
+      <details><summary>E se a internet cair?</summary><p>O caixa continua vendendo. As vendas ficam guardadas no aparelho e são enviadas quando a conexão volta. Fiado, mesas, cadastros e fechamento de caixa precisam de internet.</p></details>
+      <details><summary>Preciso comprar computador ou máquina?</summary><p>Não. Funciona no navegador do celular, do tablet ou do computador que você já tem. Leitor de código de barras e impressora térmica são opcionais.</p></details>
+      <details><summary>Emite nota fiscal?</summary><p>Ainda não. O Central.PDV registra vendas, caixa, fiado e estoque, mas não emite NF-e nem NFC-e. A nota desta página é só de brincadeira.</p></details>
+      <details><summary>Tem fidelidade?</summary><p>Não. Você pode cancelar a qualquer momento, sem multa.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap"><span class="logo">Central<i style="font-style:normal;color:var(--amber)">.</i>PDV</span><a href="/termos">Termos e privacidade</a><a href="/app">Entrar no sistema</a></div></footer>
+
+<script>
+// Caixa de demonstração: tudo acontece só nesta página, nada é enviado.
+(function(){
+  const P=[['🍺','Cerveja lata',600],['🍻','Chope 300 ml',1200],['🍟','Porção de fritas',2500],['🥤','Refrigerante',550],['💧','Água 500 ml',350],['🥟','Salgado',700]];
+  const brl=c=>(c/100).toFixed(2).replace('.',',');
+  const grid=document.querySelector('.prods'),paper=document.getElementById('paper'),close=document.getElementById('close'),hint=document.getElementById('hint');
+  let cart=new Map(),method='PIX',n=1;
+  P.forEach(([e,name,price],i)=>{const b=document.createElement('button');b.className='prod';b.innerHTML=`<span class="q">0</span><span class="e" aria-hidden="true">${e}</span><b>${name}</b><small>R$ ${brl(price)}</small>`;
+    b.setAttribute('aria-label',`${name}, R$ ${brl(price)}`);b.onclick=()=>{cart.set(i,(cart.get(i)||0)+1);render(true)};grid.appendChild(b)});
+  document.querySelectorAll('.pm').forEach(b=>b.onclick=()=>{method=b.dataset.m;document.querySelectorAll('.pm').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render(false)});
+  const total=()=>[...cart].reduce((a,[i,q])=>a+P[i][2]*q,0);
+  function head(){const d=new Date();return `<div class="c"><b>BAR DO EXEMPLO</b><br/><span class="muted">${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · VENDA ${String(n).padStart(4,'0')}</span></div><div class="hr"></div>`}
+  function render(scroll){
+    [...grid.children].forEach((b,i)=>{const q=cart.get(i)||0;b.classList.toggle('has',q>0);b.querySelector('.q').textContent=q});
+    const lines=[...cart].map(([i,q])=>`<div class="ln"><span>${q}x ${P[i][1]}</span><span>${brl(P[i][2]*q)}</span></div>`).join('');
+    paper.innerHTML=head()+(lines||'<div class="muted c">aguardando produtos…</div>')+(cart.size?`<div class="hr"></div><div class="tot"><span>TOTAL</span><span>R$ ${brl(total())}</span></div><div class="muted">PAGAMENTO: ${method}</div>`:'');
+    close.disabled=!cart.size;close.textContent=cart.size?`Cobrar R$ ${brl(total())}`:'Cobrar';
+    hint.textContent=cart.size?(cart.size<2?'Adicione mais um ou escolha o pagamento':'Agora toque em Cobrar'):'Toque em um produto para começar';
+    // o papel "sai" da impressora conforme cresce
+    const over=Math.max(0,paper.offsetHeight-paper.parentElement.offsetHeight+10);paper.style.transform=`translateY(${-over}px)`;
+  }
+  close.onclick=()=>{
+    const t=total();
+    const extra=method==='PIX'?`<svg class="qr" viewBox="0 0 21 21" aria-label="QR Code de exemplo">${qr()}</svg><div class="c muted">PIX · EXEMPLO</div>`:method==='FIADO'?`<div class="muted">CLIENTE: JOÃO DA SILVA<br/>SALDO DO FIADO ATUALIZADO</div>`:`<div class="muted">RECEBIDO R$ ${brl(Math.ceil(t/1000)*1000)} · TROCO R$ ${brl(Math.ceil(t/1000)*1000-t)}</div>`;
+    paper.insertAdjacentHTML('beforeend',`<div class="hr"></div>${extra}<div class="stamp">VENDA REGISTRADA</div>`);
+    const over=Math.max(0,paper.offsetHeight-paper.parentElement.offsetHeight+10);paper.style.transform=`translateY(${-over}px)`;
+    close.disabled=true;hint.textContent='Venda registrada. O estoque já baixou.';
+    setTimeout(()=>{paper.classList.add('fall');setTimeout(()=>{paper.classList.remove('fall');paper.style.transition='none';cart=new Map();n++;render(false);void paper.offsetWidth;paper.style.transition=''},950)},2400);
+  };
+  // QR de enfeite (padrão fixo, não é um Pix de verdade)
+  function qr(){let s='';const f=(x,y)=>{s+=`<rect x="${x}" y="${y}" width="1" height="1"/>`};
+    const finder=(ox,oy)=>{for(let y=0;y<7;y++)for(let x=0;x<7;x++)if(x==0||y==0||x==6||y==6||(x>1&&x<5&&y>1&&y<5))f(ox+x,oy+y)};
+    finder(0,0);finder(14,0);finder(0,14);let seed=7;for(let y=0;y<21;y++)for(let x=0;x<21;x++){if((x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12))continue;seed=(seed*9301+49297)%233280;if(seed/233280>.52)f(x,y)}
+    return `<g fill="#1d1b18">${s}</g>`}
+  const clock=document.getElementById('clock');const tick=()=>clock.textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});tick();setInterval(tick,30000);
+  render(false);
+})();
+// Nota comprida: cada linha "imprime" quando aparece na tela.
+(function(){
+  const bars=document.getElementById('bars');let s=3;for(let i=0;i<46;i++){s=(s*7+11)%17;const w=1+(s%3);const b=document.createElement('i');b.style.width=w+'px';if(s%4===0)b.style.background='transparent';bars.appendChild(b)}
+  const els=[...document.querySelectorAll('.pr')];
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(e=>e.classList.add('in'));return}
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -12% 0px'});
+  els.forEach(e=>io.observe(e));
+})();
+</script>
+</body>
+</html>
