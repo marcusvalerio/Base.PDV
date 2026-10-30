@@ -9,7 +9,9 @@ export const csvMoney = (cents?: number | null) => (cents == null ? '' : (cents 
 export const csvQty = (milli?: number | null) => (milli == null ? '' : String(milli / 1000).replace('.', ','));
 
 const cell = (v: unknown) => {
-  const s = v == null ? '' : String(v);
+  let s = v == null ? '' : String(v);
+  // Texto digitado (nome de cliente, produto…) começando com = + - @ viraria fórmula no Excel: neutraliza com apóstrofo.
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 

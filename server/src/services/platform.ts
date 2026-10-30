@@ -171,3 +171,30 @@ export async function logError(base: DB, e: { tenantId?: number | null; method?:
 
 export const recentErrors = (base: DB) => base.all(
   'SELECT e.id, e.tenant_id, t.name AS tenant_name, e.method, e.path, e.message, e.at FROM platform_errors e LEFT JOIN tenants t ON t.id = e.tenant_id ORDER BY e.id DESC LIMIT 100');
+
+// ---------- Limite de tentativas (compartilhado entre instâncias) ----------
+
+/** Está bloqueado? (ex.: muitas senhas erradas). */
+export async function isLimited(base: DB, key: string) {
+  const r = await base.one<{ blocked_until: string | null }>('SELECT blocked_until FROM rate_limits WHERE key = ?', [key]);
+  return !!r?.blocked_until && r.blocked_until > now();
+}
+
+/** Conta uma ocorrência na janela; ao chegar em "max", bloqueia por "blockMs". Devolve true se ficou bloqueado. */
+export async function hitLimit(base: DB, key: string, max: number, windowMs: number, blockMs: number) {
+  const t = Date.now();
+  const r = await base.one<{ hits: number }>(`INSERT INTO rate_limits (key, hits, window_start) VALUES (?, 1, ?)
+    ON CONFLICT (key) DO UPDATE SET
+      hits = CASE WHEN rate_limits.window_start < ? THEN 1 ELSE rate_limits.hits + 1 END,
+      window_start = CASE WHEN rate_limits.window_start < ? THEN EXCLUDED.window_start ELSE rate_limits.window_start END
+    RETURNING hits`, [key, new Date(t).toISOString(), new Date(t - windowMs).toISOString(), new Date(t - windowMs).toISOString()]);
+  if (r!.hits < max) return false;
+  await base.run('UPDATE rate_limits SET blocked_until = ? WHERE key = ?', [new Date(t + blockMs).toISOString(), key]);
+  // Limpeza ocasional de registros antigos.
+  if (Math.random() < 0.05) await base.run('DELETE FROM rate_limits WHERE window_start < ? AND (blocked_until IS NULL OR blocked_until < ?)', [new Date(t - 864e5).toISOString(), new Date(t).toISOString()]);
+  return true;
+}
+
+export async function clearLimit(base: DB, key: string) {
+  await base.run('DELETE FROM rate_limits WHERE key = ?', [key]);
+}
