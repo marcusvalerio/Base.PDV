@@ -5,385 +5,374 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/icon-192.png" />
-<meta name="theme-color" content="#000000" />
-<title>Central.PDV · Você cuida do cliente. O resto é com a gente.</title>
+<meta name="theme-color" content="#1a0f24" />
+<title>Central.PDV · Uma noite no seu balcão</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Inter:wght@400..700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Geist+Mono:wght@400..600&family=Inter:wght@400..700&display=swap" rel="stylesheet" />
 <style>
-:root{--bg:#000;--bg2:#0a0a0c;--card:#0e0f13;--line:rgba(255,255,255,.09);--text:#f5f5f7;--t2:#a1a1a6;--t3:#6e6e73;--accent:#5b7fff;--accent2:#9d7bff;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;
---display:"Geist","Inter",system-ui,sans-serif;--font:"Inter",system-ui,sans-serif}
+:root{--text:#fbf8ff;--t2:rgba(240,234,255,.72);--t3:rgba(240,234,255,.5);--line:rgba(255,255,255,.14);--glass:rgba(16,12,30,.55);
+--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--accent:#8ea2ff;
+--display:"Geist","Inter",system-ui,sans-serif;--font:"Inter",system-ui,sans-serif;--mono:"Geist Mono",ui-monospace,monospace}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{margin:0;color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden;background:#120a1c}
 a{color:inherit;text-decoration:none}
-img{display:block;max-width:100%}
-h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.04em;line-height:1.02;text-wrap:balance}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.045em;line-height:.98;text-wrap:balance}
 p{text-wrap:pretty}
-:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
-.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
-.grad{background:linear-gradient(92deg,#fff 10%,#b9c6ff 50%,#c9b3ff 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+:focus-visible{outline:3px solid #fff;outline-offset:3px;border-radius:10px}
 
-.nav{position:fixed;inset:0 0 auto;z-index:50;background:rgba(0,0,0,.6);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
-.nav .wrap{display:flex;align-items:center;gap:20px;height:56px}
+/* ===== o céu: muda de cor com a hora (a rolagem é o tempo passando) ===== */
+#sky{position:fixed;inset:0;z-index:0;transition:background .2s linear}
+#stars{position:fixed;inset:0;z-index:0;width:100%;height:100%;pointer-events:none}
+.horizon{position:fixed;left:-10%;right:-10%;bottom:-30vh;height:70vh;z-index:0;pointer-events:none;border-radius:50%;filter:blur(60px);transition:background .3s linear,opacity .3s}
+.city{position:fixed;left:0;right:0;bottom:0;height:18vh;z-index:0;pointer-events:none;opacity:.9;
+  background:linear-gradient(transparent,rgba(0,0,0,.55)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1094 160' preserveAspectRatio='none'%3E%3Cpath fill='%23070410' d='M0 160V96h40V70h30v26h22V52h46v44h18V80h36v80h10V60h28V40h34v56h26V74h40v86h14V90h30V58h44v38h20V30h50v66h18V84h40v76h12V64h30V48h36v48h26V76h44v84h16V92h28V56h40v40h22V36h48v60h20V80h38v80z'/%3E%3C/svg%3E") bottom left/1094px 100% repeat-x}
+.city i{position:absolute;width:3px;height:4px;background:#ffd27a;border-radius:1px;opacity:var(--lit,0);transition:opacity .4s;box-shadow:0 0 6px #ffb347}
+header,main,footer,.clock,.netbar{position:relative;z-index:2}
+
+/* relógio e cabeçalho */
+.top{position:fixed;inset:0 0 auto;z-index:20;display:flex;align-items:center;gap:16px;padding:14px 22px}
 .logo{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.02em}
-.nav .sp{flex:1}.nav a.in{font-size:14px;color:var(--t2)}.nav a.in:hover{color:var(--text)}
-@media(max-width:640px){.nav a.in[href^="#"]{display:none}}
+.top .sp{flex:1}
+.top a.in{font-size:14px;color:var(--t2)}
+.clock{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);font-family:var(--mono);font-size:15px;font-weight:600;opacity:0;transition:opacity .5s}
+.clock.on{opacity:1}
+.clock .ic{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff7d6,#ffcf6b);box-shadow:0 0 12px #ffcf6b;transition:all .5s}
+.clock.night .ic{background:radial-gradient(circle at 65% 35%,transparent 45%,#e8e6ff 46%);box-shadow:0 0 14px rgba(200,200,255,.6)}
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 26px;border-radius:999px;font-weight:600;font-size:16px;white-space:nowrap;border:0;cursor:pointer;font-family:inherit;transition:transform .2s,box-shadow .25s}
+.btn.pri{background:#fff;color:#1b1030;box-shadow:0 14px 40px -12px rgba(255,255,255,.55)}
+.btn.pri:hover{transform:translateY(-2px);box-shadow:0 20px 50px -12px rgba(255,255,255,.75)}
+.btn.sm{min-height:36px;padding:0 16px;font-size:14px}
+.btn .arr{transition:transform .2s}.btn:hover .arr{transform:translateX(4px)}
 
-/* botão principal: grande, com brilho que passa e seta que anda */
-.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 26px;border-radius:999px;font-weight:600;font-size:16px;white-space:nowrap;transition:transform .2s,box-shadow .25s,background .2s}
-.btn.pri{background:linear-gradient(135deg,#5b7fff,#8a6bff);color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset,0 14px 40px -12px rgba(110,110,255,.9);overflow:hidden}
-.btn.pri::after{content:"";position:absolute;inset:-2px;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.4) 50%,transparent 65%);transform:translateX(-120%);animation:sheen 5s ease-in-out infinite}
-@keyframes sheen{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
-.btn.pri:hover{transform:translateY(-1px);box-shadow:0 0 0 1px rgba(255,255,255,.25) inset,0 18px 50px -12px rgba(110,110,255,1)}
-.btn.pri .arr{transition:transform .2s}.btn.pri:hover .arr{transform:translateX(4px)}
-.btn.xl{min-height:60px;padding:0 34px;font-size:18px}
-.btn.ghost{color:var(--text);border:1px solid var(--line);background:rgba(255,255,255,.04)}.btn.ghost:hover{background:rgba(255,255,255,.08)}
-.btn.sm{min-height:34px;padding:0 16px;font-size:14px}
-.assure{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;margin-top:20px;color:var(--t2);font-size:14px}
-.assure span::before{content:"";display:inline-block;width:14px;height:8px;margin-right:8px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg) translateY(-3px)}
+/* ===== porta de entrada: o nome do comércio ===== */
+.door{min-height:100vh;padding-top:96px!important;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:110px 22px 80px}
+.door .pre{font-size:15px;color:var(--t2);letter-spacing:.02em;margin-bottom:22px;opacity:0;animation:rise 1s .2s forwards}
+.door h1{font-size:clamp(46px,8vw,112px);font-weight:700;max-width:12em;opacity:0;animation:rise 1.2s .4s forwards}
+.door h1 em{font-style:normal;background:linear-gradient(92deg,#ffe1b8,#ffb3c7 45%,#c9b6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.namebox{margin-top:46px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);width:min(620px,100%);opacity:0;animation:rise 1.2s .8s forwards;box-shadow:0 30px 80px -30px rgba(255,150,120,.6)}
+.namebox input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;font:600 clamp(18px,2.2vw,24px) var(--display);padding:0 18px;letter-spacing:-.02em}
+.namebox input::placeholder{color:rgba(255,255,255,.45)}
+.namebox .btn{min-height:56px;padding:0 26px;font-size:17px}
+.door .skip{margin-top:18px;font-size:14px;color:var(--t2);background:none;border:0;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px;opacity:0;animation:rise 1s 1.1s forwards}
+.peek{margin-top:34px;width:min(420px,100%);text-align:left;opacity:0;animation:rise 1.2s 1.2s forwards;padding:18px 20px;border-radius:22px}
+.peek .bar{margin-bottom:10px}
+.peek .bar b{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .3s}
+.peek .bar b.typing{color:#ffd9b0}
+.peek .row{padding:9px 0;font-size:14px}
+.peek .mini{display:flex;gap:22px}.peek .mini .big{font-size:30px}
+.cue{margin-top:30px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:14px;color:var(--t2);opacity:0;animation:rise 1s 1.6s forwards;background:none;border:0;cursor:pointer;font-family:inherit}
+.cue i{width:22px;height:34px;border:2px solid rgba(255,255,255,.5);border-radius:12px;position:relative}
+.cue i::after{content:"";position:absolute;left:50%;top:6px;width:4px;height:7px;margin-left:-2px;border-radius:2px;background:#fff;animation:wheel 1.6s infinite}
+@keyframes wheel{0%{opacity:0;transform:translateY(0)}30%{opacity:1}100%{opacity:0;transform:translateY(12px)}}
+.door .who{margin-top:36px;font-size:14px;color:var(--t3);opacity:0;animation:rise 1s 1.3s forwards}
+@keyframes rise{from{opacity:0;transform:translateY(24px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@media(max-width:560px){.namebox{flex-direction:column;border-radius:26px;padding:10px}.namebox input{width:100%;text-align:center;padding:12px}.namebox .btn{width:100%}}
 
-/* ===== abertura ===== */
-.hero{position:relative;min-height:100vh;padding:130px 0 40px;text-align:center;overflow:hidden}
-.aurora{position:absolute;inset:-10% -20% auto;height:900px;pointer-events:none;filter:blur(70px);opacity:.8}
-.aurora i{position:absolute;border-radius:50%;animation:drift 20s ease-in-out infinite alternate}
-.aurora i:nth-child(1){width:640px;height:420px;left:12%;top:20%;background:radial-gradient(circle,rgba(91,127,255,.55),transparent 65%)}
-.aurora i:nth-child(2){width:560px;height:460px;right:10%;top:8%;background:radial-gradient(circle,rgba(157,123,255,.5),transparent 65%);animation-duration:26s;animation-delay:-8s}
-.aurora i:nth-child(3){width:480px;height:340px;left:40%;top:46%;background:radial-gradient(circle,rgba(34,211,238,.25),transparent 65%);animation-duration:30s;animation-delay:-14s}
-@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,-30px) scale(1.12)}100%{transform:translate(-40px,25px) scale(.94)}}
-#sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.7}
-.hero .wrap{position:relative;z-index:2}
-.hero .tag{display:inline-flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:13.5px;color:var(--t2)}
-.hero .tag b{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.hero h1{font-size:clamp(50px,8.6vw,120px);font-weight:700;margin-top:26px}
-.hero h1 .l2{display:block}
-.hero h1 .w{display:inline-block;opacity:0;filter:blur(16px);transform:translateY(26px);animation:wordin 1s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes wordin{to{opacity:1;filter:blur(0);transform:none}}
-.hero p.lead{font-size:clamp(18px,2vw,22px);color:var(--t2);max-width:700px;margin:26px auto 34px;line-height:1.5}
-.hero p.lead b{color:var(--text);font-weight:600}
-.hero .cta{display:flex;justify-content:center;flex-wrap:wrap;gap:12px}
+/* ===== capítulos da noite ===== */
+.night{display:none}
+.started .night{display:block}
+.ch{min-height:110vh;display:grid;grid-template-columns:5fr 6fr;gap:60px;align-items:center;max-width:1180px;margin:0 auto;padding:120px 22px}
+.ch.rev{grid-template-columns:6fr 5fr}.ch.rev .txt{order:2}
+.txt .hour{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:15px;color:var(--t2);margin-bottom:20px}
+.txt .hour::before{content:"";width:34px;height:1px;background:currentColor}
+.txt h2{font-size:clamp(40px,5.6vw,80px);font-weight:700}
+.txt p{font-size:clamp(17px,1.7vw,20px);line-height:1.55;color:var(--t2);margin:22px 0 0;max-width:30em}
+.txt p b{color:var(--text);font-weight:600}
+.reveal{opacity:0;transform:translateY(40px);filter:blur(10px);transition:opacity 1s ease,transform 1s cubic-bezier(.2,.8,.2,1),filter 1s}
+.reveal.in{opacity:1;transform:none;filter:none}
+@media(max-width:900px){.ch,.ch.rev{grid-template-columns:1fr;gap:36px;min-height:auto;padding:90px 22px}.ch.rev .txt{order:0}}
 
-.stage{position:relative;z-index:2;height:clamp(360px,58vw,640px);margin-top:64px;perspective:1800px;perspective-origin:50% 30%}
-.rig{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--rx,18deg)) rotateY(var(--ry,-14deg));transition:transform .15s linear}
-.tab{position:absolute;left:50%;top:0;width:min(860px,82vw);aspect-ratio:1180/820;transform:translateX(-50%);border-radius:clamp(14px,2vw,26px);padding:clamp(7px,1vw,12px);
-  background:linear-gradient(145deg,#2c2c30,#0e0e10 60%);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset,0 70px 120px -30px rgba(0,0,0,.9),0 30px 90px -20px rgba(91,127,255,.45)}
-.tab .scr,.ph .scr{position:relative;width:100%;height:100%;border-radius:clamp(8px,1.2vw,15px);overflow:hidden;background:#0b0b0c}
-.scr img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.02);transition:opacity .7s ease,transform 1.2s ease}
-.scr img.on{opacity:1;transform:none}
-.glare{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.14),transparent 35%,transparent 70%,rgba(255,255,255,.05));mix-blend-mode:screen}
-.ph{position:absolute;width:min(210px,21vw);aspect-ratio:9/19.5;border-radius:clamp(20px,3vw,40px);padding:clamp(5px,.7vw,9px);
-  background:linear-gradient(145deg,#3a3a3f,#101012 55%);box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 50px 90px -20px rgba(0,0,0,.9),0 20px 60px -10px rgba(157,123,255,.4)}
-.ph .scr{border-radius:clamp(15px,2.4vw,32px)}.ph .scr img{object-position:top}
-.notch{position:absolute;left:50%;top:clamp(6px,.9vw,12px);width:30%;height:clamp(6px,.9vw,14px);transform:translateX(-50%);background:#000;border-radius:20px;z-index:2}
-.hero .ph{right:calc(50% - min(430px,41vw) - 4vw);top:22%;transform:translateZ(140px) rotateY(-8deg)}
-/* avisos que "acontecem" em volta dos aparelhos (dados de exemplo) */
-.toast{position:absolute;z-index:3;display:flex;align-items:center;gap:10px;padding:11px 15px;border-radius:14px;background:rgba(20,21,28,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:0 20px 50px -20px #000;font-size:13.5px;font-weight:500;white-space:nowrap;opacity:0;transform:translateY(10px) scale(.96);transition:opacity .5s,transform .5s}
-.toast.on{opacity:1;transform:none}
-.toast i{width:9px;height:9px;border-radius:50%;flex:none}
-.toast small{color:var(--t2);font-weight:400}
-.t1{left:4%;top:12%}.t2{left:8%;bottom:16%}.t3{right:3%;top:4%}
-@media(max-width:760px){.hero{padding-top:100px}.stage{margin-top:44px}.hero .ph{width:27vw;right:2vw;top:30%}.toast{font-size:11.5px;padding:8px 11px}.t1{left:2%;top:-4%}.t2{display:none}.t3{right:2%;top:auto;bottom:4%}}
+/* telas de vidro (simulação do sistema com o nome da pessoa) */
+.glass{position:relative;border-radius:28px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);box-shadow:0 50px 100px -40px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.12);padding:26px;overflow:hidden}
+.glass .bar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t2);margin-bottom:18px}
+.glass .bar b{color:var(--text);font-size:15px;font-weight:600}
+.glass .bar .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.pill.ok{background:rgba(74,222,128,.15);color:var(--ok)}.pill.warn{background:rgba(251,191,36,.15);color:var(--warn)}.pill.bad{background:rgba(248,113,113,.15);color:var(--bad)}
+.big{font-family:var(--display);font-weight:700;letter-spacing:-.04em;font-size:clamp(40px,5vw,60px);line-height:1}
+.mut{color:var(--t2);font-size:14px}
+.row{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid rgba(255,255,255,.08);font-size:15px}
+.row .sp{flex:1}.row .v{font-family:var(--mono);font-weight:600}
+.sim{position:absolute;right:18px;bottom:12px;font-size:11px;color:var(--t3);letter-spacing:.06em}
 
-section{position:relative}
-.head{max-width:820px}
-.head.c{text-align:center;margin:0 auto}
-.head h2{font-size:clamp(38px,5.4vw,72px);font-weight:700}
-.head p{font-size:clamp(17px,1.8vw,20px);color:var(--t2);margin:18px 0 0;line-height:1.5}
-.head.c p{margin-inline:auto;max-width:640px}
+/* 20h30: vendas entrando */
+.feed{height:290px;overflow:hidden;position:relative;-webkit-mask:linear-gradient(#000 70%,transparent);mask:linear-gradient(#000 70%,transparent)}
+.feed .row{animation:drop .5s cubic-bezier(.2,.8,.2,1)}
+@keyframes drop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+.counter{display:flex;gap:26px;margin-bottom:6px}
+/* 23h15: WhatsApp */
+.wa{background:#0b141a;border-radius:28px;padding:18px;border:1px solid rgba(255,255,255,.08);box-shadow:0 50px 100px -40px #000}
+.wa .hd{display:flex;align-items:center;gap:12px;padding:4px 6px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.wa .av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#25d366,#128c7e);display:grid;place-items:center;font-weight:700}
+.bubble{margin:16px 0 0 auto;max-width:88%;background:#005c4b;border-radius:14px 4px 14px 14px;padding:12px 14px;font-size:15px;line-height:1.5;white-space:pre-line;opacity:0;transform:translateY(12px);transition:all .6s}
+.bubble.in{opacity:1;transform:none}
+.bubble small{display:block;text-align:right;color:rgba(255,255,255,.55);font-size:11px;margin-top:6px}
+.bubble.rec{margin:12px auto 0 0;background:#202c33;border-radius:4px 14px 14px 14px}
+/* 00h40: sem internet */
+.netbar{position:fixed;left:50%;top:70px;z-index:30;transform:translate(-50%,-30px);opacity:0;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:999px;background:rgba(40,20,20,.85);border:1px solid rgba(248,113,113,.4);color:#fecaca;font-size:14px;font-weight:600;backdrop-filter:blur(14px);transition:all .4s;white-space:nowrap}
+.netbar.on{opacity:1;transform:translate(-50%,0)}
+.netbar.back{background:rgba(16,40,26,.85);border-color:rgba(74,222,128,.4);color:#bbf7d0}
+body.offline #sky{filter:saturate(.3) brightness(.7)}
+body.offline .glass.live{animation:jitter .25s steps(2) 3}
+@keyframes jitter{50%{transform:translateX(2px)}}
+.q{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.q span{padding:6px 12px;border-radius:999px;border:1px dashed rgba(255,255,255,.35);font-size:13px;font-family:var(--mono);transition:all .4s}
+.q span.sent{border-style:solid;border-color:rgba(74,222,128,.6);color:var(--ok)}
+/* 02h: fechamento */
+.match{display:flex;align-items:center;gap:14px;margin-top:18px;padding:16px;border-radius:18px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35);transform:scale(.9);opacity:0;transition:all .7s cubic-bezier(.2,1.4,.4,1)}
+.match.in{transform:none;opacity:1}
+.match .ck{width:44px;height:44px;border-radius:50%;background:var(--ok);display:grid;place-items:center;flex:none}
+.match .ck::after{content:"";width:16px;height:9px;border-left:3px solid #052e16;border-bottom:3px solid #052e16;transform:rotate(-45deg) translate(1px,-2px)}
 
-/* ===== onde o dinheiro escapa ===== */
-.leaks{padding:150px 0 110px}
-.leak-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:64px}
-.leak{position:relative;padding:34px;border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01));border:1px solid var(--line);overflow:hidden}
-.leak::before{content:"";position:absolute;inset:auto -30% -50% auto;width:340px;height:340px;background:radial-gradient(circle,var(--c),transparent 65%);opacity:.5;pointer-events:none}
-.leak .was{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--t2);text-decoration:line-through;text-decoration-color:var(--bad);text-decoration-thickness:2px}
-.leak h3{font-size:clamp(26px,2.6vw,34px);font-weight:700;margin:14px 0 12px;letter-spacing:-.03em}
-.leak p{color:var(--t2);line-height:1.55;margin:0;font-size:16.5px}
-.leak ul{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:8px}
-.leak li{font-size:15px;color:#d6d6db;padding-left:22px;position:relative}
-.leak li::before{content:"";position:absolute;left:2px;top:6px;width:9px;height:5px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg)}
-@media(max-width:820px){.leak-grid{grid-template-columns:1fr}.leak{padding:26px}}
+/* ===== amanhecer ===== */
+.dawn{min-height:110vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 22px}
+.dawn h2{font-size:clamp(46px,7.6vw,110px);font-weight:700;max-width:13em;color:#1d1230}
+.dawn p{font-size:clamp(18px,2vw,22px);color:rgba(29,18,48,.75);margin:26px auto 36px;max-width:620px;line-height:1.5}
+.dawn .btn.pri{background:#1d1230;color:#fff;min-height:64px;padding:0 36px;font-size:18px;box-shadow:0 20px 50px -14px rgba(29,18,48,.6)}
+@media(max-width:560px){.dawn .btn.pri{white-space:normal;max-width:100%;padding:14px 26px;text-align:center;font-size:17px}}
+.dawn .assure{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 24px;margin-top:22px;color:rgba(29,18,48,.7);font-size:14.5px;font-weight:500}
+.dawn .assure span::before{content:"✓";margin-right:7px;font-weight:800;color:#15803d}
 
-/* ===== história com o tablet fixo ===== */
-.story{position:relative;height:520vh}
-.pin{position:sticky;top:0;height:100vh;display:grid;grid-template-columns:5fr 7fr;align-items:center;gap:40px;max-width:1240px;margin:0 auto;padding:60px 22px 0}
-.captions{position:relative;height:280px}
-.cap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;opacity:0;transform:translateY(-12px);transition:opacity .2s ease,transform .2s ease;pointer-events:none}
-.cap.on{opacity:1;transform:none;transition:opacity .5s ease .2s,transform .5s ease .2s;pointer-events:auto}
-.cap .n{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:12px}
-.cap h2{font-size:clamp(34px,4.4vw,58px);font-weight:700}
-.cap p{font-size:19px;line-height:1.5;color:var(--t2);margin:16px 0 0;max-width:30em}
-.dots{display:flex;gap:8px;margin-top:28px}
-.dots i{width:28px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);overflow:hidden;position:relative}
-.dots i b{position:absolute;inset:0;background:var(--text);transform-origin:left;transform:scaleX(0)}
-.stage2{position:relative;perspective:1600px}
-.stage2 .tab{position:relative;left:auto;top:auto;width:100%;transform:rotateY(var(--sy,-22deg)) rotateX(var(--sx,10deg)) scale(var(--ss,.9));transition:transform .1s linear}
-@media(max-width:900px){.story{height:auto}.pin{position:static;height:auto;grid-template-columns:1fr;padding:60px 22px}.captions{height:auto}.cap{position:static;opacity:1;transform:none;margin-bottom:22px}.cap:not(:first-child){display:none}.dots{display:none}.stage2 .tab{transform:none}}
-
-/* ===== para cada tipo de balcão ===== */
-.kinds{padding:120px 0}
-.kind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:56px}
-.kind{padding:30px;border-radius:26px;background:var(--card);border:1px solid var(--line)}
-.kind .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(91,127,255,.25),rgba(157,123,255,.2));border:1px solid rgba(255,255,255,.12);margin-bottom:22px;color:#cfd8ff}
-.kind h3{font-size:26px;font-weight:700;letter-spacing:-.03em}
-.kind p{color:var(--t2);margin:10px 0 0;line-height:1.55;font-size:16px}
-@media(max-width:900px){.kind-grid{grid-template-columns:1fr}}
-
-/* ===== bolso ===== */
-.pocket{padding:120px 0 110px;text-align:center;overflow:hidden}
-.fan{position:relative;height:clamp(420px,52vw,640px);margin-top:70px;perspective:1600px}
-.fan .ph{left:50%;top:0;width:min(260px,30vw);transform-origin:50% 120%;transition:transform .1s linear}
-.fan .p1{transform:translateX(-50%) rotate(calc(var(--f,0)*-16deg)) translateX(calc(var(--f,0)*-58%)) translateZ(-60px)}
-.fan .p2{transform:translateX(-50%) translateZ(60px) translateY(calc(var(--f,0)*-4%));z-index:2}
-.fan .p3{transform:translateX(-50%) rotate(calc(var(--f,0)*16deg)) translateX(calc(var(--f,0)*58%)) translateZ(-60px)}
-
-/* ===== sem risco ===== */
-.safe{padding:110px 0}
-.safe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:28px;overflow:hidden;margin-top:56px}
-.cell{background:var(--bg2);padding:32px 30px;display:flex;flex-direction:column;min-height:200px}
-.cell .big{font-family:var(--display);font-size:clamp(30px,3.2vw,42px);font-weight:700;letter-spacing:-.03em}
-.cell h3{font-size:19px;font-weight:600;letter-spacing:-.02em;margin-top:auto}
-.cell p{color:var(--t2);margin:8px 0 0;line-height:1.5;font-size:15.5px}
-@media(max-width:900px){.safe-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.safe-grid{grid-template-columns:1fr}.cell{min-height:auto}}
-
-/* ===== sem internet ===== */
-.offline{padding:130px 0;text-align:center;background:radial-gradient(800px 400px at 50% 100%,rgba(91,127,255,.2),transparent 70%)}
-.offline h2{font-size:clamp(42px,6.6vw,92px);font-weight:700}
-.offline p{font-size:20px;color:var(--t2);max-width:640px;margin:22px auto 0;line-height:1.45}
-.signal{display:inline-flex;align-items:flex-end;gap:5px;height:44px;margin-bottom:28px}
-.signal i{width:9px;border-radius:3px;background:var(--text);animation:sig 3.2s ease-in-out infinite}
-.signal i:nth-child(1){height:30%}.signal i:nth-child(2){height:55%;animation-delay:.15s}.signal i:nth-child(3){height:80%;animation-delay:.3s}.signal i:nth-child(4){height:100%;animation-delay:.45s}
-@keyframes sig{0%,45%,100%{opacity:1}55%,85%{opacity:.15}}
-
-/* ===== dúvidas ===== */
-.faq{max-width:820px;margin:0 auto;padding:110px 22px 80px}
-.faq h2{font-size:clamp(34px,4.4vw,54px);font-weight:700;margin-bottom:26px}
-.faq details{border-top:1px solid var(--line)}.faq details:last-child{border-bottom:1px solid var(--line)}
-.faq summary{cursor:pointer;list-style:none;padding:22px 40px 22px 0;font-size:18px;font-weight:600;position:relative}
+.more{background:#fbf7f2;color:#1d1230;position:relative;z-index:2;padding:100px 0 60px}
+.more .w{max-width:1100px;margin:0 auto;padding:0 22px}
+.more h3{font-size:clamp(30px,3.6vw,46px);font-weight:700;margin-bottom:30px}
+.inc{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 30px}
+.inc div{border-top:2px solid #1d1230;padding-top:14px}
+.inc b{display:block;font-family:var(--display);font-size:18px;letter-spacing:-.02em}
+.inc span{color:#5b5368;font-size:14.5px;line-height:1.5}
+@media(max-width:900px){.inc{grid-template-columns:1fr 1fr}}
+.faq{margin-top:80px;max-width:780px}
+.faq details{border-top:1px solid #e3dbd0}.faq details:last-child{border-bottom:1px solid #e3dbd0}
+.faq summary{cursor:pointer;list-style:none;padding:20px 40px 20px 0;font-size:17.5px;font-weight:600;position:relative}
 .faq summary::-webkit-details-marker{display:none}
-.faq summary::after{content:"";position:absolute;right:8px;top:30px;width:10px;height:10px;border-right:2px solid var(--t2);border-bottom:2px solid var(--t2);transform:rotate(45deg);transition:transform .2s}
-.faq details[open] summary::after{transform:rotate(-135deg);top:34px}
-.faq p{margin:0 0 22px;color:var(--t2);line-height:1.6;font-size:16.5px}
+.faq summary::after{content:"+";position:absolute;right:6px;top:14px;font-size:26px;font-weight:400}
+.faq details[open] summary::after{content:"−"}
+.faq p{margin:0 0 20px;color:#5b5368;line-height:1.6}
+footer{background:#fbf7f2;color:#7a7186;font-size:13.5px;border-top:1px solid #e3dbd0;padding:24px 22px;display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:center}
 
-/* ===== chamada final ===== */
-.final{text-align:center;padding:150px 22px 160px;overflow:hidden}
-.final .aurora{inset:auto -20% -40%;height:700px;opacity:.7}
-.final .wrap{position:relative;z-index:2}
-.final h2{font-size:clamp(46px,7.6vw,108px);font-weight:700}
-.final p{font-size:clamp(18px,2vw,22px);color:var(--t2);margin:24px auto 36px;max-width:620px;line-height:1.5}
-.steps3{display:flex;justify-content:center;flex-wrap:wrap;gap:10px 34px;margin:46px 0 0;color:var(--t2);font-size:15px}
-.steps3 b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;margin-right:10px;background:rgba(255,255,255,.08);color:var(--text);font-size:13px}
-footer{border-top:1px solid var(--line);padding:24px 0;color:var(--t3);font-size:13px}
-footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--text);font-size:15px;margin-right:auto}footer a:hover{color:var(--text)}
-
-/* barra fixa no celular: o botão sempre à mão */
-.sticky-cta{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;display:none;transform:translateY(140%);transition:transform .35s ease}
-.sticky-cta.on{transform:none}
-.sticky-cta .btn{width:100%}
-@media(max-width:640px){.sticky-cta{display:block}}
-
-.up{opacity:0;transform:translateY(30px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
-.up.in{opacity:1;transform:none}
-@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.up{opacity:1;transform:none}.hero h1 .w{opacity:1;filter:none;transform:none}.rig,.stage2 .tab{transform:none!important}.toast{opacity:1;transform:none}#sky{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal,.bubble,.match{opacity:1;transform:none;filter:none}.door *{opacity:1!important}}
 </style>
 </head>
 <body>
-<header class="nav"><div class="wrap">
+<div id="sky"></div><canvas id="stars" aria-hidden="true"></canvas><div class="horizon" id="horizon"></div><div class="city" id="city" aria-hidden="true"></div>
+
+<div class="top">
   <span class="logo">Central.PDV</span><span class="sp"></span>
-  <a class="in" href="#controle">Controle</a><a class="in" href="#telas">Telas</a><a class="in" href="#duvidas">Dúvidas</a><a class="in" href="/app">Entrar</a>
-  <a class="btn pri sm" href="/app/cadastro">Começar agora</a>
-</div></header>
+  <div class="clock" id="clock" aria-hidden="true"><span class="ic"></span><span id="clockT">18:00</span></div>
+  <a class="in" href="/app">Entrar</a>
+</div>
+<div class="netbar" id="netbar" role="status"></div>
 
 <main>
-<section class="hero">
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-  <canvas id="sky" aria-hidden="true"></canvas>
-  <div class="wrap">
-    <span class="tag up"><b></b>Para bar, mercearia, depósito e lanchonete</span>
-    <h1><span class="l2"><span class="w">Você</span> <span class="w">cuida</span> <span class="w">do</span> <span class="w">cliente.</span></span><span class="l2"><span class="w grad">O</span> <span class="w grad">resto</span> <span class="w grad">é</span> <span class="w grad">com</span> <span class="w grad">a</span> <span class="w grad">gente.</span></span></h1>
-    <p class="lead up">Caixa que bate no fim do dia, fiado que não se perde, estoque que não some. <b>Cada venda, cada centavo e cada garrafa no lugar certo</b>, no celular que você já tem.</p>
-    <div class="cta up"><a class="btn pri xl" href="/app/cadastro">Começar agora <span class="arr">→</span></a><a class="btn ghost xl" href="#controle">Ver o que muda no meu balcão</a></div>
-    <div class="assure up"><span>Pronto para vender no mesmo dia</span><span>Sem fidelidade</span><span>Sem comprar máquina</span></div>
+<section class="door">
+  <div class="pre">Antes de começar, uma pergunta.</div>
+  <h1>Qual é o nome do <em>seu balcão?</em></h1>
+  <form class="namebox" id="nameForm">
+    <input id="nameIn" maxlength="40" autocomplete="organization" placeholder="Ex.: Bar do Zé, Mercearia da Ana…" aria-label="Nome do seu comércio" />
+    <button class="btn pri" type="submit">Abrir as portas <span class="arr">→</span></button>
+  </form>
+  <button class="skip" id="skip" type="button">Prefiro ver com um exemplo</button>
+  <div class="glass peek" aria-live="polite">
+    <div class="bar"><b id="peekName">Seu balcão aqui</b><span class="sp"></span><span class="pill ok">Caixa aberto</span></div>
+    <div class="mini"><div><div class="mut">Vendas hoje</div><div class="big" id="pc">0</div></div><div><div class="mut">Faturamento</div><div class="big" id="pt">R$ 0</div></div></div>
+    <div id="pfeed"></div>
   </div>
-  <div class="stage" id="stage" aria-hidden="true">
-    <div class="toast t1" data-d="0"><i style="background:var(--ok)"></i>Venda registrada · R$ 31,05 <small>Pix</small></div>
-    <div class="toast t2" data-d="1"><i style="background:var(--accent2)"></i>Extrato do fiado enviado <small>WhatsApp</small></div>
-    <div class="toast t3" data-d="2"><i style="background:var(--warn)"></i>Cerveja lata abaixo do mínimo</div>
-    <div class="rig" id="rig">
-      <div class="tab"><div class="scr" id="heroScr">
-        <img class="on" src="/site/t-dash.webp" alt="" /><img src="/site/t-cart.webp" alt="" /><img src="/site/t-mesas.webp" alt="" />
-        <div class="glare"></div></div></div>
-      <div class="ph"><div class="notch"></div><div class="scr"><img class="on" src="/site/m-pos.webp" alt="" /><div class="glare"></div></div></div>
-    </div>
-  </div>
+  <button class="cue" id="cue" type="button"><i></i>A noite do seu balcão começa às 18h</button>
 </section>
 
-<section class="leaks" id="controle"><div class="wrap">
-  <div class="head up"><h2>O dinheiro que escapa do balcão <span class="grad">volta para o seu bolso.</span></h2>
-    <p>Comanda perdida, fiado esquecido, troco errado, garrafa que some. Cada um parece pouco. Somados no mês, viram dinheiro de verdade.</p></div>
-  <div class="leak-grid">
-    <div class="leak up" style="--c:rgba(91,127,255,.5)">
-      <span class="was">Fechamento na calculadora</span>
-      <h3>Caixa que bate. Todo dia.</h3>
-      <p>Cada atendente abre o próprio caixa. No fechamento, o sistema separa dinheiro, Pix e cartão e mostra quanto deveria ter na gaveta.</p>
-      <ul><li>Retiradas e reforços registrados</li><li>Resumo do fechamento no seu WhatsApp</li><li>Venda cancelada só com o seu código</li></ul>
-    </div>
-    <div class="leak up" style="--c:rgba(157,123,255,.5)">
-      <span class="was">Caderninho do fiado</span>
-      <h3>Fiado que não se perde.</h3>
-      <p>Quem deve, quanto e desde quando, sempre à mão. O extrato e o lembrete de cobrança vão para o cliente pelo WhatsApp com um toque.</p>
-      <ul><li>Saldo por cliente, atualizado a cada venda</li><li>Recebimento registrado no caixa</li><li>Acréscimo do fiado configurado por você</li></ul>
-    </div>
-    <div class="leak up" style="--c:rgba(52,211,153,.4)">
-      <span class="was">Estoque de cabeça</span>
-      <h3>Estoque que não some.</h3>
-      <p>Cada venda dá baixa sozinha. O copo de chope sai do barril, a lata sai do fardo. Quando algo acaba ou vence, você é avisado antes.</p>
-      <ul><li>Alerta de estoque mínimo e de validade</li><li>Inventário com meta de acerto</li><li>Sugestão do que comprar</li></ul>
-    </div>
-    <div class="leak up" style="--c:rgba(251,191,36,.35)">
-      <span class="was">Achismo no fim do mês</span>
-      <h3>Lucro que você enxerga.</h3>
-      <p>Faturamento, custo e lucro bruto por período, comparado com o anterior. Os produtos que mais vendem e os que só ocupam a prateleira.</p>
-      <ul><li>Painel do dia, atualizado na hora</li><li>Vendas por atendente e por forma de pagamento</li><li>Planilha para o contador em um clique</li></ul>
-    </div>
-  </div>
-</div></section>
+<div class="night" id="night">
+  <section class="ch" data-h="18:00">
+    <div class="txt reveal"><div class="hour">18:00</div><h2><span data-n></span> abre as portas.</h2><p>Cada atendente entra com o próprio login e abre o seu caixa. Você sabe, de onde estiver, <b>quem está trabalhando e com quanto começou.</b></p></div>
+    <div class="glass reveal"><div class="bar"><b data-n></b><span class="sp"></span><span class="pill ok">Caixa aberto</span></div>
+      <div class="mut">Troco inicial</div><div class="big">R$ 150,00</div>
+      <div class="row" style="margin-top:18px"><span>Atendente</span><span class="sp"></span><span class="v">Carla</span></div>
+      <div class="row"><span>Aberto às</span><span class="sp"></span><span class="v">18:00</span></div>
+      <div class="row"><span>Produtos no estoque</span><span class="sp"></span><span class="v">132</span></div><span class="sim">SIMULAÇÃO</span></div>
+  </section>
 
-<section class="story" id="telas">
-  <div class="pin">
-    <div>
-      <div class="captions">
-        <div class="cap on"><div class="n">Vender</div><h2>Três toques e a venda está feita.</h2><p>Toque no produto, escolha a forma de pagamento, pronto. Leitor de código de barras e câmera do celular para quando o movimento aperta.</p></div>
-        <div class="cap"><div class="n">Mesas</div><h2>Cada mesa, na palma da mão.</h2><p>Quanto já consumiu e há quanto tempo está aberta. Fecha a conta quando o cliente pedir.</p></div>
-        <div class="cap"><div class="n">Fiado</div><h2>Adeus, caderninho.</h2><p>Quem deve, quanto e desde quando. O extrato vai pelo WhatsApp com um toque.</p></div>
-        <div class="cap"><div class="n">Painel</div><h2>O dia inteiro em uma tela.</h2><p>Faturamento, caixas abertos e o que precisa de atenção, atualizado na hora. De casa, inclusive.</p></div>
-        <div class="cap"><div class="n">Análise</div><h2>Saiba onde está o lucro.</h2><p>Faturamento, custo e lucro bruto do período, comparado com o anterior. Mais vendidos e sugestão de reposição.</p></div>
-      </div>
-      <div class="dots" id="dots"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
-    </div>
-    <div class="stage2"><div class="tab" id="tab2"><div class="scr" id="storyScr">
-      <img class="on" src="/site/t-cart.webp" alt="Tela de vender" /><img src="/site/t-mesas.webp" alt="Mesas abertas" /><img src="/site/t-fiado.webp" alt="Clientes do fiado" /><img src="/site/t-dash.webp" alt="Painel do dia" /><img src="/site/t-analise.webp" alt="Análise de vendas" />
-      <div class="glare"></div></div></div></div>
-  </div>
-</section>
+  <section class="ch rev" data-h="20:30">
+    <div class="txt reveal"><div class="hour">20:30</div><h2>O movimento aperta. <br/>Você nem sente.</h2><p>Três toques e a venda está feita. Pix com QR Code na tela, troco calculado, estoque baixando sozinho. <b>A fila anda e nada fica para trás.</b></p></div>
+    <div class="glass live reveal" id="feedBox"><div class="bar"><b data-n></b><span class="sp"></span><span class="mut">ao vivo</span></div>
+      <div class="counter"><div><div class="mut">Vendas hoje</div><div class="big" id="cnt">0</div></div><div><div class="mut">Faturamento</div><div class="big" id="tot">R$ 0</div></div></div>
+      <div class="feed" id="feed"></div><span class="sim">SIMULAÇÃO</span></div>
+  </section>
 
-<section class="kinds"><div class="wrap">
-  <div class="head c up"><h2>Feito para o seu tipo de balcão.</h2><p>O mesmo sistema se ajusta ao que você vende e a como você vende.</p></div>
-  <div class="kind-grid">
-    <div class="kind up"><div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 010 6h-1M5 8h12v9a4 4 0 01-4 4H9a4 4 0 01-4-4z"/><path d="M8 2v3M12 2v3"/></svg></div>
-      <h3>Bar e lanchonete</h3><p>Mesas e comandas, chope saindo do barril, porções sem estoque avisando na hora e vários atendentes com caixa próprio.</p></div>
-    <div class="kind up"><div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9M3 9h18v11H3zM9 20v-6h6v6"/></svg></div>
-      <h3>Mercearia</h3><p>Leitor de código de barras, fiado com extrato no WhatsApp, controle de validade dos lotes e catálogo pronto para começar.</p></div>
-    <div class="kind up"><div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></div>
-      <h3>Depósito de bebidas</h3><p>Venda por unidade, fardo ou caixa com o estoque certo nos dois, alerta de mínimo e sugestão de reposição para a próxima compra.</p></div>
-  </div>
-</div></section>
+  <section class="ch" data-h="22:00">
+    <div class="txt reveal"><div class="hour">22:00</div><h2>Mesa 7 pede a conta.</h2><p>Tudo o que a mesa consumiu, desde a primeira rodada, certinho. <b>Sem comanda perdida, sem conta de cabeça, sem cliente desconfiado.</b></p></div>
+    <div class="glass reveal"><div class="bar"><b>Mesa 7</b><span class="sp"></span><span class="pill warn">aberta há 2h10</span></div>
+      <div class="row"><span>6× Cerveja 600 ml</span><span class="sp"></span><span class="v">72,00</span></div>
+      <div class="row"><span>2× Porção de fritas</span><span class="sp"></span><span class="v">50,00</span></div>
+      <div class="row"><span>1× Refrigerante 2 L</span><span class="sp"></span><span class="v">11,00</span></div>
+      <div class="row" style="font-size:20px;font-weight:700"><span>Total</span><span class="sp"></span><span class="v">R$ 133,00</span></div>
+      <div class="mut" style="margin-top:6px">Dividir por 4: R$ 33,25 cada</div><span class="sim">SIMULAÇÃO</span></div>
+  </section>
 
-<section class="pocket">
-  <div class="wrap head c">
-    <h2 class="up">O seu balcão, <span class="grad">de onde você estiver.</span></h2>
-    <p class="up">Venda no caixa, confira o movimento em casa, feche o dia pelo celular. Sem instalar nada.</p>
-  </div>
-  <div class="fan" id="fan" aria-hidden="true">
-    <div class="ph p1"><div class="notch"></div><div class="scr"><img class="on" src="/site/m-pos.webp" alt="" /><div class="glare"></div></div></div>
-    <div class="ph p2"><div class="notch"></div><div class="scr"><img class="on" src="/site/m-dash.webp" alt="" /><div class="glare"></div></div></div>
-    <div class="ph p3"><div class="notch"></div><div class="scr"><img class="on" src="/site/m-caixa.webp" alt="" /><div class="glare"></div></div></div>
-  </div>
-</section>
+  <section class="ch rev" data-h="23:15" id="fiadoCh">
+    <div class="txt reveal"><div class="hour">23:15</div><h2>O Seu João pendura de novo.</h2><p>Sem caderninho. O saldo fica certo e o extrato vai pelo WhatsApp com um toque, <b>com o nome do seu comércio.</b> Cobrar ficou fácil. E educado.</p></div>
+    <div class="wa reveal"><div class="hd"><div class="av">J</div><div><b>Seu João</b><div class="mut" style="font-size:12.5px">online</div></div></div>
+      <div class="bubble" id="b1"></div>
+      <div class="bubble rec" id="b2">Valeu! Passo aí sexta e acerto 👍<small>23:17</small></div></div>
+  </section>
 
-<section class="safe"><div class="wrap">
-  <div class="head up"><h2>Começar é simples. <span class="grad">Ficar é escolha sua.</span></h2></div>
-  <div class="safe-grid">
-    <div class="cell up"><div class="big">Hoje</div><h3>Pronto no mesmo dia</h3><p>Importe os produtos do catálogo pronto, ajuste os preços e abra o caixa.</p></div>
-    <div class="cell up"><div class="big">0</div><h3>Máquinas para comprar</h3><p>Funciona no celular, tablet ou computador que você já tem. Impressora e leitor são opcionais.</p></div>
-    <div class="cell up"><div class="big">Livre</div><h3>Sem fidelidade</h3><p>Cancele quando quiser, sem multa. Seus dados continuam seus: baixe uma cópia quando quiser.</p></div>
-    <div class="cell up"><div class="big">3 toques</div><h3>Fácil para a equipe</h3><p>Telas grandes e diretas. Quem sabe usar o celular sabe vender no Central.PDV.</p></div>
-    <div class="cell up"><div class="big">Cada um</div><h3>Com o seu acesso</h3><p>Atendente vende; só você vê relatórios, mexe em preço e autoriza cancelamento.</p></div>
-    <div class="cell up"><div class="big">Seguro</div><h3>Dados protegidos</h3><p>Conexão criptografada, senhas protegidas e cada estabelecimento com a sua base separada.</p></div>
-  </div>
-</div></section>
+  <section class="ch" data-h="00:40" id="offCh">
+    <div class="txt reveal"><div class="hour">00:40</div><h2>A internet cai.<br/>O caixa, não.</h2><p>As vendas ficam guardadas no aparelho e sobem sozinhas quando a conexão volta. <b>Nenhuma se perde, nenhuma duplica.</b> Ninguém na fila percebe.</p></div>
+    <div class="glass live reveal"><div class="bar"><b data-n></b><span class="sp"></span><span class="pill bad" id="netPill">sem internet</span></div>
+      <div class="mut">Vendas guardadas no aparelho</div>
+      <div class="q" id="queue"><span>R$ 12,00</span><span>R$ 33,50</span><span>R$ 6,00</span><span>R$ 18,00</span></div>
+      <div class="mut" style="margin-top:16px" id="qMsg">Serão enviadas quando a conexão voltar.</div><span class="sim">SIMULAÇÃO</span></div>
+  </section>
 
-<section class="offline">
-  <div class="wrap">
-    <div class="signal up" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <h2 class="up">A internet caiu.<br/>O caixa, não.</h2>
-    <p class="up">As vendas ficam guardadas no aparelho e sobem sozinhas quando a conexão volta. Sem duplicar nenhuma. Sem fila parada no balcão.</p>
-  </div>
-</section>
+  <section class="ch rev" data-h="02:00" id="closeCh">
+    <div class="txt reveal"><div class="hour">02:00</div><h2>Hora de fechar. <br/>Bateu.</h2><p>Dinheiro, Pix e cartão separados, retiradas registradas, o resumo no seu WhatsApp. <b>Centavo por centavo.</b> Você vai dormir sabendo exatamente quanto ganhou.</p></div>
+    <div class="glass reveal"><div class="bar"><b>Fechamento · <span data-n></span></b><span class="sp"></span><span class="mut">Carla</span></div>
+      <div class="row"><span>Dinheiro</span><span class="sp"></span><span class="v">R$ 1.284,50</span></div>
+      <div class="row"><span>Pix</span><span class="sp"></span><span class="v">R$ 2.117,00</span></div>
+      <div class="row"><span>Cartão</span><span class="sp"></span><span class="v">R$ 1.902,40</span></div>
+      <div class="row"><span>Fiado</span><span class="sp"></span><span class="v">R$ 86,50</span></div>
+      <div class="row" style="font-weight:700"><span>Esperado na gaveta</span><span class="sp"></span><span class="v">R$ 1.434,50</span></div>
+      <div class="match" id="match"><span class="ck"></span><div><b>Contado: R$ 1.434,50</b><div class="mut">Caixa conferido. Diferença: R$ 0,00</div></div></div><span class="sim">SIMULAÇÃO</span></div>
+  </section>
 
-<section class="faq" id="duvidas">
-  <h2 class="up">Dúvidas comuns</h2>
-  <details><summary>É difícil de aprender?</summary><p>Não. Para vender são três toques: o produto, a forma de pagamento e confirmar. As telas foram feitas para o movimento do balcão, com botões grandes e tudo à vista.</p></details>
-  <details><summary>Preciso comprar computador ou máquina?</summary><p>Não. Funciona no navegador do celular, do tablet ou do computador que você já tem. Leitor de código de barras e impressora térmica são opcionais.</p></details>
-  <details><summary>Meus funcionários podem mexer em tudo?</summary><p>Não. Cada pessoa tem o próprio login. O atendente vende e fecha o próprio caixa; relatórios, preços, estoque e cancelamentos ficam com o administrador.</p></details>
-  <details><summary>Posso usar em mais de um aparelho ao mesmo tempo?</summary><p>Sim. Vários caixas podem ficar abertos ao mesmo tempo, cada um no seu aparelho, e você acompanha tudo pelo painel.</p></details>
-  <details><summary>E se a internet cair?</summary><p>O caixa continua vendendo. As vendas ficam guardadas no aparelho e são enviadas quando a conexão volta. Fiado, mesas, cadastros e fechamento de caixa precisam de internet.</p></details>
-  <details><summary>Emite nota fiscal?</summary><p>Ainda não. O Central.PDV registra vendas, caixa, fiado e estoque, mas não emite NF-e nem NFC-e.</p></details>
-  <details><summary>Tem fidelidade?</summary><p>Não. Você pode cancelar a qualquer momento, sem multa.</p></details>
-</section>
-
-<section class="final">
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-  <div class="wrap">
-    <h2 class="up">Assuma o controle <span class="grad">do seu balcão.</span></h2>
-    <p class="up">Crie a conta agora e faça a primeira venda ainda hoje.</p>
-    <a class="btn pri xl up" href="/app/cadastro">Começar agora <span class="arr">→</span></a>
-    <div class="steps3 up"><span><b>1</b>Crie a conta</span><span><b>2</b>Cadastre ou importe os produtos</span><span><b>3</b>Abra o caixa e venda</span></div>
-    <div class="assure up"><span>Sem fidelidade</span><span>Sem instalar nada</span><span>Cancele quando quiser</span></div>
-  </div>
-</section>
+  <section class="dawn" id="dawn">
+    <h2 class="reveal">Amanhã, <span data-n></span> abre com tudo no lugar.</h2>
+    <p class="reveal">Foi só uma noite. Imagine um mês inteiro sabendo onde está cada venda, cada fiado e cada garrafa.</p>
+    <a class="btn pri reveal" id="cta" href="/app/cadastro"><span>Colocar <span data-n></span> no sistema</span><span class="arr">→</span></a>
+    <div class="assure reveal"><span>Pronto no mesmo dia</span><span>Sem fidelidade</span><span>No celular que você já tem</span></div>
+  </section>
+</div>
 </main>
 
-<div class="sticky-cta" id="stickyCta"><a class="btn pri" href="/app/cadastro">Começar agora <span class="arr">→</span></a></div>
-
-<footer><div class="wrap"><span class="logo">Central.PDV</span><a href="/termos">Termos e privacidade</a><a href="/app">Entrar no sistema</a></div></footer>
+<section class="more night">
+  <div class="w">
+    <h3>E tudo isso vem junto.</h3>
+    <div class="inc">
+      <div><b>Leitor e câmera</b><span>Código de barras pelo leitor USB ou pela câmera do celular.</span></div>
+      <div><b>Estoque inteligente</b><span>Chope sai do barril, lata sai do fardo. Alerta de mínimo e de validade.</span></div>
+      <div><b>Relatórios</b><span>Lucro bruto, mais vendidos e sugestão do que comprar.</span></div>
+      <div><b>Equipe</b><span>Cada um com seu login. Cancelamento só com o seu código.</span></div>
+      <div><b>Impressora térmica</b><span>Comprovante em 58 ou 80 mm, se você quiser.</span></div>
+      <div><b>Catálogo pronto</b><span>Bebidas e mercearia para importar e só ajustar o preço.</span></div>
+      <div><b>Planilhas</b><span>Vendas, produtos e fiado para o contador em um clique.</span></div>
+      <div><b>Seus dados</b><span>Base separada, conexão criptografada e cópia quando quiser.</span></div>
+    </div>
+    <div class="faq">
+      <h3>Dúvidas comuns</h3>
+      <details><summary>Preciso comprar computador ou máquina?</summary><p>Não. Funciona no navegador do celular, do tablet ou do computador que você já tem. Leitor de código de barras e impressora térmica são opcionais.</p></details>
+      <details><summary>É difícil de aprender?</summary><p>Não. Para vender são três toques: o produto, a forma de pagamento e confirmar. Quem sabe usar o celular sabe usar o Central.PDV.</p></details>
+      <details><summary>Meus funcionários podem mexer em tudo?</summary><p>Não. Cada pessoa tem o próprio login. O atendente vende e fecha o próprio caixa; relatórios, preços, estoque e cancelamentos ficam com o administrador.</p></details>
+      <details><summary>Emite nota fiscal?</summary><p>Ainda não. O Central.PDV registra vendas, caixa, fiado e estoque, mas não emite NF-e nem NFC-e.</p></details>
+      <details><summary>Tem fidelidade?</summary><p>Não. Você pode cancelar a qualquer momento, sem multa.</p></details>
+    </div>
+  </div>
+</section>
+<footer class="night"><span>Central.PDV</span><a href="/termos">Termos e privacidade</a><a href="/app">Entrar no sistema</a></footer>
 
 <script>
 (function(){
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-  document.querySelectorAll('.hero h1 .w').forEach((w,i)=>w.style.animationDelay=(.1+i*.09)+'s');
-  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});
-  document.querySelectorAll('.up').forEach((el,i)=>{el.style.transitionDelay=(i%3)*90+'ms';io.observe(el)});
+  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),lerp=(a,b,t)=>a+(b-a)*t;
+  const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+  let NAME='Bar do Zé';
 
-  // Telas do tablet trocam sozinhas; avisos aparecem um de cada vez.
-  const hs=[...document.querySelectorAll('#heroScr img')];let hi=0;
-  const toasts=[...document.querySelectorAll('.toast')];
-  if(reduce)toasts.forEach(t=>t.classList.add('on'));
-  else{
-    setInterval(()=>{hs[hi].classList.remove('on');hi=(hi+1)%hs.length;hs[hi].classList.add('on')},3200);
-    toasts.forEach((t,i)=>{const show=()=>{t.classList.add('on');setTimeout(()=>t.classList.remove('on'),3400)};setTimeout(()=>{show();setInterval(show,6000)},1400+i*1700)});
-  }
+  // ---------- nome do comércio ----------
+  const start=(name)=>{
+    NAME=(name||'').trim().slice(0,40)||'Bar do Zé';
+    try{localStorage.setItem('cpdv.nome',NAME)}catch(e){}
+    $$('[data-n]').forEach(el=>el.textContent=NAME);
+    $('#b1').innerHTML='';const b1=$('#b1');
+    b1.append(document.createTextNode(`Olá, Seu João! Aqui é ${NAME}.\nSeu saldo no fiado: R$ 86,50\nÚltima compra: hoje, 23:15\nQualquer dúvida, é só chamar 🙂`));
+    const sm=document.createElement('small');sm.textContent='23:16 ✓✓';b1.append(sm);
+    $('#cta').href='/app/cadastro?loja='+encodeURIComponent(NAME);
+    document.body.classList.add('started');$('#clock').classList.add('on');
+    requestAnimationFrame(()=>{frame();document.querySelector('#night .ch').scrollIntoView({behavior:reduce?'auto':'smooth'})});
+  };
+  try{const s=localStorage.getItem('cpdv.nome');if(s)$('#nameIn').value=s}catch(e){}
+  // prévia ao vivo: o nome aparece no sistema enquanto a pessoa digita
+  const pn=$('#peekName');let typT;
+  const showName=()=>{const v=$('#nameIn').value.trim();pn.textContent=v||'Seu balcão aqui';pn.classList.add('typing');clearTimeout(typT);typT=setTimeout(()=>pn.classList.remove('typing'),500)};
+  $('#nameIn').addEventListener('input',showName);if($('#nameIn').value)showName();
+  $('#cue').addEventListener('click',()=>start($('#nameIn').value));
+  (function(){const L=[['2× Cerveja lata',1200],['Chope 300 ml',1200],['Porção de fritas',2500],['Água 500 ml',350],['3× Long neck',2700]];let k=0,c=0,t=0;const pf=$('#pfeed');
+    const brl=v=>'R$ '+(v/100).toLocaleString('pt-BR',{minimumFractionDigits:v%100?2:0,maximumFractionDigits:2});
+    const add=()=>{const it=L[k++%L.length];c++;t+=it[1];$('#pc').textContent=c;$('#pt').textContent=brl(t);
+      const r=document.createElement('div');r.className='row';r.style.animation='drop .5s cubic-bezier(.2,.8,.2,1)';const a=document.createElement('span');a.textContent=it[0];const sp=document.createElement('span');sp.className='sp';const v=document.createElement('span');v.className='v';v.textContent=brl(it[1]);r.append(a,sp,v);
+      pf.prepend(r);while(pf.children.length>2)pf.lastChild.remove()};
+    setTimeout(()=>{add();setInterval(()=>{if(!document.body.classList.contains('started')||scrollY<innerHeight)add()},reduce?5000:2200)},1600)})();
+  $('#nameForm').addEventListener('submit',e=>{e.preventDefault();start($('#nameIn').value)});
+  $('#skip').addEventListener('click',()=>start('Bar do Zé'));
 
-  // Céu: pontos de luz discretos atrás do título.
-  (function(){if(reduce)return;const cv=document.getElementById('sky'),ctx=cv.getContext('2d');let W,H,st=[];
-    const size=()=>{const d=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);st=Array.from({length:Math.round(W*H/7000)},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.2+.2,t:Math.random()*6.28,s:.4+Math.random()}))};
-    size();addEventListener('resize',size);let vis=true;new IntersectionObserver(e=>vis=e[0].isIntersecting).observe(cv);
-    const tick=t=>{requestAnimationFrame(tick);if(!vis)return;ctx.clearRect(0,0,W,H);for(const p of st){ctx.globalAlpha=.25+.5*(.5+.5*Math.sin(p.t+t/1000*p.s));ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.28);ctx.fillStyle='#fff';ctx.fill()}};requestAnimationFrame(tick)})();
+  // ---------- céu: cor por hora ----------
+  // paradas: progresso → [topo, meio, base, horizonte, estrelas]
+  const K=[[0,'#3b1d4f','#a8476b','#ffb07a','rgba(255,170,110,.9)',0],[.2,'#1e1440','#4a2a6e','#c0587a','rgba(220,100,140,.6)',.3],[.45,'#090a1f','#14143a','#2a2160','rgba(90,80,200,.35)',1],
+    [.75,'#05061a','#0d0f2e','#1c1a4a','rgba(70,70,180,.3)',1],[.9,'#2a2a5e','#a86a9a','#ffc29a','rgba(255,190,140,.8)',.3],[1,'#9fd3ff','#ffd8c2','#fff1df','rgba(255,230,190,1)',0]];
+  const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const mix=(a,b,t)=>{const x=hex(a),y=hex(b);return`rgb(${x.map((v,i)=>Math.round(lerp(v,y[i],t))).join(',')})`};
+  function skyAt(p){let i=0;while(i<K.length-2&&p>K[i+1][0])i++;const a=K[i],b=K[i+1],t=clamp((p-a[0])/(b[0]-a[0]),0,1);
+    return{top:mix(a[1],b[1],t),mid:mix(a[2],b[2],t),bot:mix(a[3],b[3],t),hor:t<.5?a[4]:b[4],star:lerp(a[5],b[5],t)}}
+  const sky=$('#sky'),hor=$('#horizon'),clockT=$('#clockT'),clock=$('#clock');
+  // janelas acesas na cidade
+  const city=$('#city');for(let i=0;i<46;i++){const w=document.createElement('i');w.style.left=(Math.random()*98)+'%';w.style.bottom=(6+Math.random()*24)+'%';w.dataset.t=Math.random();city.appendChild(w)}
+  const wins=[...city.children];
 
-  const rig=document.getElementById('rig'),story=document.querySelector('.story'),tab2=document.getElementById('tab2'),
-    caps=[...document.querySelectorAll('.cap')],simgs=[...document.querySelectorAll('#storyScr img')],dots=[...document.querySelectorAll('#dots b')],fan=document.getElementById('fan'),
-    sticky=document.getElementById('stickyCta'),final=document.querySelector('.final');
-  let mx=0,my=0,cur=-1;
-  if(matchMedia('(pointer:fine)').matches)addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5;frame()},{passive:true});
+  // estrelas
+  const cv=$('#stars'),ctx=cv.getContext('2d');let W,H,st=[],starA=0;
+  const size=()=>{const d=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);st=Array.from({length:Math.round(W*H/5000)},()=>({x:Math.random()*W,y:Math.random()*H*.8,r:Math.random()*1.3+.2,t:Math.random()*6.28,s:.4+Math.random()}))};
+  size();addEventListener('resize',size);
+  let shoot=null;
+  const tick=t=>{requestAnimationFrame(tick);ctx.clearRect(0,0,W,H);if(starA<.02)return;
+    for(const p of st){ctx.globalAlpha=starA*(.3+.6*(.5+.5*Math.sin(p.t+t/1000*p.s)));ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.28);ctx.fillStyle='#fff';ctx.fill()}
+    if(!reduce){if(!shoot&&Math.random()<.004)shoot={x:Math.random()*W*.7,y:Math.random()*H*.3,l:0};
+      if(shoot){shoot.l+=14;const g=ctx.createLinearGradient(shoot.x,shoot.y,shoot.x+shoot.l,shoot.y+shoot.l*.4);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(1,`rgba(255,255,255,${starA})`);
+        ctx.globalAlpha=1;ctx.strokeStyle=g;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(shoot.x,shoot.y);ctx.lineTo(shoot.x+shoot.l,shoot.y+shoot.l*.4);ctx.stroke();if(shoot.l>260)shoot=null}}};
+  requestAnimationFrame(tick);
+
+  // ---------- rolagem = a noite passando ----------
+  const night=$('#night'),offCh=$('#offCh'),closeCh=$('#closeCh'),fiadoCh=$('#fiadoCh'),netbar=$('#netbar'),netPill=$('#netPill'),qMsg=$('#qMsg');
+  let offState='';
   function frame(){
-    const h=innerHeight,y=scrollY;
-    // botão fixo no celular: aparece depois da abertura e some na chamada final
-    sticky.classList.toggle('on',y>h*.9&&final.getBoundingClientRect().top>h*.6);
-    if(reduce)return;
-    const p=clamp(y/(h*.7),0,1);
-    rig.style.setProperty('--rx',(18*(1-p)-my*6)+'deg');rig.style.setProperty('--ry',(-14*(1-p)+mx*10)+'deg');
-    if(innerWidth>900){
-      const r=story.getBoundingClientRect(),total=r.height-h,sp=clamp(-r.top/total,0,1),intro=clamp(sp/.12,0,1);
-      tab2.style.setProperty('--sy',(-22*(1-intro)+mx*4)+'deg');tab2.style.setProperty('--sx',(10*(1-intro)-my*3)+'deg');tab2.style.setProperty('--ss',.9+.1*intro);
-      const n=caps.length,k=clamp(Math.floor(sp*n),0,n-1);
-      if(k!==cur){cur=k;caps.forEach((c,i)=>c.classList.toggle('on',i===k));simgs.forEach((im,i)=>im.classList.toggle('on',i===k))}
-      dots.forEach((d,i)=>d.style.transform=`scaleX(${clamp(sp*n-i,0,1)})`);
+    const h=innerHeight;let p=0;
+    if(document.body.classList.contains('started')){const r=night.getBoundingClientRect();p=clamp((h*.5-r.top)/(r.height-h*.3),0,1)}
+    const s=skyAt(p);
+    sky.style.background=`linear-gradient(180deg,${s.top} 0%,${s.mid} 60%,${s.bot} 100%)`;
+    hor.style.background=`radial-gradient(closest-side,${s.hor},transparent)`;
+    starA=s.star;
+    // relógio: 18:00 → 06:00
+    const mins=Math.round(p*12*60/5)*5,hh=(18+Math.floor(mins/60))%24,mm=mins%60;
+    clockT.textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+    clock.classList.toggle('night',p>.12&&p<.88);
+    const lit=p<.05?0:p>.92?0:1;wins.forEach(w=>w.style.setProperty('--lit',lit&&(+w.dataset.t<.35+p*.5)&&(+w.dataset.t>p-.55)?.9:0));
+    document.querySelector('meta[name=theme-color]').content=s.top;
+    // 00:40 — internet cai e volta dentro do capítulo
+    const o=offCh.getBoundingClientRect(),op=clamp((h*.6-o.top)/o.height,0,1.2);
+    const st=op>0&&op<.55?'off':op>=.55&&op<1?'back':'';
+    if(st!==offState){offState=st;
+      document.body.classList.toggle('offline',st==='off');
+      netbar.className='netbar'+(st?' on':'')+(st==='back'?' back':'');
+      netbar.textContent=st==='off'?'Sem internet · o caixa continua vendendo':st==='back'?'Conexão voltou · 4 vendas enviadas':'';
+      netPill.className='pill '+(st==='back'?'ok':'bad');netPill.textContent=st==='back'?'conectado':'sem internet';
+      $$('#queue span').forEach((q,i)=>setTimeout(()=>q.classList.toggle('sent',st==='back'),st==='back'?i*220:0));
+      qMsg.textContent=st==='back'?'Todas enviadas. Nenhuma duplicada.':'Serão enviadas quando a conexão voltar.';
     }
-    const fr=fan.getBoundingClientRect();fan.style.setProperty('--f',clamp((h-fr.top)/(h*.8),0,1));
+    // 23:15 e 02:00 — animações ao chegar
+    const f=fiadoCh.getBoundingClientRect();if(f.top<h*.55){$('#b1').classList.add('in');setTimeout(()=>$('#b2').classList.add('in'),1100)}
+    const c=closeCh.getBoundingClientRect();if(c.top<h*.4)$('#match').classList.add('in');
   }
   addEventListener('scroll',()=>requestAnimationFrame(frame),{passive:true});addEventListener('resize',frame);frame();
-  if(reduce)fan.style.setProperty('--f',1);
+
+  // ---------- 20:30 — vendas entrando ao vivo ----------
+  const items=[['2× Cerveja lata','Pix',1200],['Chope 300 ml','Dinheiro',1200],['Porção de fritas','Cartão',2500],['3× Cerveja 600 ml','Pix',3600],['Refrigerante lata','Pix',550],['Água 500 ml','Dinheiro',350],['Salgado + refri','Cartão',1250],['4× Long neck','Pix',3600]];
+  const feed=$('#feed'),cnt=$('#cnt'),tot=$('#tot');let n=0,sum=0,timer=null;
+  const brl=c=>'R$ '+(c/100).toLocaleString('pt-BR',{minimumFractionDigits:c%100?2:0,maximumFractionDigits:2});
+  const add=()=>{const it=items[Math.floor(Math.random()*items.length)];n++;sum+=it[2];
+    const r=document.createElement('div');r.className='row';const a=document.createElement('span');a.textContent=it[0];const m=document.createElement('span');m.className='pill ok';m.textContent=it[1];
+    const sp=document.createElement('span');sp.className='sp';const v=document.createElement('span');v.className='v';v.textContent=brl(it[2]);r.append(a,m,sp,v);
+    feed.prepend(r);while(feed.children.length>7)feed.lastChild.remove();cnt.textContent=n;tot.textContent=brl(sum)};
+  new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&!timer){for(let i=0;i<3;i++)add();timer=setInterval(add,reduce?4000:1300)}else if(!e.isIntersecting&&timer){clearInterval(timer);timer=null}}),{threshold:.3}).observe($('#feedBox'));
+
+  // entrada dos blocos
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.2});
+  $$('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%2)*140+'ms';io.observe(el)});
 })();
 </script>
 </body>
