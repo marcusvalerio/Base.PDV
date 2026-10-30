@@ -6,59 +6,104 @@
 <meta name="robots" content="noindex" />
 <link rel="icon" href="/icon-192.png" />
 <meta name="theme-color" content="#000000" />
-<title>Central.PDV · O caixa do seu bar, em qualquer tela</title>
+<title>Central.PDV · Você cuida do cliente. O resto é com a gente.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..800&family=Inter:wght@400..700&display=swap" rel="stylesheet" />
 <style>
-:root{--bg:#000;--bg2:#0a0a0c;--line:rgba(255,255,255,.09);--text:#f5f5f7;--t2:#a1a1a6;--t3:#6e6e73;--accent:#5b7fff;--accent2:#9d7bff;
+:root{--bg:#000;--bg2:#0a0a0c;--card:#0e0f13;--line:rgba(255,255,255,.09);--text:#f5f5f7;--t2:#a1a1a6;--t3:#6e6e73;--accent:#5b7fff;--accent2:#9d7bff;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;
 --display:"Geist","Inter",system-ui,sans-serif;--font:"Inter",system-ui,sans-serif}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
 h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.04em;line-height:1.02;text-wrap:balance}
+p{text-wrap:pretty}
 :focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:8px}
 .wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.grad{background:linear-gradient(92deg,#fff 10%,#b9c6ff 50%,#c9b3ff 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
 
 .nav{position:fixed;inset:0 0 auto;z-index:50;background:rgba(0,0,0,.6);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
-.nav .wrap{display:flex;align-items:center;gap:20px;height:52px}
+.nav .wrap{display:flex;align-items:center;gap:20px;height:56px}
 .logo{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.02em}
 .nav .sp{flex:1}.nav a.in{font-size:14px;color:var(--t2)}.nav a.in:hover{color:var(--text)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 24px;border-radius:999px;font-weight:600;font-size:16px;transition:background .2s,transform .2s}
-.btn.pri{background:var(--accent);color:#fff}.btn.pri:hover{background:#7593ff}
-.btn.sec{color:var(--accent)}.btn.sec:hover{text-decoration:underline}
-.btn.sm{min-height:32px;padding:0 14px;font-size:13.5px;white-space:nowrap}
-@media(max-width:600px){.nav a.in[href^="#"]{display:none}}
+@media(max-width:640px){.nav a.in[href^="#"]{display:none}}
 
-/* ===== abertura: tablet + celular em 3D ===== */
-.hero{position:relative;min-height:100vh;padding:120px 0 40px;text-align:center;overflow:hidden}
-.hero::before{content:"";position:absolute;left:50%;top:38%;width:1100px;height:700px;transform:translate(-50%,-10%);background:radial-gradient(closest-side,rgba(91,127,255,.28),rgba(157,123,255,.12) 45%,transparent 75%);filter:blur(30px);pointer-events:none}
-.hero .kick{font-size:19px;font-weight:600;color:var(--t2);margin-bottom:14px}
-.hero h1{font-size:clamp(48px,8.4vw,112px);font-weight:700}
-.hero h1 em{font-style:normal;background:linear-gradient(90deg,#fff 20%,#b9c6ff 60%,#c9b3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero p{font-size:clamp(18px,2vw,22px);color:var(--t2);max-width:640px;margin:22px auto 30px;line-height:1.45}
-.hero .cta{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px}
+/* botão principal: grande, com brilho que passa e seta que anda */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 26px;border-radius:999px;font-weight:600;font-size:16px;white-space:nowrap;transition:transform .2s,box-shadow .25s,background .2s}
+.btn.pri{background:linear-gradient(135deg,#5b7fff,#8a6bff);color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset,0 14px 40px -12px rgba(110,110,255,.9);overflow:hidden}
+.btn.pri::after{content:"";position:absolute;inset:-2px;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.4) 50%,transparent 65%);transform:translateX(-120%);animation:sheen 5s ease-in-out infinite}
+@keyframes sheen{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.btn.pri:hover{transform:translateY(-1px);box-shadow:0 0 0 1px rgba(255,255,255,.25) inset,0 18px 50px -12px rgba(110,110,255,1)}
+.btn.pri .arr{transition:transform .2s}.btn.pri:hover .arr{transform:translateX(4px)}
+.btn.xl{min-height:60px;padding:0 34px;font-size:18px}
+.btn.ghost{color:var(--text);border:1px solid var(--line);background:rgba(255,255,255,.04)}.btn.ghost:hover{background:rgba(255,255,255,.08)}
+.btn.sm{min-height:34px;padding:0 16px;font-size:14px}
+.assure{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;margin-top:20px;color:var(--t2);font-size:14px}
+.assure span::before{content:"";display:inline-block;width:14px;height:8px;margin-right:8px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg) translateY(-3px)}
 
-.stage{position:relative;height:clamp(360px,58vw,640px);margin-top:56px;perspective:1800px;perspective-origin:50% 30%}
+/* ===== abertura ===== */
+.hero{position:relative;min-height:100vh;padding:130px 0 40px;text-align:center;overflow:hidden}
+.aurora{position:absolute;inset:-10% -20% auto;height:900px;pointer-events:none;filter:blur(70px);opacity:.8}
+.aurora i{position:absolute;border-radius:50%;animation:drift 20s ease-in-out infinite alternate}
+.aurora i:nth-child(1){width:640px;height:420px;left:12%;top:20%;background:radial-gradient(circle,rgba(91,127,255,.55),transparent 65%)}
+.aurora i:nth-child(2){width:560px;height:460px;right:10%;top:8%;background:radial-gradient(circle,rgba(157,123,255,.5),transparent 65%);animation-duration:26s;animation-delay:-8s}
+.aurora i:nth-child(3){width:480px;height:340px;left:40%;top:46%;background:radial-gradient(circle,rgba(34,211,238,.25),transparent 65%);animation-duration:30s;animation-delay:-14s}
+@keyframes drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,-30px) scale(1.12)}100%{transform:translate(-40px,25px) scale(.94)}}
+#sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.7}
+.hero .wrap{position:relative;z-index:2}
+.hero .tag{display:inline-flex;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:13.5px;color:var(--t2)}
+.hero .tag b{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.hero h1{font-size:clamp(50px,8.6vw,120px);font-weight:700;margin-top:26px}
+.hero h1 .l2{display:block}
+.hero h1 .w{display:inline-block;opacity:0;filter:blur(16px);transform:translateY(26px);animation:wordin 1s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes wordin{to{opacity:1;filter:blur(0);transform:none}}
+.hero p.lead{font-size:clamp(18px,2vw,22px);color:var(--t2);max-width:700px;margin:26px auto 34px;line-height:1.5}
+.hero p.lead b{color:var(--text);font-weight:600}
+.hero .cta{display:flex;justify-content:center;flex-wrap:wrap;gap:12px}
+
+.stage{position:relative;z-index:2;height:clamp(360px,58vw,640px);margin-top:64px;perspective:1800px;perspective-origin:50% 30%}
 .rig{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--rx,18deg)) rotateY(var(--ry,-14deg));transition:transform .15s linear}
-/* tablet */
-.tab{position:absolute;left:50%;top:0;width:min(860px,82vw);aspect-ratio:1180/820;transform:translateX(-50%) translateZ(0);border-radius:clamp(14px,2vw,26px);padding:clamp(7px,1vw,12px);
-  background:linear-gradient(145deg,#2c2c30,#0e0e10 60%);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset,0 70px 120px -30px rgba(0,0,0,.9),0 30px 80px -20px rgba(91,127,255,.35)}
+.tab{position:absolute;left:50%;top:0;width:min(860px,82vw);aspect-ratio:1180/820;transform:translateX(-50%);border-radius:clamp(14px,2vw,26px);padding:clamp(7px,1vw,12px);
+  background:linear-gradient(145deg,#2c2c30,#0e0e10 60%);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset,0 70px 120px -30px rgba(0,0,0,.9),0 30px 90px -20px rgba(91,127,255,.45)}
 .tab .scr,.ph .scr{position:relative;width:100%;height:100%;border-radius:clamp(8px,1.2vw,15px);overflow:hidden;background:#0b0b0c}
 .scr img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.02);transition:opacity .7s ease,transform 1.2s ease}
 .scr img.on{opacity:1;transform:none}
 .glare{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.14),transparent 35%,transparent 70%,rgba(255,255,255,.05));mix-blend-mode:screen}
-/* celular */
 .ph{position:absolute;width:min(210px,21vw);aspect-ratio:9/19.5;border-radius:clamp(20px,3vw,40px);padding:clamp(5px,.7vw,9px);
-  background:linear-gradient(145deg,#3a3a3f,#101012 55%);box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 50px 90px -20px rgba(0,0,0,.9),0 20px 60px -10px rgba(157,123,255,.35)}
-.ph .scr{border-radius:clamp(15px,2.4vw,32px)}
-.ph .scr img{object-position:top}
-.hero .ph{right:calc(50% - min(430px,41vw) - 4vw);top:22%;transform:translateZ(140px) rotateY(-8deg)}
+  background:linear-gradient(145deg,#3a3a3f,#101012 55%);box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 50px 90px -20px rgba(0,0,0,.9),0 20px 60px -10px rgba(157,123,255,.4)}
+.ph .scr{border-radius:clamp(15px,2.4vw,32px)}.ph .scr img{object-position:top}
 .notch{position:absolute;left:50%;top:clamp(6px,.9vw,12px);width:30%;height:clamp(6px,.9vw,14px);transform:translateX(-50%);background:#000;border-radius:20px;z-index:2}
-@media(max-width:700px){.hero{padding-top:96px}.stage{margin-top:40px}.hero .ph{width:27vw;right:2vw;top:30%}}
+.hero .ph{right:calc(50% - min(430px,41vw) - 4vw);top:22%;transform:translateZ(140px) rotateY(-8deg)}
+/* avisos que "acontecem" em volta dos aparelhos (dados de exemplo) */
+.toast{position:absolute;z-index:3;display:flex;align-items:center;gap:10px;padding:11px 15px;border-radius:14px;background:rgba(20,21,28,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:0 20px 50px -20px #000;font-size:13.5px;font-weight:500;white-space:nowrap;opacity:0;transform:translateY(10px) scale(.96);transition:opacity .5s,transform .5s}
+.toast.on{opacity:1;transform:none}
+.toast i{width:9px;height:9px;border-radius:50%;flex:none}
+.toast small{color:var(--t2);font-weight:400}
+.t1{left:4%;top:12%}.t2{left:8%;bottom:16%}.t3{right:3%;top:4%}
+@media(max-width:760px){.hero{padding-top:100px}.stage{margin-top:44px}.hero .ph{width:27vw;right:2vw;top:30%}.toast{font-size:11.5px;padding:8px 11px}.t1{left:2%;top:-4%}.t2{display:none}.t3{right:2%;top:auto;bottom:4%}}
 
-/* ===== história fixa: o tablet fica parado e as telas contam o que o sistema faz ===== */
+section{position:relative}
+.head{max-width:820px}
+.head.c{text-align:center;margin:0 auto}
+.head h2{font-size:clamp(38px,5.4vw,72px);font-weight:700}
+.head p{font-size:clamp(17px,1.8vw,20px);color:var(--t2);margin:18px 0 0;line-height:1.5}
+.head.c p{margin-inline:auto;max-width:640px}
+
+/* ===== onde o dinheiro escapa ===== */
+.leaks{padding:150px 0 110px}
+.leak-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:64px}
+.leak{position:relative;padding:34px;border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.01));border:1px solid var(--line);overflow:hidden}
+.leak::before{content:"";position:absolute;inset:auto -30% -50% auto;width:340px;height:340px;background:radial-gradient(circle,var(--c),transparent 65%);opacity:.5;pointer-events:none}
+.leak .was{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--t2);text-decoration:line-through;text-decoration-color:var(--bad);text-decoration-thickness:2px}
+.leak h3{font-size:clamp(26px,2.6vw,34px);font-weight:700;margin:14px 0 12px;letter-spacing:-.03em}
+.leak p{color:var(--t2);line-height:1.55;margin:0;font-size:16.5px}
+.leak ul{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:8px}
+.leak li{font-size:15px;color:#d6d6db;padding-left:22px;position:relative}
+.leak li::before{content:"";position:absolute;left:2px;top:6px;width:9px;height:5px;border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);transform:rotate(-45deg)}
+@media(max-width:820px){.leak-grid{grid-template-columns:1fr}.leak{padding:26px}}
+
+/* ===== história com o tablet fixo ===== */
 .story{position:relative;height:520vh}
 .pin{position:sticky;top:0;height:100vh;display:grid;grid-template-columns:5fr 7fr;align-items:center;gap:40px;max-width:1240px;margin:0 auto;padding:60px 22px 0}
 .captions{position:relative;height:280px}
@@ -72,80 +117,98 @@ h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.04em;line-height:1
 .dots i b{position:absolute;inset:0;background:var(--text);transform-origin:left;transform:scaleX(0)}
 .stage2{position:relative;perspective:1600px}
 .stage2 .tab{position:relative;left:auto;top:auto;width:100%;transform:rotateY(var(--sy,-22deg)) rotateX(var(--sx,10deg)) scale(var(--ss,.9));transition:transform .1s linear}
-@media(max-width:900px){
-  .story{height:auto}.pin{position:static;height:auto;grid-template-columns:1fr;padding:80px 22px}
-  .captions{height:auto}.cap{position:static;opacity:1;transform:none;margin-bottom:22px}.cap:not(:first-child){display:none}.dots{display:none}
-  .stage2 .tab{transform:none}
-}
+@media(max-width:900px){.story{height:auto}.pin{position:static;height:auto;grid-template-columns:1fr;padding:60px 22px}.captions{height:auto}.cap{position:static;opacity:1;transform:none;margin-bottom:22px}.cap:not(:first-child){display:none}.dots{display:none}.stage2 .tab{transform:none}}
 
-/* ===== três celulares que abrem em leque ===== */
-.pocket{padding:140px 0 120px;text-align:center;overflow:hidden}
-.pocket h2{font-size:clamp(40px,6vw,80px);font-weight:700}
-.pocket p{font-size:20px;color:var(--t2);max-width:620px;margin:20px auto 0;line-height:1.45}
+/* ===== para cada tipo de balcão ===== */
+.kinds{padding:120px 0}
+.kind-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:56px}
+.kind{padding:30px;border-radius:26px;background:var(--card);border:1px solid var(--line)}
+.kind .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(91,127,255,.25),rgba(157,123,255,.2));border:1px solid rgba(255,255,255,.12);margin-bottom:22px;color:#cfd8ff}
+.kind h3{font-size:26px;font-weight:700;letter-spacing:-.03em}
+.kind p{color:var(--t2);margin:10px 0 0;line-height:1.55;font-size:16px}
+@media(max-width:900px){.kind-grid{grid-template-columns:1fr}}
+
+/* ===== bolso ===== */
+.pocket{padding:120px 0 110px;text-align:center;overflow:hidden}
 .fan{position:relative;height:clamp(420px,52vw,640px);margin-top:70px;perspective:1600px}
 .fan .ph{left:50%;top:0;width:min(260px,30vw);transform-origin:50% 120%;transition:transform .1s linear}
 .fan .p1{transform:translateX(-50%) rotate(calc(var(--f,0)*-16deg)) translateX(calc(var(--f,0)*-58%)) translateZ(-60px)}
 .fan .p2{transform:translateX(-50%) translateZ(60px) translateY(calc(var(--f,0)*-4%));z-index:2}
 .fan .p3{transform:translateX(-50%) rotate(calc(var(--f,0)*16deg)) translateX(calc(var(--f,0)*58%)) translateZ(-60px)}
 
-/* ===== números e recursos ===== */
-.facts{padding:40px 0 120px}
-.facts h2{font-size:clamp(36px,5vw,64px);font-weight:700;max-width:14em}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:28px;overflow:hidden;margin-top:56px}
-.cell{background:var(--bg2);padding:34px 30px;min-height:210px;display:flex;flex-direction:column}
-.cell .big{font-family:var(--display);font-size:clamp(34px,3.6vw,48px);font-weight:700;letter-spacing:-.03em;background:linear-gradient(90deg,#fff,#b9c6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-.cell h3{font-size:21px;font-weight:600;letter-spacing:-.02em;margin-top:auto}
+/* ===== sem risco ===== */
+.safe{padding:110px 0}
+.safe-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:28px;overflow:hidden;margin-top:56px}
+.cell{background:var(--bg2);padding:32px 30px;display:flex;flex-direction:column;min-height:200px}
+.cell .big{font-family:var(--display);font-size:clamp(30px,3.2vw,42px);font-weight:700;letter-spacing:-.03em}
+.cell h3{font-size:19px;font-weight:600;letter-spacing:-.02em;margin-top:auto}
 .cell p{color:var(--t2);margin:8px 0 0;line-height:1.5;font-size:15.5px}
-@media(max-width:900px){.grid{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.grid{grid-template-columns:1fr}.cell{min-height:auto}}
+@media(max-width:900px){.safe-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.safe-grid{grid-template-columns:1fr}.cell{min-height:auto}}
 
 /* ===== sem internet ===== */
-.offline{padding:120px 0;text-align:center;background:radial-gradient(800px 400px at 50% 100%,rgba(91,127,255,.18),transparent 70%)}
-.offline h2{font-size:clamp(40px,6.4vw,88px);font-weight:700}
+.offline{padding:130px 0;text-align:center;background:radial-gradient(800px 400px at 50% 100%,rgba(91,127,255,.2),transparent 70%)}
+.offline h2{font-size:clamp(42px,6.6vw,92px);font-weight:700}
 .offline p{font-size:20px;color:var(--t2);max-width:640px;margin:22px auto 0;line-height:1.45}
 .signal{display:inline-flex;align-items:flex-end;gap:5px;height:44px;margin-bottom:28px}
 .signal i{width:9px;border-radius:3px;background:var(--text);animation:sig 3.2s ease-in-out infinite}
 .signal i:nth-child(1){height:30%}.signal i:nth-child(2){height:55%;animation-delay:.15s}.signal i:nth-child(3){height:80%;animation-delay:.3s}.signal i:nth-child(4){height:100%;animation-delay:.45s}
 @keyframes sig{0%,45%,100%{opacity:1}55%,85%{opacity:.15}}
 
-/* ===== dúvidas e final ===== */
-.faq{max-width:780px;margin:0 auto;padding:40px 22px 100px}
-.faq h2{font-size:clamp(32px,4vw,48px);font-weight:700;margin-bottom:24px}
+/* ===== dúvidas ===== */
+.faq{max-width:820px;margin:0 auto;padding:110px 22px 80px}
+.faq h2{font-size:clamp(34px,4.4vw,54px);font-weight:700;margin-bottom:26px}
 .faq details{border-top:1px solid var(--line)}.faq details:last-child{border-bottom:1px solid var(--line)}
 .faq summary{cursor:pointer;list-style:none;padding:22px 40px 22px 0;font-size:18px;font-weight:600;position:relative}
 .faq summary::-webkit-details-marker{display:none}
 .faq summary::after{content:"";position:absolute;right:8px;top:30px;width:10px;height:10px;border-right:2px solid var(--t2);border-bottom:2px solid var(--t2);transform:rotate(45deg);transition:transform .2s}
 .faq details[open] summary::after{transform:rotate(-135deg);top:34px}
 .faq p{margin:0 0 22px;color:var(--t2);line-height:1.6;font-size:16.5px}
-.final{text-align:center;padding:120px 22px 140px;position:relative;overflow:hidden}
-.final::before{content:"";position:absolute;left:50%;top:60%;width:900px;height:500px;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(91,127,255,.3),transparent);filter:blur(30px)}
-.final h2{position:relative;font-size:clamp(44px,7vw,96px);font-weight:700}
-.final p{position:relative;font-size:20px;color:var(--t2);margin:20px 0 30px}
-.final .btn{position:relative}
+
+/* ===== chamada final ===== */
+.final{text-align:center;padding:150px 22px 160px;overflow:hidden}
+.final .aurora{inset:auto -20% -40%;height:700px;opacity:.7}
+.final .wrap{position:relative;z-index:2}
+.final h2{font-size:clamp(46px,7.6vw,108px);font-weight:700}
+.final p{font-size:clamp(18px,2vw,22px);color:var(--t2);margin:24px auto 36px;max-width:620px;line-height:1.5}
+.steps3{display:flex;justify-content:center;flex-wrap:wrap;gap:10px 34px;margin:46px 0 0;color:var(--t2);font-size:15px}
+.steps3 b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;margin-right:10px;background:rgba(255,255,255,.08);color:var(--text);font-size:13px}
 footer{border-top:1px solid var(--line);padding:24px 0;color:var(--t3);font-size:13px}
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--text);font-size:15px;margin-right:auto}footer a:hover{color:var(--text)}
 
+/* barra fixa no celular: o botão sempre à mão */
+.sticky-cta{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;display:none;transform:translateY(140%);transition:transform .35s ease}
+.sticky-cta.on{transform:none}
+.sticky-cta .btn{width:100%}
+@media(max-width:640px){.sticky-cta{display:block}}
+
 .up{opacity:0;transform:translateY(30px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.8,.2,1)}
 .up.in{opacity:1;transform:none}
-@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.up{opacity:1;transform:none}.rig,.stage2 .tab{transform:none!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.up{opacity:1;transform:none}.hero h1 .w{opacity:1;filter:none;transform:none}.rig,.stage2 .tab{transform:none!important}.toast{opacity:1;transform:none}#sky{display:none}}
 </style>
 </head>
 <body>
 <header class="nav"><div class="wrap">
   <span class="logo">Central.PDV</span><span class="sp"></span>
-  <a class="in" href="#telas">Telas</a><a class="in" href="#duvidas">Dúvidas</a><a class="in" href="/app">Entrar</a>
-  <a class="btn pri sm" href="/app/cadastro">Criar conta</a>
+  <a class="in" href="#controle">Controle</a><a class="in" href="#telas">Telas</a><a class="in" href="#duvidas">Dúvidas</a><a class="in" href="/app">Entrar</a>
+  <a class="btn pri sm" href="/app/cadastro">Começar agora</a>
 </div></header>
 
 <main>
 <section class="hero">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <canvas id="sky" aria-hidden="true"></canvas>
   <div class="wrap">
-    <div class="kick up">Central.PDV</div>
-    <h1 class="up">O caixa do seu bar.<br/><em>Em qualquer tela.</em></h1>
-    <p class="up">Vendas, mesas, fiado e estoque no celular, no tablet e no computador. Pix com QR Code, extrato do fiado no WhatsApp e venda mesmo sem internet.</p>
-    <div class="cta up"><a class="btn pri" href="/app/cadastro">Criar a conta do meu estabelecimento</a><a class="btn sec" href="#telas">Ver as telas ›</a></div>
+    <span class="tag up"><b></b>Para bar, mercearia, depósito e lanchonete</span>
+    <h1><span class="l2"><span class="w">Você</span> <span class="w">cuida</span> <span class="w">do</span> <span class="w">cliente.</span></span><span class="l2"><span class="w grad">O</span> <span class="w grad">resto</span> <span class="w grad">é</span> <span class="w grad">com</span> <span class="w grad">a</span> <span class="w grad">gente.</span></span></h1>
+    <p class="lead up">Caixa que bate no fim do dia, fiado que não se perde, estoque que não some. <b>Cada venda, cada centavo e cada garrafa no lugar certo</b>, no celular que você já tem.</p>
+    <div class="cta up"><a class="btn pri xl" href="/app/cadastro">Começar agora <span class="arr">→</span></a><a class="btn ghost xl" href="#controle">Ver o que muda no meu balcão</a></div>
+    <div class="assure up"><span>Pronto para vender no mesmo dia</span><span>Sem fidelidade</span><span>Sem comprar máquina</span></div>
   </div>
   <div class="stage" id="stage" aria-hidden="true">
+    <div class="toast t1" data-d="0"><i style="background:var(--ok)"></i>Venda registrada · R$ 31,05 <small>Pix</small></div>
+    <div class="toast t2" data-d="1"><i style="background:var(--accent2)"></i>Extrato do fiado enviado <small>WhatsApp</small></div>
+    <div class="toast t3" data-d="2"><i style="background:var(--warn)"></i>Cerveja lata abaixo do mínimo</div>
     <div class="rig" id="rig">
       <div class="tab"><div class="scr" id="heroScr">
         <img class="on" src="/site/t-dash.webp" alt="" /><img src="/site/t-cart.webp" alt="" /><img src="/site/t-mesas.webp" alt="" />
@@ -155,6 +218,37 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--
   </div>
 </section>
 
+<section class="leaks" id="controle"><div class="wrap">
+  <div class="head up"><h2>O dinheiro que escapa do balcão <span class="grad">volta para o seu bolso.</span></h2>
+    <p>Comanda perdida, fiado esquecido, troco errado, garrafa que some. Cada um parece pouco. Somados no mês, viram dinheiro de verdade.</p></div>
+  <div class="leak-grid">
+    <div class="leak up" style="--c:rgba(91,127,255,.5)">
+      <span class="was">Fechamento na calculadora</span>
+      <h3>Caixa que bate. Todo dia.</h3>
+      <p>Cada atendente abre o próprio caixa. No fechamento, o sistema separa dinheiro, Pix e cartão e mostra quanto deveria ter na gaveta.</p>
+      <ul><li>Retiradas e reforços registrados</li><li>Resumo do fechamento no seu WhatsApp</li><li>Venda cancelada só com o seu código</li></ul>
+    </div>
+    <div class="leak up" style="--c:rgba(157,123,255,.5)">
+      <span class="was">Caderninho do fiado</span>
+      <h3>Fiado que não se perde.</h3>
+      <p>Quem deve, quanto e desde quando, sempre à mão. O extrato e o lembrete de cobrança vão para o cliente pelo WhatsApp com um toque.</p>
+      <ul><li>Saldo por cliente, atualizado a cada venda</li><li>Recebimento registrado no caixa</li><li>Acréscimo do fiado configurado por você</li></ul>
+    </div>
+    <div class="leak up" style="--c:rgba(52,211,153,.4)">
+      <span class="was">Estoque de cabeça</span>
+      <h3>Estoque que não some.</h3>
+      <p>Cada venda dá baixa sozinha. O copo de chope sai do barril, a lata sai do fardo. Quando algo acaba ou vence, você é avisado antes.</p>
+      <ul><li>Alerta de estoque mínimo e de validade</li><li>Inventário com meta de acerto</li><li>Sugestão do que comprar</li></ul>
+    </div>
+    <div class="leak up" style="--c:rgba(251,191,36,.35)">
+      <span class="was">Achismo no fim do mês</span>
+      <h3>Lucro que você enxerga.</h3>
+      <p>Faturamento, custo e lucro bruto por período, comparado com o anterior. Os produtos que mais vendem e os que só ocupam a prateleira.</p>
+      <ul><li>Painel do dia, atualizado na hora</li><li>Vendas por atendente e por forma de pagamento</li><li>Planilha para o contador em um clique</li></ul>
+    </div>
+  </div>
+</div></section>
+
 <section class="story" id="telas">
   <div class="pin">
     <div>
@@ -162,7 +256,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--
         <div class="cap on"><div class="n">Vender</div><h2>Três toques e a venda está feita.</h2><p>Toque no produto, escolha a forma de pagamento, pronto. Leitor de código de barras e câmera do celular para quando o movimento aperta.</p></div>
         <div class="cap"><div class="n">Mesas</div><h2>Cada mesa, na palma da mão.</h2><p>Quanto já consumiu e há quanto tempo está aberta. Fecha a conta quando o cliente pedir.</p></div>
         <div class="cap"><div class="n">Fiado</div><h2>Adeus, caderninho.</h2><p>Quem deve, quanto e desde quando. O extrato vai pelo WhatsApp com um toque.</p></div>
-        <div class="cap"><div class="n">Painel</div><h2>O dia inteiro em uma tela.</h2><p>Faturamento, caixas abertos e o que precisa de atenção, atualizado na hora.</p></div>
+        <div class="cap"><div class="n">Painel</div><h2>O dia inteiro em uma tela.</h2><p>Faturamento, caixas abertos e o que precisa de atenção, atualizado na hora. De casa, inclusive.</p></div>
         <div class="cap"><div class="n">Análise</div><h2>Saiba onde está o lucro.</h2><p>Faturamento, custo e lucro bruto do período, comparado com o anterior. Mais vendidos e sugestão de reposição.</p></div>
       </div>
       <div class="dots" id="dots"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
@@ -173,10 +267,22 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--
   </div>
 </section>
 
+<section class="kinds"><div class="wrap">
+  <div class="head c up"><h2>Feito para o seu tipo de balcão.</h2><p>O mesmo sistema se ajusta ao que você vende e a como você vende.</p></div>
+  <div class="kind-grid">
+    <div class="kind up"><div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 010 6h-1M5 8h12v9a4 4 0 01-4 4H9a4 4 0 01-4-4z"/><path d="M8 2v3M12 2v3"/></svg></div>
+      <h3>Bar e lanchonete</h3><p>Mesas e comandas, chope saindo do barril, porções sem estoque avisando na hora e vários atendentes com caixa próprio.</p></div>
+    <div class="kind up"><div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9M3 9h18v11H3zM9 20v-6h6v6"/></svg></div>
+      <h3>Mercearia</h3><p>Leitor de código de barras, fiado com extrato no WhatsApp, controle de validade dos lotes e catálogo pronto para começar.</p></div>
+    <div class="kind up"><div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg></div>
+      <h3>Depósito de bebidas</h3><p>Venda por unidade, fardo ou caixa com o estoque certo nos dois, alerta de mínimo e sugestão de reposição para a próxima compra.</p></div>
+  </div>
+</div></section>
+
 <section class="pocket">
-  <div class="wrap">
-    <h2 class="up">Cabe no bolso.</h2>
-    <p class="up">Venda no balcão, confira o painel em casa e feche o caixa de onde estiver. Sem instalar nada.</p>
+  <div class="wrap head c">
+    <h2 class="up">O seu balcão, <span class="grad">de onde você estiver.</span></h2>
+    <p class="up">Venda no caixa, confira o movimento em casa, feche o dia pelo celular. Sem instalar nada.</p>
   </div>
   <div class="fan" id="fan" aria-hidden="true">
     <div class="ph p1"><div class="notch"></div><div class="scr"><img class="on" src="/site/m-pos.webp" alt="" /><div class="glare"></div></div></div>
@@ -185,15 +291,15 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--
   </div>
 </section>
 
-<section class="facts"><div class="wrap">
-  <h2 class="up">Tudo o que o balcão pede. Já incluso.</h2>
-  <div class="grid">
-    <div class="cell up"><div class="big">Pix</div><h3>QR Code na tela</h3><p>O cliente lê o código já com o valor da venda.</p></div>
-    <div class="cell up"><div class="big">WhatsApp</div><h3>Fiado e fechamento</h3><p>Extrato, lembrete de cobrança e resumo do caixa com um toque.</p></div>
-    <div class="cell up"><div class="big">58 / 80 mm</div><h3>Impressora térmica</h3><p>Comprovante na impressora que você já tem.</p></div>
-    <div class="cell up"><div class="big">Barril</div><h3>Estoque que se ajusta</h3><p>O copo de chope sai do barril, a lata sai do fardo.</p></div>
-    <div class="cell up"><div class="big">Equipe</div><h3>Login para cada um</h3><p>Vários caixas abertos e o dono vê quem vendeu o quê.</p></div>
-    <div class="cell up"><div class="big">Catálogo</div><h3>Produtos prontos</h3><p>Bebidas e mercearia para importar e só ajustar o preço.</p></div>
+<section class="safe"><div class="wrap">
+  <div class="head up"><h2>Começar é simples. <span class="grad">Ficar é escolha sua.</span></h2></div>
+  <div class="safe-grid">
+    <div class="cell up"><div class="big">Hoje</div><h3>Pronto no mesmo dia</h3><p>Importe os produtos do catálogo pronto, ajuste os preços e abra o caixa.</p></div>
+    <div class="cell up"><div class="big">0</div><h3>Máquinas para comprar</h3><p>Funciona no celular, tablet ou computador que você já tem. Impressora e leitor são opcionais.</p></div>
+    <div class="cell up"><div class="big">Livre</div><h3>Sem fidelidade</h3><p>Cancele quando quiser, sem multa. Seus dados continuam seus: baixe uma cópia quando quiser.</p></div>
+    <div class="cell up"><div class="big">3 toques</div><h3>Fácil para a equipe</h3><p>Telas grandes e diretas. Quem sabe usar o celular sabe vender no Central.PDV.</p></div>
+    <div class="cell up"><div class="big">Cada um</div><h3>Com o seu acesso</h3><p>Atendente vende; só você vê relatórios, mexe em preço e autoriza cancelamento.</p></div>
+    <div class="cell up"><div class="big">Seguro</div><h3>Dados protegidos</h3><p>Conexão criptografada, senhas protegidas e cada estabelecimento com a sua base separada.</p></div>
   </div>
 </div></section>
 
@@ -201,25 +307,34 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--
   <div class="wrap">
     <div class="signal up" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <h2 class="up">A internet caiu.<br/>O caixa, não.</h2>
-    <p class="up">As vendas ficam guardadas no aparelho e sobem sozinhas quando a conexão volta. Sem duplicar nenhuma.</p>
+    <p class="up">As vendas ficam guardadas no aparelho e sobem sozinhas quando a conexão volta. Sem duplicar nenhuma. Sem fila parada no balcão.</p>
   </div>
 </section>
 
 <section class="faq" id="duvidas">
   <h2 class="up">Dúvidas comuns</h2>
+  <details><summary>É difícil de aprender?</summary><p>Não. Para vender são três toques: o produto, a forma de pagamento e confirmar. As telas foram feitas para o movimento do balcão, com botões grandes e tudo à vista.</p></details>
   <details><summary>Preciso comprar computador ou máquina?</summary><p>Não. Funciona no navegador do celular, do tablet ou do computador que você já tem. Leitor de código de barras e impressora térmica são opcionais.</p></details>
+  <details><summary>Meus funcionários podem mexer em tudo?</summary><p>Não. Cada pessoa tem o próprio login. O atendente vende e fecha o próprio caixa; relatórios, preços, estoque e cancelamentos ficam com o administrador.</p></details>
+  <details><summary>Posso usar em mais de um aparelho ao mesmo tempo?</summary><p>Sim. Vários caixas podem ficar abertos ao mesmo tempo, cada um no seu aparelho, e você acompanha tudo pelo painel.</p></details>
   <details><summary>E se a internet cair?</summary><p>O caixa continua vendendo. As vendas ficam guardadas no aparelho e são enviadas quando a conexão volta. Fiado, mesas, cadastros e fechamento de caixa precisam de internet.</p></details>
   <details><summary>Emite nota fiscal?</summary><p>Ainda não. O Central.PDV registra vendas, caixa, fiado e estoque, mas não emite NF-e nem NFC-e.</p></details>
   <details><summary>Tem fidelidade?</summary><p>Não. Você pode cancelar a qualquer momento, sem multa.</p></details>
-  <details><summary>Meus dados ficam separados dos outros estabelecimentos?</summary><p>Sim. Cada estabelecimento tem a sua base separada, e você pode baixar uma cópia dos seus dados quando quiser.</p></details>
 </section>
 
 <section class="final">
-  <h2 class="up">Abra o seu caixa hoje.</h2>
-  <p class="up">Sem fidelidade. Pronto para vender no mesmo dia.</p>
-  <a class="btn pri up" href="/app/cadastro">Criar a conta do meu estabelecimento</a>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="wrap">
+    <h2 class="up">Assuma o controle <span class="grad">do seu balcão.</span></h2>
+    <p class="up">Crie a conta agora e faça a primeira venda ainda hoje.</p>
+    <a class="btn pri xl up" href="/app/cadastro">Começar agora <span class="arr">→</span></a>
+    <div class="steps3 up"><span><b>1</b>Crie a conta</span><span><b>2</b>Cadastre ou importe os produtos</span><span><b>3</b>Abra o caixa e venda</span></div>
+    <div class="assure up"><span>Sem fidelidade</span><span>Sem instalar nada</span><span>Cancele quando quiser</span></div>
+  </div>
 </section>
 </main>
+
+<div class="sticky-cta" id="stickyCta"><a class="btn pri" href="/app/cadastro">Começar agora <span class="arr">→</span></a></div>
 
 <footer><div class="wrap"><span class="logo">Central.PDV</span><a href="/termos">Termos e privacidade</a><a href="/app">Entrar no sistema</a></div></footer>
 
@@ -227,35 +342,44 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:12px 24px}footer .logo{color:var(--
 (function(){
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-  // Entrada suave dos textos.
+  document.querySelectorAll('.hero h1 .w').forEach((w,i)=>w.style.animationDelay=(.1+i*.09)+'s');
   const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});
   document.querySelectorAll('.up').forEach((el,i)=>{el.style.transitionDelay=(i%3)*90+'ms';io.observe(el)});
 
-  // Abertura: as telas do tablet trocam sozinhas.
+  // Telas do tablet trocam sozinhas; avisos aparecem um de cada vez.
   const hs=[...document.querySelectorAll('#heroScr img')];let hi=0;
-  if(!reduce)setInterval(()=>{hs[hi].classList.remove('on');hi=(hi+1)%hs.length;hs[hi].classList.add('on')},3200);
+  const toasts=[...document.querySelectorAll('.toast')];
+  if(reduce)toasts.forEach(t=>t.classList.add('on'));
+  else{
+    setInterval(()=>{hs[hi].classList.remove('on');hi=(hi+1)%hs.length;hs[hi].classList.add('on')},3200);
+    toasts.forEach((t,i)=>{const show=()=>{t.classList.add('on');setTimeout(()=>t.classList.remove('on'),3400)};setTimeout(()=>{show();setInterval(show,6000)},1400+i*1700)});
+  }
 
-  const rig=document.getElementById('rig'),stage=document.getElementById('stage'),story=document.querySelector('.story'),tab2=document.getElementById('tab2'),
-    caps=[...document.querySelectorAll('.cap')],simgs=[...document.querySelectorAll('#storyScr img')],dots=[...document.querySelectorAll('#dots b')],fan=document.getElementById('fan');
-  let mx=0,my=0;
+  // Céu: pontos de luz discretos atrás do título.
+  (function(){if(reduce)return;const cv=document.getElementById('sky'),ctx=cv.getContext('2d');let W,H,st=[];
+    const size=()=>{const d=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);st=Array.from({length:Math.round(W*H/7000)},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.2+.2,t:Math.random()*6.28,s:.4+Math.random()}))};
+    size();addEventListener('resize',size);let vis=true;new IntersectionObserver(e=>vis=e[0].isIntersecting).observe(cv);
+    const tick=t=>{requestAnimationFrame(tick);if(!vis)return;ctx.clearRect(0,0,W,H);for(const p of st){ctx.globalAlpha=.25+.5*(.5+.5*Math.sin(p.t+t/1000*p.s));ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.28);ctx.fillStyle='#fff';ctx.fill()}};requestAnimationFrame(tick)})();
+
+  const rig=document.getElementById('rig'),story=document.querySelector('.story'),tab2=document.getElementById('tab2'),
+    caps=[...document.querySelectorAll('.cap')],simgs=[...document.querySelectorAll('#storyScr img')],dots=[...document.querySelectorAll('#dots b')],fan=document.getElementById('fan'),
+    sticky=document.getElementById('stickyCta'),final=document.querySelector('.final');
+  let mx=0,my=0,cur=-1;
   if(matchMedia('(pointer:fine)').matches)addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5;frame()},{passive:true});
-  let cur=-1;
   function frame(){
-    if(reduce)return;
     const h=innerHeight,y=scrollY;
-    // 1) abertura: o conjunto se endireita conforme rola e acompanha o mouse
+    // botão fixo no celular: aparece depois da abertura e some na chamada final
+    sticky.classList.toggle('on',y>h*.9&&final.getBoundingClientRect().top>h*.6);
+    if(reduce)return;
     const p=clamp(y/(h*.7),0,1);
     rig.style.setProperty('--rx',(18*(1-p)-my*6)+'deg');rig.style.setProperty('--ry',(-14*(1-p)+mx*10)+'deg');
-    // 2) história: progresso dentro da seção fixa
     if(innerWidth>900){
-      const r=story.getBoundingClientRect(),total=r.height-h,sp=clamp(-r.top/total,0,1);
-      const intro=clamp(sp/.12,0,1);
+      const r=story.getBoundingClientRect(),total=r.height-h,sp=clamp(-r.top/total,0,1),intro=clamp(sp/.12,0,1);
       tab2.style.setProperty('--sy',(-22*(1-intro)+mx*4)+'deg');tab2.style.setProperty('--sx',(10*(1-intro)-my*3)+'deg');tab2.style.setProperty('--ss',.9+.1*intro);
       const n=caps.length,k=clamp(Math.floor(sp*n),0,n-1);
       if(k!==cur){cur=k;caps.forEach((c,i)=>c.classList.toggle('on',i===k));simgs.forEach((im,i)=>im.classList.toggle('on',i===k))}
       dots.forEach((d,i)=>d.style.transform=`scaleX(${clamp(sp*n-i,0,1)})`);
     }
-    // 3) celulares: abrem em leque ao entrar na tela
     const fr=fan.getBoundingClientRect();fan.style.setProperty('--f',clamp((h-fr.top)/(h*.8),0,1));
   }
   addEventListener('scroll',()=>requestAnimationFrame(frame),{passive:true});addEventListener('resize',frame);frame();
