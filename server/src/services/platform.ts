@@ -4,6 +4,7 @@ import { badRequest, conflict, notFound } from '../errors.js';
 import { createUser } from './users.js';
 import { setSetting } from './settings.js';
 import { setModules, MODULES } from './modules.js';
+import { newTotpSecret, verifyTotp, otpauthUrl } from '../totp.js';
 
 /**
  * Plataforma: estabelecimentos (cada um com schema próprio), administração central e situação da assinatura.
@@ -118,10 +119,26 @@ export async function createPlatformAdmin(base: DB, input: { name: string; usern
   return r.id;
 }
 
-export async function platformLogin(base: DB, username: string, password: string) {
+/** Código da verificação em duas etapas: confere e marca como usado (o mesmo código não serve duas vezes). */
+async function useTotp(base: DB, a: { id: number; totp_secret: string; totp_last_step: number | null }, code: string) {
+  const step = verifyTotp(a.totp_secret, code);
+  if (step === null || (a.totp_last_step != null && step <= a.totp_last_step)) return false;
+  const r = await base.run('UPDATE platform_admins SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)', [step, a.id, step]);
+  return r.rowCount > 0;
+}
+
+/**
+ * Login do painel central. Com a verificação em duas etapas ligada, senha certa sem código devolve "totpRequired"
+ * (a tela pede o código do aplicativo); código errado conta como tentativa falha.
+ */
+export async function platformLogin(base: DB, username: string, password: string, code?: string) {
   const a = await base.one('SELECT * FROM platform_admins WHERE lower(username) = lower(?)', [username.trim()]);
   const ok = verifySecret(password, a?.password_hash ?? 'scrypt$AAAA$AAAA');
   if (!a || !ok || !a.active) { await platformAudit(base, a?.id ?? null, 'central.login_failed', null, { username }); return null; }
+  if (a.totp_enabled) {
+    if (!code) return { totpRequired: true as const };
+    if (!(await useTotp(base, a, code))) { await platformAudit(base, a.id, 'central.totp_failed', null); return null; }
+  }
   const token = newToken();
   const t = new Date();
   await base.run('INSERT INTO platform_sessions (token_hash, admin_id, created_at, expires_at) VALUES (?,?,?,?)',
@@ -198,3 +215,39 @@ export async function hitLimit(base: DB, key: string, max: number, windowMs: num
 export async function clearLimit(base: DB, key: string) {
   await base.run('DELETE FROM rate_limits WHERE key = ?', [key]);
 }
+
+// ---------- Verificação em duas etapas (opcional) ----------
+
+export async function totpStatus(base: DB, adminId: number) {
+  const a = await base.one('SELECT totp_enabled FROM platform_admins WHERE id = ?', [adminId]);
+  return { enabled: !!a?.totp_enabled };
+}
+
+/** Gera um segredo novo (ainda desligado) e devolve o link para o QR Code do aplicativo. */
+export async function totpBegin(base: DB, adminId: number) {
+  const a = await base.one('SELECT username, totp_enabled FROM platform_admins WHERE id = ?', [adminId]);
+  if (!a) throw notFound('Administrador não encontrado.');
+  if (a.totp_enabled) throw conflict('A verificação em duas etapas já está ligada.');
+  const secret = newTotpSecret();
+  await base.run('UPDATE platform_admins SET totp_secret = ?, totp_last_step = NULL WHERE id = ?', [secret, adminId]);
+  return { secret, url: otpauthUrl(secret, a.username) };
+}
+
+/** Liga depois de conferir o primeiro código (prova que o aplicativo foi configurado certo). */
+export async function totpEnable(base: DB, adminId: number, code: string) {
+  const a = await base.one('SELECT id, totp_secret, totp_last_step, totp_enabled FROM platform_admins WHERE id = ?', [adminId]);
+  if (!a?.totp_secret || a.totp_enabled) throw badRequest('Comece a configuração de novo.');
+  if (!(await useTotp(base, a, code))) throw badRequest('Código incorreto. Confira o horário do celular e tente o código atual.');
+  await base.run('UPDATE platform_admins SET totp_enabled = 1 WHERE id = ?', [adminId]);
+  await platformAudit(base, adminId, 'central.totp_enabled', null);
+}
+
+/** Desligar pede a senha e um código atual. */
+export async function totpDisable(base: DB, adminId: number, password: string, code: string) {
+  const a = await base.one('SELECT * FROM platform_admins WHERE id = ?', [adminId]);
+  if (!a?.totp_enabled) throw badRequest('A verificação em duas etapas já está desligada.');
+  if (!verifySecret(password, a.password_hash) || !(await useTotp(base, a, code))) throw badRequest('Senha ou código incorretos.');
+  await base.run('UPDATE platform_admins SET totp_enabled = 0, totp_secret = NULL, totp_last_step = NULL WHERE id = ?', [adminId]);
+  await platformAudit(base, adminId, 'central.totp_disabled', null);
+}
+
