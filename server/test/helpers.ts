@@ -44,6 +44,7 @@ function wrap(app: any, cookie: string) {
     post: (u: string, b?: any) => h(request(app).post(u)).send(b ?? {}),
     patch: (u: string, b?: any) => h(request(app).patch(u)).send(b ?? {}),
     put: (u: string, b?: any) => h(request(app).put(u)).send(b ?? {}),
+    del: (u: string) => h(request(app).delete(u)),
   };
 }
 

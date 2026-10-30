@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DB, audit, tenantAware, tenantStore, withSchema } from './db.js';
 import * as platform from './services/platform.js';
 import * as stripe from './services/stripe.js';
+import * as centralSvc from './services/central.js';
 import { AppError, forbidden, unauthorized, badRequest } from './errors.js';
 import { UNITS } from './money.js';
 import * as users from './services/users.js';
@@ -112,7 +113,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
 
   // Assinatura: sem pagamento em dia (ou suspenso pelo admin central), o sistema fica fora do ar para o estabelecimento.
-  const OPEN_WHEN_BLOCKED = /^\/(auth\/|billing\/|bootstrap$|public\/)/;
+  const OPEN_WHEN_BLOCKED = /^\/(auth\/|billing\/|bootstrap$|public\/|notices$)/;
   app.use('/api', (req, _res, next) => {
     if (!req.tenant || OPEN_WHEN_BLOCKED.test(req.path)) return next();
     const a = platform.access(req.tenant);
@@ -217,6 +218,9 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.json({ ok: true });
   });
   r.get('/auth/me', auth, async (req, res) => res.json({ user: { ...req.user, tenantId: req.tenant!.id }, access: platform.access(req.tenant!) }));
+
+  // Avisos do painel central e de vencimento (aparecem no topo do sistema; também com o sistema bloqueado).
+  r.get('/notices', auth, async (req, res) => res.json(await centralSvc.activeNoticesFor(base, (await platform.getTenant(base, req.tenant!.id))!)));
 
   // ---------- Assinatura do estabelecimento (administrador) ----------
   r.get('/billing/status', admin, async (req, res) => {
@@ -624,7 +628,30 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
 
   const tenantId = (req: Request) => id.parse(req.params.id);
   const getT = async (req: Request) => { const t = await platform.getTenant(base, tenantId(req)); if (!t) throw new AppError(404, 'NOT_FOUND', 'Estabelecimento não encontrado.'); return t; };
-  c.get('/tenants', central, async (_req, res) => res.json(await platform.listTenants(base)));
+  c.get('/tenants', central, async (_req, res) => {
+    const list = await platform.listTenants(base);
+    res.json(await Promise.all(list.map(async (t) => ({ ...t, health: await centralSvc.tenantHealth(base, t) }))));
+  });
+  c.get('/finance', central, async (_req, res) => res.json(await centralSvc.finance(base, sfetch)));
+  c.get('/growth', central, async (_req, res) => res.json(await centralSvc.growth(base)));
+  c.get('/audit', central, async (_req, res) => res.json(await centralSvc.auditLog(base)));
+  c.get('/notices', central, async (_req, res) => res.json(await centralSvc.listNotices(base)));
+  c.post('/notices', central, async (req, res) => {
+    const b = z.object({
+      tenant_id: id.nullable(), kind: z.enum(['info', 'maintenance', 'billing', 'news']),
+      title: z.string().trim().min(3, 'Escreva um título.').max(80), message: z.string().trim().min(3, 'Escreva a mensagem.').max(400),
+      starts_at: z.string().datetime(), ends_at: z.string().datetime(),
+    }).refine((x) => x.ends_at > x.starts_at, { message: 'O fim precisa ser depois do início.' }).parse(req.body);
+    res.status(201).json({ id: await centralSvc.createNotice(base, b, req.central!.id) });
+  });
+  c.post('/notices/:id/end', central, async (req, res) => { await centralSvc.endNotice(base, id.parse(req.params.id), req.central!.id); res.json({ ok: true }); });
+  c.get('/tenants/:id/notes', central, async (req, res) => res.json(await centralSvc.listNotes(base, tenantId(req))));
+  c.post('/tenants/:id/notes', central, async (req, res) => {
+    const b = z.object({ text: z.string().trim().min(1).max(1000) }).parse(req.body);
+    await centralSvc.addNote(base, tenantId(req), b.text, req.central!.id);
+    res.status(201).json({ ok: true });
+  });
+  c.delete('/tenants/:id/notes/:noteId', central, async (req, res) => { await centralSvc.deleteNote(base, tenantId(req), id.parse(req.params.noteId)); res.json({ ok: true }); });
   c.get('/overview', central, async (_req, res) => res.json(await platform.overview(base)));
   c.get('/errors', central, async (_req, res) => res.json(await platform.recentErrors(base)));
   c.post('/tenants', central, async (req, res) => {

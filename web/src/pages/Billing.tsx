@@ -4,6 +4,7 @@ import { date } from '../lib/format';
 import { Loading, ErrorState, useToast } from '../components/ui';
 import { useSession } from '../components/session';
 import { SystemFooter } from '../components/SystemFooter';
+import { NoticeBar } from '../components/NoticeBar';
 
 const STATUS: Record<string, [string, 'success' | 'warning' | 'danger']> = {
   active: ['Em dia', 'success'], trialing: ['Em teste', 'success'], past_due: ['Pagamento recusado', 'danger'],
@@ -57,6 +58,7 @@ export function Blocked() {
   const status = useApi<any>(isAdmin && access?.reason !== 'SUSPENDED' ? '/billing/status' : null);
   return (
     <div className="login">
+      <div style={{ width: '100%', maxWidth: 460, marginBottom: 12, borderRadius: 10, overflow: 'hidden' }}><NoticeBar /></div>
       <div className="card stack" style={{ maxWidth: 460 }}>
         <span className="badge lg danger" style={{ alignSelf: 'flex-start' }}>Sistema fora do ar</span>
         <h1 style={{ margin: 0 }}>{access?.reason === 'SUSPENDED' ? 'Estabelecimento suspenso' : 'Assinatura não está em dia'}</h1>

@@ -21,6 +21,7 @@ import { InventoryList, InventoryCount } from './pages/Inventory';
 import type { ModuleKey } from './components/session';
 import { SystemFooter } from './components/SystemFooter';
 import { OfflineStatus } from './components/OfflineStatus';
+import { NoticeBar } from './components/NoticeBar';
 
 function Shell({ children }: { children: ReactNode }) {
   const { user, logout, boot } = useSession();
@@ -46,6 +47,7 @@ function Shell({ children }: { children: ReactNode }) {
         <span className="faint user-name">{user?.name}</span>
         <button className="btn ghost sm" onClick={logout}>Sair</button>
       </header>
+      <NoticeBar />
       {inAdmin ? children : <main className={`content ${loc.pathname === '/' ? 'has-bar' : ''}`}>{children}</main>}
       {loc.pathname !== '/' && <SystemFooter />}
       <nav className="bottom-nav" aria-label="Navegação principal">

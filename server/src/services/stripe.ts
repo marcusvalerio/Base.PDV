@@ -34,6 +34,20 @@ async function stripeApi(f: Fetch, method: 'GET' | 'POST', path: string, body?: 
   return json;
 }
 
+/** Lista do Stripe (até 300 itens, seguindo a paginação). Só leitura, para o painel central. */
+export async function stripeList(f: Fetch, path: string, params: Record<string, string | number>) {
+  const out: any[] = [];
+  let after: string | undefined;
+  for (let page = 0; page < 3; page++) {
+    const q = new URLSearchParams({ ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])), limit: '100', ...(after ? { starting_after: after } : {}) });
+    const r = await stripeApi(f, 'GET', `${path}?${q}`);
+    out.push(...(r.data ?? []));
+    if (!r.has_more || !r.data?.length) break;
+    after = r.data[r.data.length - 1].id;
+  }
+  return out;
+}
+
 const appUrl = () => (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 async function ensureCustomer(base: DB, f: Fetch, t: Tenant, email?: string) {
@@ -85,8 +99,9 @@ async function applySubscription(base: DB, sub: any, tenantHint?: number) {
     || (await base.one('SELECT id FROM tenants WHERE stripe_subscription_id = ? OR stripe_customer_id = ?', [sub.id, sub.customer]))?.id;
   if (!tenantId) return;
   const end = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
-  await base.run('UPDATE tenants SET stripe_subscription_id = ?, stripe_customer_id = COALESCE(stripe_customer_id, ?), subscription_status = ?, current_period_end = ? WHERE id = ?',
-    [sub.id, sub.customer, sub.status, end ? new Date(end * 1000).toISOString() : null, tenantId]);
+  await base.run(`UPDATE tenants SET stripe_subscription_id = ?, stripe_customer_id = COALESCE(stripe_customer_id, ?), subscription_status = ?, current_period_end = ?,
+      canceled_at = CASE WHEN ? = 'canceled' THEN COALESCE(canceled_at, ?) ELSE NULL END WHERE id = ?`,
+    [sub.id, sub.customer, sub.status, end ? new Date(end * 1000).toISOString() : null, sub.status, now(), tenantId]);
   await platformAudit(base, null, 'billing.subscription', tenantId, { status: sub.status });
 }
 
