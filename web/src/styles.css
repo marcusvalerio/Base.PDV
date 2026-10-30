@@ -325,3 +325,24 @@ html, body, #root { min-height: 100%; }
 .pix-qr { width: 168px; height: 168px; flex: none; background: #fff; border-radius: 10px; padding: 4px; }
 .pix-qr svg { width: 100%; height: 100%; display: block; }
 @media (max-width: 480px) { .pix-box { flex-direction: column; text-align: center; } .pix-qr { width: 200px; height: 200px; } }
+
+/* painel central: primeiros passos, gráfico de crescimento */
+.steps-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin: 0 6px 0 12px; }
+.growth { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; height: 220px; align-items: end; }
+.g-col { display: flex; flex-direction: column; align-items: center; height: 100%; }
+.g-bars { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; }
+.g-stack { width: 44%; display: flex; flex-direction: column; border-radius: 4px 4px 0 0; overflow: hidden; min-height: 0; }
+.g-stack i { display: block; min-height: 0; }
+.g-bar { width: 30%; border-radius: 4px 4px 0 0; }
+.g-label { font-size: 11.5px; margin-top: 6px; }
+
+/* avisos do painel central no topo do sistema */
+.notice-bar { display: flex; align-items: flex-start; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14.5px; }
+.notice-bar.maintenance { background: var(--warning-soft); color: var(--warning); }
+.notice-bar.billing { background: var(--danger-soft); color: var(--danger); }
+.notice-bar.news { background: var(--success-soft); color: var(--success); }
+.notice-bar.info { background: var(--accent-soft); color: var(--accent); }
+.notice-bar .msg { flex: 1; color: var(--text); }
+.notice-bar .msg b { color: inherit; }
+.notice-bar button { background: none; border: 0; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }

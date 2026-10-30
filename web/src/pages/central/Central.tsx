@@ -74,6 +74,8 @@ function AccessBadge({ t }: { t: any }) {
 function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; totp: boolean }; onLogout: () => void }) {
   const [totp, setTotp] = useState(me.totp);
   const [security, setSecurity] = useState(false);
+  const [tab, setTab] = useState<'tenants' | 'finance' | 'notices' | 'growth' | 'audit'>('tenants');
+  const [onlyRisk, setOnlyRisk] = useState(false);
   const { data, loading, error, reload } = useApi<any[]>('/central/tenants');
   const ov = useApi<any>('/central/overview');
   const [showErrors, setShowErrors] = useState(false);
@@ -82,6 +84,8 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
   const blocked = data?.filter((t) => !t.access.ok).length ?? 0;
   const isQuiet = (t: any) => t.access.ok && (!t.lastSaleAt || Date.now() - Date.parse(t.lastSaleAt) > 7 * 864e5);
   const quiet = data?.filter(isQuiet).length ?? 0;
+  const risky = data?.filter((t) => t.health?.risk === 'risk').length ?? 0;
+  const shown = onlyRisk ? data?.filter((t) => t.health?.risk !== 'ok') : data;
   return (
     <div className="shell central-shell">
       <header className="topbar">
@@ -91,7 +95,13 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
         <button className="btn ghost sm" onClick={onLogout}>Sair</button>
       </header>
       <main className="content stack">
-        <div className="page-head"><h1>Estabelecimentos</h1><span className="spacer" /><button className="btn primary" onClick={() => setCreating(true)}>Novo estabelecimento</button></div>
+        <div className="page-head"><h1>Painel central</h1><span className="spacer" /><button className="btn primary" onClick={() => setCreating(true)}>Novo estabelecimento</button></div>
+        <Segmented value={tab} onChange={setTab} options={[{ value: 'tenants', label: 'Estabelecimentos' }, { value: 'finance', label: 'Financeiro' }, { value: 'notices', label: 'Avisos' }, { value: 'growth', label: 'Crescimento' }, { value: 'audit', label: 'Histórico' }]} />
+        {tab === 'finance' && <FinancePanel tenants={data ?? []} />}
+        {tab === 'notices' && <NoticesPanel tenants={data ?? []} />}
+        {tab === 'growth' && <GrowthPanel />}
+        {tab === 'audit' && <AuditPanel />}
+        {tab === 'tenants' && <>
         {!totp && <div className="notice warning row wrap">
           <span><b>Recomendado:</b> ative a verificação em duas etapas. Este painel controla todos os estabelecimentos; com ela, quem descobrir sua senha ainda precisa do seu celular para entrar.</span>
           <span className="spacer" /><button className="btn sm" onClick={() => setSecurity(true)}>Ativar agora</button>
@@ -108,16 +118,18 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
           <span className="badge lg success">{data.length - blocked} ativo(s)</span>
           {blocked > 0 && <span className="badge lg danger">{blocked} fora do ar</span>}
           {quiet > 0 && <span className="badge lg warning">{quiet} sem vender há 7+ dias</span>}
+          {risky > 0 && <button className={`badge lg ${onlyRisk ? 'danger' : 'warning'} offline-pill`} onClick={() => setOnlyRisk(!onlyRisk)}>{onlyRisk ? 'Mostrando só em risco · ver todos' : `${risky} em risco de cancelar`}</button>}
           {ov.data && <button className={`badge lg ${ov.data.errors24h ? 'danger' : 'success'} offline-pill`} onClick={() => setShowErrors(true)}>{ov.data.errors24h ? `${ov.data.errors24h} erro(s) nas últimas 24h` : 'Sem erros nas últimas 24h'}</button>}
         </div>}
         {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
           <div className="card flush">{!data?.length ? <Empty>Nenhum estabelecimento ainda.</Empty> : (
-            <table className="table responsive"><thead><tr><th>Estabelecimento</th><th>Situação</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
-              {data.map((t) => (
+            <table className="table responsive"><thead><tr><th>Estabelecimento</th><th>Situação</th><th>Saúde</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
+              {shown!.map((t) => (
                 <tr key={t.id} className="click" onClick={() => setSel(t)}>
                   <td data-label="Estabelecimento"><b>{t.name}</b><div className="faint">nº {t.id} · desde {date(t.created_at)}{t.signup_source === 'site' ? ' · pelo site' : ''}</div>
                     {t.contact_phone && <a className="faint" href={waLink(`Olá, ${String(t.contact_name ?? '').split(' ')[0]}! Aqui é do Central.PDV.`, t.contact_phone)} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>{t.contact_name} · {t.contact_phone}</a>}</td>
                   <td data-label="Situação"><AccessBadge t={t} /></td>
+                  <td data-label="Saúde"><HealthBadge h={t.health} /></td>
                   <td data-label="Usuários" className="r num">{t.users}</td>
                   <td data-label="Vendas (30 dias)" className="r num">{t.salesLast30}</td>
                   <td data-label="Última venda">{t.lastSaleAt ? dateTime(t.lastSaleAt) : '—'}{isQuiet(t) && <div><span className="badge warning">parado</span></div>}</td>
@@ -126,6 +138,7 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
             </tbody></table>
           )}</div>
         )}
+        </>}
       </main>
       <SystemFooter />
       {showErrors && <ErrorsModal onClose={() => setShowErrors(false)} />}
@@ -223,6 +236,15 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
           <button className="btn" disabled={!name.trim() || name === t.name} onClick={() => patch({ name }, 'Nome alterado.')}>Renomear</button>
         </div>
       </div>
+      {t.health && <div className="card stack">
+        <div className="row wrap"><h2>Primeiros passos</h2><span className="spacer" /><HealthBadge h={t.health} /></div>
+        <div className="steps-list">{t.health.steps.map((s: any) => <span key={s.key} className={`badge ${s.done ? 'success' : ''}`}>{s.label}</span>)}</div>
+        {t.health.reasons.length > 0 && <div className="faint">Atenção: {t.health.reasons.join(' · ')}</div>}
+        <div className="faint">{t.health.products} produto(s) · {t.health.users} usuário(s){t.health.firstSaleAt ? ` · primeira venda em ${date(t.health.firstSaleAt)}` : ''}</div>
+        {t.contact_phone && <div className="row wrap"><span><b>{t.contact_name}</b> · {t.contact_phone}</span><span className="spacer" />
+          <a className="btn sm primary" target="_blank" rel="noopener" href={waLink(`Olá, ${String(t.contact_name ?? '').split(' ')[0]}! Aqui é do Central.PDV. Tudo certo com o sistema do ${t.name}?`, t.contact_phone)}>Chamar no WhatsApp</a></div>}
+      </div>}
+      <Notes tenantId={t.id} />
       <div className="card flush">
         <div style={{ padding: '14px 16px' }}><h2>Liberações</h2><div className="faint">Só você altera. Vale na hora para o estabelecimento.</div></div>
         {!mods.data ? <Loading /> : Object.entries(mods.data.labels as Record<string, string>).map(([k, label]) => (
@@ -331,5 +353,160 @@ function SecurityModal({ enabled, onClose, onChanged }: { enabled: boolean; onCl
         </>}
       </div>
     </Modal>
+  );
+}
+
+function HealthBadge({ h }: { h?: { risk: 'ok' | 'attention' | 'risk'; reasons: string[] } }) {
+  if (!h) return null;
+  const [cls, label] = h.risk === 'risk' ? ['danger', 'Em risco'] : h.risk === 'attention' ? ['warning', 'Atenção'] : ['success', 'Saudável'];
+  return <span className={`badge ${cls}`} title={h.reasons.join(' · ') || undefined}>{label}</span>;
+}
+
+/** Notas internas sobre o cliente (só o painel central vê). */
+function Notes({ tenantId }: { tenantId: number }) {
+  const notes = useApi<any[]>(`/central/tenants/${tenantId}/notes`);
+  const [text, setText] = useState('');
+  const toast = useToast();
+  const [add, busy] = useAction(async () => {
+    try { await api(`/central/tenants/${tenantId}/notes`, { body: { text } }); setText(''); notes.reload(); } catch (e: any) { toast(e.message, 'error'); }
+  });
+  const del = async (id: number) => { try { await api(`/central/tenants/${tenantId}/notes/${id}`, { method: 'DELETE' }); notes.reload(); } catch (e: any) { toast(e.message, 'error'); } };
+  return (
+    <div className="card stack">
+      <h2>Notas internas</h2>
+      <div className="row"><input className="input" placeholder="Ex.: ligou pedindo impressora, prometi retorno na sexta" value={text} maxLength={1000} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && text.trim() && add()} />
+        <button className="btn" disabled={busy || !text.trim()} onClick={add}>Anotar</button></div>
+      {notes.data?.map((n) => <div key={n.id} className="row" style={{ alignItems: 'flex-start' }}><div style={{ flex: 1 }}>{n.text}<div className="faint">{n.admin_name ?? '—'} · {dateTime(n.at)}</div></div>
+        <button className="btn ghost sm" onClick={() => window.confirm('Apagar esta nota?') && del(n.id)}>Apagar</button></div>)}
+      {notes.data && !notes.data.length && <div className="faint">Nenhuma nota ainda.</div>}
+    </div>
+  );
+}
+
+/** Financeiro: números reais do Stripe. */
+function FinancePanel({ tenants }: { tenants: any[] }) {
+  const { data, error, loading, reload } = useApi<any>('/central/finance');
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+  if (loading && !data) return <Loading />;
+  if (!data?.configured) return <div className="notice warning">O Stripe ainda não está configurado no servidor.</div>;
+  const name = (x: any) => x.tenant?.name ?? 'Cliente sem cadastro aqui';
+  const wa = (x: any) => x.tenant?.contact_phone ? <a className="btn sm" target="_blank" rel="noopener" href={waLink(`Olá! Aqui é do Central.PDV. Vimos que o pagamento da assinatura do ${x.tenant.name} não foi aprovado. Pode atualizar o cartão em Administração › Assinatura?`, x.tenant.contact_phone)}>WhatsApp</a> : null;
+  return (
+    <div className="stack">
+      <div className="metrics">
+        <Metric label="Recebido neste mês" value={money(data.receivedThisMonthCents)} sub={`${data.invoicesThisMonth} pagamento(s) aprovados`} />
+        <Metric label="Receita recorrente" value={money(data.mrrCents)} sub={`${data.activeCount} assinatura(s) ativa(s)`} />
+        <Metric label="Pagamento atrasado" value={data.pastDue.length} sub="Cartão recusado" />
+        <Metric label="Cancelaram neste mês" value={data.canceledThisMonth} sub={`de ${tenants.length} estabelecimento(s)`} />
+      </div>
+      <div className="card flush"><div style={{ padding: '14px 16px' }}><h2>Pagamento atrasado</h2></div>
+        {!data.pastDue.length ? <Empty>Ninguém com pagamento atrasado.</Empty> : data.pastDue.map((x: any, i: number) => (
+          <div key={i} className="list-item" style={{ cursor: 'default' }}><span><b>{name(x)}</b><div className="faint">{money(x.amountCents)}{x.since ? ` · desde ${date(x.since)}` : ''}</div></span><span className="spacer" />{wa(x)}</div>))}
+      </div>
+      <div className="card flush"><div style={{ padding: '14px 16px' }}><h2>Próximas cobranças (7 dias)</h2></div>
+        {!data.upcoming.length ? <Empty>Nenhuma cobrança nos próximos 7 dias.</Empty> : data.upcoming.map((x: any, i: number) => (
+          <div key={i} className="list-item" style={{ cursor: 'default' }}><span><b>{name(x)}</b><div className="faint">{date(x.at)}{x.cancelAtPeriodEnd ? ' · vai cancelar no fim do período' : ''}</div></span><span className="spacer" /><span className="num">{money(x.amountCents)}</span></div>))}
+      </div>
+    </div>
+  );
+}
+
+const KIND: Record<string, [string, string]> = { maintenance: ['Manutenção', 'warning'], billing: ['Pagamento', 'danger'], news: ['Novidade', 'success'], info: ['Informação', ''] };
+const localInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
+
+/** Avisos que aparecem no topo do sistema dos estabelecimentos. */
+function NoticesPanel({ tenants }: { tenants: any[] }) {
+  const list = useApi<any[]>('/central/notices');
+  const toast = useToast();
+  const [f, setF] = useState({ tenant_id: '', kind: 'maintenance', title: '', message: '', starts: localInput(new Date()), ends: localInput(new Date(Date.now() + 864e5)) });
+  const set = (k: keyof typeof f) => (e: any) => setF({ ...f, [k]: e.target.value });
+  const [save, busy] = useAction(async () => {
+    try {
+      await api('/central/notices', { body: { tenant_id: f.tenant_id ? Number(f.tenant_id) : null, kind: f.kind, title: f.title, message: f.message, starts_at: new Date(f.starts).toISOString(), ends_at: new Date(f.ends).toISOString() } });
+      toast('Aviso publicado.', 'success'); setF({ ...f, title: '', message: '' }); list.reload();
+    } catch (e: any) { toast(e.message, 'error'); }
+  });
+  const end = async (id: number) => { try { await api(`/central/notices/${id}/end`, { body: {} }); list.reload(); } catch (e: any) { toast(e.message, 'error'); } };
+  const nowIso = new Date().toISOString();
+  return (
+    <div className="stack">
+      <div className="card stack">
+        <h2>Novo aviso</h2>
+        <div className="faint">Aparece numa faixa no topo do sistema, inclusive para quem estiver com o sistema bloqueado. Avisos de vencimento do teste e da renovação já são automáticos.</div>
+        <div className="filters">
+          <select className="input" value={f.tenant_id} onChange={set('tenant_id')} aria-label="Para quem"><option value="">Todos os estabelecimentos</option>{tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+          <select className="input" value={f.kind} onChange={set('kind')} aria-label="Tipo">{Object.entries(KIND).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
+        </div>
+        <Field label="Título"><input className="input" maxLength={80} placeholder="Ex.: Manutenção no domingo" value={f.title} onChange={set('title')} /></Field>
+        <Field label="Mensagem"><textarea className="input" rows={3} maxLength={400} placeholder="Ex.: Das 3h às 4h o sistema pode ficar lento. As vendas sem internet continuam funcionando." value={f.message} onChange={set('message')} /></Field>
+        <div className="filters">
+          <Field label="Começa"><input className="input" type="datetime-local" value={f.starts} onChange={set('starts')} /></Field>
+          <Field label="Termina"><input className="input" type="datetime-local" value={f.ends} onChange={set('ends')} /></Field>
+        </div>
+        <div className="row"><span className="spacer" /><button className="btn primary" disabled={busy || f.title.trim().length < 3 || f.message.trim().length < 3} onClick={save}>Publicar aviso</button></div>
+      </div>
+      <div className="card flush"><div style={{ padding: '14px 16px' }}><h2>Avisos</h2></div>
+        {!list.data ? <Loading /> : !list.data.length ? <Empty>Nenhum aviso ainda.</Empty> : list.data.map((n) => {
+          const live = n.starts_at <= nowIso && n.ends_at > nowIso, future = n.starts_at > nowIso;
+          return <div key={n.id} className="list-item" style={{ cursor: 'default', alignItems: 'flex-start' }}>
+            <span style={{ flex: 1 }}><span className={`badge ${KIND[n.kind]?.[1] ?? ''}`}>{KIND[n.kind]?.[0]}</span> <b>{n.title}</b><div>{n.message}</div>
+              <div className="faint">{n.tenant_name ?? 'Todos'} · {dateTime(n.starts_at)} até {dateTime(n.ends_at)} · {live ? 'no ar' : future ? 'agendado' : 'encerrado'}</div></span>
+            {(live || future) && <button className="btn sm" onClick={() => end(n.id)}>Encerrar</button>}
+          </div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Novos estabelecimentos por mês (site × painel) e cancelamentos. */
+function GrowthPanel() {
+  const { data, error, reload } = useApi<any>('/central/growth');
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+  if (!data) return <Loading />;
+  const max = Math.max(1, ...data.months.map((m: any) => Math.max(m.site + m.central, m.canceled)));
+  const label = (m: string) => new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(m + '-01T00:00:00Z')).replace('.', '');
+  const sum = (k: string) => data.months.reduce((a: number, m: any) => a + m[k], 0);
+  return (
+    <div className="stack">
+      <div className="metrics">
+        <Metric label="Estabelecimentos" value={data.total} sub="No total" />
+        <Metric label="Novos (12 meses)" value={sum('site') + sum('central')} sub={`${sum('site')} pelo site · ${sum('central')} por você`} />
+        <Metric label="Cancelamentos (12 meses)" value={sum('canceled')} sub="Assinaturas canceladas" />
+      </div>
+      <div className="card stack">
+        <div className="row wrap"><h2>Por mês</h2><span className="spacer" /><span className="legend-dot" style={{ background: 'var(--accent)' }} />Pelo site<span className="legend-dot" style={{ background: '#8b5cf6' }} />Por você<span className="legend-dot" style={{ background: 'var(--danger)' }} />Cancelados</div>
+        <div className="growth">{data.months.map((m: any) => (
+          <div key={m.month} className="g-col" title={`${m.site} pelo site · ${m.central} por você · ${m.canceled} cancelado(s)`}>
+            <div className="g-bars">
+              <div className="g-stack" style={{ height: `${((m.site + m.central) / max) * 100}%` }}><i style={{ flex: m.central, background: '#8b5cf6' }} /><i style={{ flex: m.site, background: 'var(--accent)' }} /></div>
+              <div className="g-bar" style={{ height: `${(m.canceled / max) * 100}%`, background: 'var(--danger)' }} />
+            </div>
+            <div className="faint g-label">{label(m.month)}</div>
+          </div>
+        ))}</div>
+      </div>
+    </div>
+  );
+}
+
+const ACTIONS: Record<string, string> = {
+  'tenant.create': 'Criou estabelecimento', 'tenant.update': 'Alterou estabelecimento', 'tenant.modules': 'Mudou liberações', 'tenant.user_password': 'Redefiniu senha de usuário',
+  'tenant.backup': 'Baixou cópia de segurança', 'notice.create': 'Publicou aviso', 'notice.end': 'Encerrou aviso', 'central.login': 'Entrou no painel', 'central.login_failed': 'Tentativa de login falhou',
+  'central.totp_enabled': 'Ativou verificação em duas etapas', 'central.totp_disabled': 'Desativou verificação em duas etapas', 'central.totp_failed': 'Código de verificação errado', 'billing.subscription': 'Assinatura atualizada (Stripe)',
+};
+
+/** Tudo o que foi feito no painel central (e as mudanças de assinatura vindas do Stripe). */
+function AuditPanel() {
+  const { data, error, reload } = useApi<any[]>('/central/audit');
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+  if (!data) return <Loading />;
+  return (
+    <div className="card flush">{!data.length ? <Empty>Nada registrado ainda.</Empty> : (
+      <table className="table responsive"><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Estabelecimento</th></tr></thead><tbody>
+        {data.map((a) => <tr key={a.id}><td data-label="Quando">{dateTime(a.at)}</td><td data-label="Quem">{a.admin_name ?? (a.action.startsWith('billing') ? 'Stripe' : '—')}</td>
+          <td data-label="O quê">{ACTIONS[a.action] ?? a.action}</td><td data-label="Estabelecimento">{a.tenant_name ?? '—'}</td></tr>)}
+      </tbody></table>
+    )}</div>
   );
 }
