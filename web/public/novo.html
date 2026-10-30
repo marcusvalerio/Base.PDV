@@ -72,6 +72,13 @@ header,main,footer,.clock,.netbar{position:relative;z-index:2}
 /* ===== capítulos da noite ===== */
 .night{display:none}
 .started .night{display:block}
+.started footer.night{display:flex}
+/* topo sobre a parte clara (amanhecer e seções finais): fundo claro e texto escuro */
+.top{transition:background .3s,color .3s,box-shadow .3s}
+.top.scrolled{background:rgba(14,9,26,.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(255,255,255,.08)}
+.top.light{background:rgba(251,247,242,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#1d1230;box-shadow:0 1px 0 #e3dbd0}
+.top.light a.in{color:#5b5368}
+.top.light .clock{opacity:0;pointer-events:none}
 .ch{min-height:110vh;display:grid;grid-template-columns:5fr 6fr;gap:60px;align-items:center;max-width:1180px;margin:0 auto;padding:120px 22px}
 .ch.rev{grid-template-columns:6fr 5fr}.ch.rev .txt{order:2}
 .txt .hour{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:15px;color:var(--t2);margin-bottom:20px}
@@ -280,6 +287,7 @@ footer{background:#fbf7f2;color:#7a7186;font-size:13.5px;border-top:1px solid #e
     NAME=(name||'').trim().slice(0,40)||'Bar do Zé';
     try{localStorage.setItem('cpdv.nome',NAME)}catch(e){}
     $$('[data-n]').forEach(el=>el.textContent=NAME);
+    $('#peekName').textContent=NAME;
     $('#b1').innerHTML='';const b1=$('#b1');
     b1.append(document.createTextNode(`Olá, Seu João! Aqui é ${NAME}.\nSeu saldo no fiado: R$ 86,50\nÚltima compra: hoje, 23:15\nQualquer dúvida, é só chamar 🙂`));
     const sm=document.createElement('small');sm.textContent='23:16 ✓✓';b1.append(sm);
@@ -328,7 +336,7 @@ footer{background:#fbf7f2;color:#7a7186;font-size:13.5px;border-top:1px solid #e
   requestAnimationFrame(tick);
 
   // ---------- rolagem = a noite passando ----------
-  const night=$('#night'),offCh=$('#offCh'),closeCh=$('#closeCh'),fiadoCh=$('#fiadoCh'),netbar=$('#netbar'),netPill=$('#netPill'),qMsg=$('#qMsg');
+  const top=document.querySelector('.top'),more=document.querySelector('.more'),night=$('#night'),offCh=$('#offCh'),closeCh=$('#closeCh'),fiadoCh=$('#fiadoCh'),netbar=$('#netbar'),netPill=$('#netPill'),qMsg=$('#qMsg');
   let offState='';
   function frame(){
     const h=innerHeight;let p=0;
@@ -341,6 +349,8 @@ footer{background:#fbf7f2;color:#7a7186;font-size:13.5px;border-top:1px solid #e
     const mins=Math.round(p*12*60/5)*5,hh=(18+Math.floor(mins/60))%24,mm=mins%60;
     clockT.textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
     clock.classList.toggle('night',p>.12&&p<.88);
+    top.classList.toggle('light',more.getBoundingClientRect().top<60);
+    top.classList.toggle('scrolled',scrollY>20);
     const lit=p<.05?0:p>.92?0:1;wins.forEach(w=>w.style.setProperty('--lit',lit&&(+w.dataset.t<.35+p*.5)&&(+w.dataset.t>p-.55)?.9:0));
     document.querySelector('meta[name=theme-color]').content=s.top;
     // 00:40 — internet cai e volta dentro do capítulo
