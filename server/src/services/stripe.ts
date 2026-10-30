@@ -6,7 +6,7 @@ import { Tenant, getTenant, platformAudit } from './platform.js';
 /**
  * Assinatura via Stripe (Checkout + Portal do cliente + webhook).
  * Variáveis: STRIPE_SECRET_KEY, STRIPE_PRICE_ID (mensalidade), STRIPE_SETUP_PRICE_ID (instalação, opcional),
- * STRIPE_WEBHOOK_SECRET e APP_URL (ex.: https://basepdv.vercel.app).
+ * STRIPE_WEBHOOK_SECRET e APP_URL (ex.: https://centralpdv.vercel.app).
  * O acesso do estabelecimento depende só do status salvo pelo webhook (ver platform.access).
  */
 export type Fetch = typeof fetch;
