@@ -593,11 +593,12 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.status(201).json({ ok: true });
   });
   c.post('/login', async (req, res) => {
-    const b = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200) }).parse(req.body);
+    const b = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200), code: z.string().max(12).optional() }).parse(req.body);
     const keys = loginKeys('central', req.ip, b.username);
     await checkLogin(keys);
-    const r2 = await platform.platformLogin(base, b.username, b.password);
-    if (!r2) { await failLogin(keys); throw unauthorized('Usuário ou senha incorretos.'); }
+    const r2 = await platform.platformLogin(base, b.username, b.password, b.code || undefined);
+    if (!r2) { await failLogin(keys); throw unauthorized(b.code ? 'Código incorreto ou já usado. Use o código atual do aplicativo.' : 'Usuário ou senha incorretos.'); }
+    if ('totpRequired' in r2) return res.status(401).json({ error: { code: 'TOTP_REQUIRED', message: 'Digite o código de 6 dígitos do aplicativo autenticador.' } });
     await platform.clearLimit(base, keys[0][0]);
     res.cookie(CENTRAL_COOKIE, r2.token, cookieOpts);
     res.json({ admin: r2.admin });
@@ -607,7 +608,19 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.clearCookie(CENTRAL_COOKIE, { path: '/' });
     res.json({ ok: true });
   });
-  c.get('/me', central, async (req, res) => res.json({ admin: req.central, stripe: stripe.stripeConfigured() }));
+  c.get('/me', central, async (req, res) => res.json({ admin: req.central, stripe: stripe.stripeConfigured(), totp: (await platform.totpStatus(base, req.central!.id)).enabled }));
+  // Verificação em duas etapas (opcional, recomendada).
+  c.post('/2fa/begin', central, async (req, res) => res.json(await platform.totpBegin(base, req.central!.id)));
+  c.post('/2fa/enable', central, async (req, res) => {
+    const b = z.object({ code: z.string().min(6).max(12) }).parse(req.body);
+    await platform.totpEnable(base, req.central!.id, b.code);
+    res.json({ ok: true });
+  });
+  c.post('/2fa/disable', central, async (req, res) => {
+    const b = z.object({ password: z.string().min(1).max(200), code: z.string().min(6).max(12) }).parse(req.body);
+    await platform.totpDisable(base, req.central!.id, b.password, b.code);
+    res.json({ ok: true });
+  });
 
   const tenantId = (req: Request) => id.parse(req.params.id);
   const getT = async (req: Request) => { const t = await platform.getTenant(base, tenantId(req)); if (!t) throw new AppError(404, 'NOT_FOUND', 'Estabelecimento não encontrado.'); return t; };

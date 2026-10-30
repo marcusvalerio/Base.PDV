@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import qrcode from 'qrcode-generator';
 import { api, ApiError } from '../../lib/api';
 import { useApi, useAction } from '../../lib/hooks';
 import { date, dateTime, money } from '../../lib/format';
@@ -11,8 +12,8 @@ type Admin = { id: number; name: string; username: string };
 
 /** Painel do administrador central (dono da plataforma): estabelecimentos, liberações e assinaturas. */
 export default function Central() {
-  const [me, setMe] = useState<{ admin: Admin; stripe: boolean } | null | undefined>(undefined);
-  const load = () => api<{ admin: Admin; stripe: boolean }>('/central/me').then(setMe).catch(() => setMe(null));
+  const [me, setMe] = useState<{ admin: Admin; stripe: boolean; totp: boolean } | null | undefined>(undefined);
+  const load = () => api<{ admin: Admin; stripe: boolean; totp: boolean }>('/central/me').then(setMe).catch(() => setMe(null));
   useEffect(() => { load(); }, []);
   if (me === undefined) return <Loading />;
   if (!me) return <CentralLogin onDone={load} />;
@@ -21,7 +22,8 @@ export default function Central() {
 
 function CentralLogin({ onDone }: { onDone: () => void }) {
   const setup = useApi<{ needed: boolean; enabled: boolean }>('/central/setup-status');
-  const [f, setF] = useState({ token: '', name: '', username: '', password: '' });
+  const [f, setF] = useState({ token: '', name: '', username: '', password: '', code: '' });
+  const [askCode, setAskCode] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const needed = !!setup.data?.needed;
@@ -31,9 +33,11 @@ function CentralLogin({ onDone }: { onDone: () => void }) {
     setBusy(true); setErr(null);
     try {
       if (needed) await api('/central/setup', { body: f });
-      await api('/central/login', { body: { username: f.username, password: f.password } });
+      await api('/central/login', { body: { username: f.username, password: f.password, code: askCode ? f.code : undefined } });
       onDone();
-    } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+    } catch (e: any) {
+      if (e instanceof ApiError && e.code === 'TOTP_REQUIRED') { setAskCode(true); setErr(null); } else setErr(e.message);
+    } finally { setBusy(false); }
   };
   return (
     <div className="login central-login">
@@ -47,8 +51,11 @@ function CentralLogin({ onDone }: { onDone: () => void }) {
         </>}
         <Field label="Usuário"><input className="input lg" autoComplete="username" autoCapitalize="none" value={f.username} onChange={set('username')} required autoFocus /></Field>
         <Field label="Senha"><input className="input lg" type="password" autoComplete={needed ? 'new-password' : 'current-password'} value={f.password} onChange={set('password')} required /></Field>
+        {askCode && <Field label="Código do aplicativo autenticador" hint="Os 6 dígitos que aparecem agora no aplicativo.">
+          <input className="input lg" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.replace(/\D/g, '') })} required autoFocus />
+        </Field>}
         {err && <div className="notice danger" role="alert">{err}</div>}
-        <button className="btn primary lg block" disabled={busy}>{busy ? 'Entrando…' : needed ? 'Criar e entrar' : 'Entrar'}</button>
+        <button className="btn primary lg block" disabled={busy}>{busy ? 'Entrando…' : needed ? 'Criar e entrar' : askCode ? 'Confirmar código' : 'Entrar'}</button>
       </form>
       <SystemFooter />
     </div>
@@ -64,7 +71,9 @@ function AccessBadge({ t }: { t: any }) {
   return <span className="badge danger">{t.subscription_status ? SUB[t.subscription_status] ?? t.subscription_status : 'Sem assinatura'}</span>;
 }
 
-function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; onLogout: () => void }) {
+function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; totp: boolean }; onLogout: () => void }) {
+  const [totp, setTotp] = useState(me.totp);
+  const [security, setSecurity] = useState(false);
   const { data, loading, error, reload } = useApi<any[]>('/central/tenants');
   const ov = useApi<any>('/central/overview');
   const [showErrors, setShowErrors] = useState(false);
@@ -78,10 +87,16 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean }; 
       <header className="topbar">
         <span className="brand">Central<span className="brand-dot">.</span>PDV</span><span className="central-tag">Administração da plataforma</span>
         <span className="spacer" /><span className="faint user-name">{me.admin.name}</span>
+        <button className="btn ghost sm" onClick={() => setSecurity(true)}>Segurança</button>
         <button className="btn ghost sm" onClick={onLogout}>Sair</button>
       </header>
       <main className="content stack">
         <div className="page-head"><h1>Estabelecimentos</h1><span className="spacer" /><button className="btn primary" onClick={() => setCreating(true)}>Novo estabelecimento</button></div>
+        {!totp && <div className="notice warning row wrap">
+          <span><b>Recomendado:</b> ative a verificação em duas etapas. Este painel controla todos os estabelecimentos; com ela, quem descobrir sua senha ainda precisa do seu celular para entrar.</span>
+          <span className="spacer" /><button className="btn sm" onClick={() => setSecurity(true)}>Ativar agora</button>
+        </div>}
+        {security && <SecurityModal enabled={totp} onClose={() => setSecurity(false)} onChanged={setTotp} />}
         {!me.stripe && <div className="notice warning">Stripe ainda não configurado (STRIPE_SECRET_KEY, STRIPE_PRICE_ID e STRIPE_WEBHOOK_SECRET na Vercel). Até lá, use "Isento" ou período de teste.</div>}
         {ov.data && <div className="metrics">
           <Metric label="Receita mensal (assinantes)" value={money(ov.data.monthlyRevenueCents)} sub={`${ov.data.paying} assinante(s) × ${money(ov.data.priceCents)}`} />
@@ -266,6 +281,55 @@ function ErrorsModal({ onClose }: { onClose: () => void }) {
           {data.map((e) => <tr key={e.id}><td data-label="Quando">{dateTime(e.at)}</td><td data-label="Estabelecimento">{e.tenant_name ?? '—'}</td><td data-label="Onde" className="faint">{e.method} {e.path}</td><td data-label="Erro">{e.message}</td></tr>)}
         </tbody></table></div>
       )}
+    </Modal>
+  );
+}
+
+/** Verificação em duas etapas do painel central: opcional, com aplicativo autenticador (Google Authenticator, Microsoft Authenticator…). */
+function SecurityModal({ enabled, onClose, onChanged }: { enabled: boolean; onClose: () => void; onChanged: (v: boolean) => void }) {
+  const toast = useToast();
+  const [setup, setSetup] = useState<{ secret: string; url: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const svg = useMemo(() => {
+    if (!setup) return '';
+    const q = qrcode(0, 'M'); q.addData(setup.url); q.make();
+    return q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+  }, [setup]);
+  const safe = (fn: () => Promise<void>) => async () => { try { await fn(); } catch (e: any) { toast(e.message, 'error'); } };
+  const [begin, b1] = useAction(safe(async () => setSetup(await api('/central/2fa/begin', { body: {} }))));
+  const [enable, b2] = useAction(safe(async () => {
+    await api('/central/2fa/enable', { body: { code } });
+    toast('Verificação em duas etapas ativada.', 'success'); onChanged(true); onClose();
+  }));
+  const [disable, b3] = useAction(safe(async () => {
+    await api('/central/2fa/disable', { body: { password, code } });
+    toast('Verificação em duas etapas desativada.', 'success'); onChanged(false); onClose();
+  }));
+  const onlyDigits = (e: any) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+  return (
+    <Modal title="Segurança do painel central" onClose={onClose}>
+      <div className="stack">
+        {enabled ? <>
+          <div className="notice success">A verificação em duas etapas está <b>ativada</b>. Todo acesso pede a senha e o código do aplicativo.</div>
+          <p className="muted" style={{ margin: 0 }}>Para desativar, confirme sua senha e o código atual do aplicativo.</p>
+          <Field label="Senha"><input className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+          <Field label="Código do aplicativo"><input className="input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={onlyDigits} /></Field>
+          <div className="row"><span className="spacer" /><button className="btn danger" disabled={b3 || code.length !== 6 || !password} onClick={disable}>Desativar</button></div>
+        </> : !setup ? <>
+          <p style={{ margin: 0 }}>A verificação em duas etapas é <b>opcional</b>, mas recomendada: além da senha, o acesso pede um código de 6 dígitos que muda a cada 30 segundos no seu celular.</p>
+          <p className="muted" style={{ margin: 0 }}>Você vai precisar de um aplicativo autenticador gratuito, como Google Authenticator ou Microsoft Authenticator.</p>
+          <div className="row"><span className="spacer" /><button className="btn primary" disabled={b1} onClick={begin}>Começar</button></div>
+        </> : <>
+          <p style={{ margin: 0 }}><b>1.</b> No aplicativo autenticador, toque em <b>+</b> e leia este QR Code.</p>
+          <div className="pix-qr" style={{ maxWidth: 220, margin: '0 auto' }} dangerouslySetInnerHTML={{ __html: svg }} aria-label="QR Code para o aplicativo autenticador" />
+          <p className="faint" style={{ margin: 0, textAlign: 'center', wordBreak: 'break-all' }}>Sem câmera? Digite a chave: <code>{setup.secret}</code></p>
+          <p style={{ margin: 0 }}><b>2.</b> Digite o código de 6 dígitos que apareceu no aplicativo.</p>
+          <Field label="Código"><input className="input lg" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={onlyDigits} autoFocus /></Field>
+          <div className="notice warning">Se você perder o celular, peça ao suporte técnico para desativar pelo banco de dados.</div>
+          <div className="row"><span className="spacer" /><button className="btn primary" disabled={b2 || code.length !== 6} onClick={enable}>Ativar</button></div>
+        </>}
+      </div>
     </Modal>
   );
 }
