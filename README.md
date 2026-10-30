@@ -50,7 +50,7 @@ npm run typecheck
 | `STRIPE_WEBHOOK_SECRET` | — | Segredo do webhook (`whsec_…`) |
 | `MONTHLY_PRICE_CENTS` | 8000 | Mensalidade usada na receita estimada do painel central |
 | `SIGNUP_TRIAL_DAYS` | 0 | Dias de teste grátis para quem contrata pelo site (0 = paga na hora) |
-| `APP_URL` | — | Endereço do site, ex.: `https://basepdv.vercel.app` (volta do Checkout) |
+| `APP_URL` | — | Endereço do site, ex.: `https://centralpdv.vercel.app` (volta do Checkout) |
 
 Nenhum segredo é necessário em código. Senhas e códigos de caixa são guardados com hash scrypt.
 

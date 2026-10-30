@@ -55,8 +55,8 @@ const productSchema = z.object({
   image_url: z.union([z.string().trim().regex(/^art:[a-z0-9-]{1,40}$/), z.string().trim().max(500).url('Link da imagem inválido.').refine((u) => /^https:\/\//.test(u), 'Use um link https://')]).nullish().or(z.literal('')),
 });
 
-/** Limite simples de tentativas de login por IP+usuário (memória do processo). */
-const attempts = new Map<string, { n: number; until: number }>();
+const MIN = 60e3;
+const TOO_MANY = () => new AppError(429, 'TOO_MANY', 'Muitas tentativas. Aguarde alguns minutos e tente de novo.');
 
 export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: string; fetch?: stripe.Fetch } = {}) {
   // "db" usa automaticamente o schema do estabelecimento da requisição; "base" é a plataforma (schema public).
@@ -161,10 +161,9 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   } : { storeName: '', storeLogo: '' }));
 
   // ---------- Cadastro pelo site: cria o estabelecimento e já entra (fica fora do ar até assinar, salvo teste grátis) ----------
-  const signups = new Map<string, number[]>();
   r.post('/signup', async (req, res) => {
-    const hits = (signups.get(req.ip ?? '') ?? []).filter((t) => t > Date.now() - 3600e3);
-    if (hits.length >= 3) throw new AppError(429, 'TOO_MANY', 'Muitos cadastros seguidos. Tente de novo mais tarde.');
+    const sKey = `signup|${req.ip}`;
+    if (await platform.isLimited(base, sKey)) throw new AppError(429, 'TOO_MANY', 'Muitos cadastros seguidos. Tente de novo mais tarde.');
     const b = z.object({
       storeName: z.string().trim().min(2, 'Informe o nome do estabelecimento.').max(60),
       name: z.string().trim().min(2, 'Informe seu nome.').max(80),
@@ -172,7 +171,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       username: z.string().trim().min(3).max(40).regex(/^[a-zA-Z0-9._-]+$/, 'Login: use letras, números, ponto, hífen ou _.'),
       password: z.string().min(8, 'A senha precisa de pelo menos 8 caracteres.').max(200),
     }).parse(req.body);
-    signups.set(req.ip ?? '', [...hits, Date.now()]);
+    await platform.hitLimit(base, sKey, 3, 60 * MIN, 60 * MIN);
     const trialDays = Number(process.env.SIGNUP_TRIAL_DAYS || 0) || undefined;
     const tid = await platform.createTenant(base, { name: b.storeName, admin: { name: b.name, username: b.username, password: b.password },
       trialDays, contact: { name: b.name, phone: b.phone }, source: 'site' }, null);
@@ -182,20 +181,33 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.status(201).json({ user: { ...result!.user, tenantId: t.id } });
   });
 
+  /**
+   * Senha errada: bloqueia 15 min após 5 erros do mesmo IP no mesmo login, 20 erros no mesmo login vindos de qualquer IP
+   * (ataque distribuído) ou 50 erros do mesmo IP em qualquer login. Fica no banco, então vale para todas as instâncias.
+   */
+  const loginKeys = (scope: string, ip: string | undefined, username: string) => {
+    const u = username.trim().toLowerCase();
+    return [[`${scope}|ip-user|${ip}|${u}`, 5], [`${scope}|user|${u}`, 20], [`${scope}|ip|${ip}`, 50]] as const;
+  };
+  const checkLogin = async (keys: ReturnType<typeof loginKeys>) => {
+    for (const [k] of keys) if (await platform.isLimited(base, k)) throw TOO_MANY();
+  };
+  const failLogin = async (keys: ReturnType<typeof loginKeys>) => {
+    for (const [k, max] of keys) await platform.hitLimit(base, k, max, 60 * MIN, 15 * MIN);
+  };
+
   // ---------- Autenticação (estabelecimento) ----------
   r.post('/auth/login', async (req, res) => {
     const body = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200) }).parse(req.body);
-    const key = `${req.ip}|${body.username.toLowerCase()}`;
-    const a = attempts.get(key);
-    if (a && a.until > Date.now()) throw new AppError(429, 'TOO_MANY', 'Muitas tentativas. Aguarde alguns minutos.');
+    const keys = loginKeys('app', req.ip, body.username);
+    await checkLogin(keys);
     const t = await platform.tenantByUsername(base, body.username);
     const result = t ? await withSchema(base, t.schema_name, (tdb) => users.login(tdb, body.username, body.password)) : null;
     if (!t || !result) {
-      const n = (a?.n ?? 0) + 1;
-      attempts.set(key, { n, until: n >= 5 ? Date.now() + 5 * 60e3 : 0 });
+      await failLogin(keys);
       throw unauthorized('Usuário ou senha incorretos.');
     }
-    attempts.delete(key);
+    await platform.clearLimit(base, keys[0][0]);
     res.cookie(COOKIE, `${t.id}.${result.token}`, cookieOpts);
     res.json({ user: { ...result.user, tenantId: t.id } });
   });
@@ -582,12 +594,11 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
   c.post('/login', async (req, res) => {
     const b = z.object({ username: z.string().min(1).max(60), password: z.string().min(1).max(200) }).parse(req.body);
-    const key = `central|${req.ip}|${b.username.toLowerCase()}`;
-    const a = attempts.get(key);
-    if (a && a.until > Date.now()) throw new AppError(429, 'TOO_MANY', 'Muitas tentativas. Aguarde alguns minutos.');
+    const keys = loginKeys('central', req.ip, b.username);
+    await checkLogin(keys);
     const r2 = await platform.platformLogin(base, b.username, b.password);
-    if (!r2) { const n = (a?.n ?? 0) + 1; attempts.set(key, { n, until: n >= 5 ? Date.now() + 5 * 60e3 : 0 }); throw unauthorized('Usuário ou senha incorretos.'); }
-    attempts.delete(key);
+    if (!r2) { await failLogin(keys); throw unauthorized('Usuário ou senha incorretos.'); }
+    await platform.clearLimit(base, keys[0][0]);
     res.cookie(CENTRAL_COOKIE, r2.token, cookieOpts);
     res.json({ admin: r2.admin });
   });
