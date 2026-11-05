@@ -29,6 +29,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refreshBoot]);
   const login = async (username: string, password: string) => {
     const r = await api<{ user: User }>('/auth/login', { body: { username, password } });
+    // Nada da cópia offline de outro estabelecimento/usuário que usou este aparelho sobrevive a um novo login.
+    cacheClear();
     await refreshBoot();
     await refreshAccess();
     setUser(r.user);
