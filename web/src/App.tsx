@@ -84,7 +84,10 @@ function Routed() {
   if (!ready) return <Loading />;
   if (!user) return location.pathname === '/app/cadastro' ? <Signup /> : <Login />;
   if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/app/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
-  if (user.role === 'ADMIN' && boot && (!boot.storeName || boot.setupPending) && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
+    // Passo a passo do primeiro acesso: enquanto não foi concluído e ainda falta o básico (nome, códigos ou produtos)
+  const ob = boot?.onboarding;
+  const needsSetup = !!boot && (!boot.storeName || boot.setupPending || !ob?.cancelCode || !ob?.products);
+  if (user.role === 'ADMIN' && boot && !ob?.done && needsSetup && !onbDone && !onboardingSkipped()) return <Onboarding onDone={() => setOnbDone(true)} />;
   const A = (el: ReactNode) => <AdminLayout>{el}</AdminLayout>;
   return (
     <Shell>

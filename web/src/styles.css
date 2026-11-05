@@ -346,3 +346,16 @@ html, body, #root { min-height: 100%; }
 .notice-bar .msg { flex: 1; color: var(--text); }
 .notice-bar .msg b { color: inherit; }
 .notice-bar button { background: none; border: 0; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+
+/* Passo a passo do primeiro acesso */
+.onb-card { max-width: 560px; width: 100%; }
+.onb-progress { display: flex; gap: 6px; margin-bottom: 10px; }
+.onb-progress span { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-2); transition: background .3s; }
+.onb-progress span[data-on] { background: var(--accent); }
+.onb-types { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.onb-type { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: var(--radius); border: 1.5px solid var(--border-strong); background: var(--surface); text-align: left; cursor: pointer; font: inherit; color: var(--text); }
+.onb-type[data-on] { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+.onb-catalog { max-height: 46vh; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+@media (max-width: 480px) { .onb-types { grid-template-columns: 1fr; } }
+.first-steps .fs-bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.first-steps .fs-bar span { display: block; height: 100%; background: var(--success); border-radius: 3px; transition: width .4s; }

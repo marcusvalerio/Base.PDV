@@ -29,6 +29,10 @@ export const DEFAULT_SETTINGS = {
   inventory_accuracy_target: '',
   /** Permitir venda com estoque insuficiente (estoque fica negativo e aparece nos alertas). */
   allow_negative_stock: 'true',
+  /** Tipo de negócio escolhido no primeiro acesso (bar, mercearia, deposito, lanchonete): orienta o catálogo pronto. */
+  business_type: '',
+  /** '1' quando o administrador concluiu ou pulou o passo a passo do primeiro acesso. */
+  onboarding_done: '',
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;
