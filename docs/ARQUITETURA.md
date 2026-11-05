@@ -58,7 +58,7 @@ O repositório continha apenas um `README.md` ("Central.OS"): sem código, banco
 
 ## Modo offline
 - Service worker guarda a casca do app (`/app`, `/assets`); a API nunca passa pelo cache.
-- `web/src/lib/offline.ts`: cópia local de produtos/configurações/caixa e fila de vendas (dinheiro, Pix, cartão) por estabelecimento+usuário; reenvio com a mesma chave de idempotência e `offlineAt` (horário real, até 3 dias).
+- `web/src/lib/offline.ts`: cópia local de produtos/configurações/caixa e fila de vendas (dinheiro, Pix, cartão) por estabelecimento+usuário; reenvio com a mesma chave de idempotência e `offlineAt` (horário real, até 24 horas).
 
 ## Inventário e acuracidade
 - Sessões (`inventory_sessions` / `inventory_session_items`): **Geral**, **Por categoria** ou **Parcial (cíclico)**; **contagem cega** opcional (padrão).

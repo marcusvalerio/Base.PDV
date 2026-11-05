@@ -139,5 +139,9 @@ describe('venda feita sem internet', () => {
     // Horário muito antigo é ignorado (fica a hora do envio).
     const old = await op.post('/api/sales', { ...body, idempotencyKey: key(), offlineAt: '2020-01-01T00:00:00.000Z' });
     expect(old.body.created_at > '2025').toBe(true);
+    // Mais de 24 horas para trás também é ignorado.
+    const twoDays = new Date(Date.now() - 2 * 864e5).toISOString();
+    const late = await op.post('/api/sales', { ...body, idempotencyKey: key(), offlineAt: twoDays });
+    expect(late.body.created_at).not.toBe(twoDays);
   });
 });

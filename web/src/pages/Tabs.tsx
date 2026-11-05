@@ -178,15 +178,17 @@ function TabDetailInner() {
 
 function VoidModal({ item, tabId, onClose, onDone }: { item: any; tabId: number; onClose: () => void; onDone: (t: any) => void }) {
   const [reason, setReason] = useState('');
+  const [code, setCode] = useState('');
   const toast = useToast();
   const [run, busy] = useAction(async () => {
-    try { onDone(await api(`/tabs/${tabId}/items/${item.id}/void`, { body: { reason } })); } catch (e: any) { toast(e.message, 'error'); }
+    try { onDone(await api(`/tabs/${tabId}/items/${item.id}/void`, { body: { reason, code } })); } catch (e: any) { toast(e.message, 'error'); }
   });
   return (
-    <Modal title="Corrigir lançamento" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Voltar</button><button className="btn primary" disabled={busy || reason.trim().length < 3} onClick={run}>Retirar item</button></>}>
+    <Modal title="Corrigir lançamento" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Voltar</button><button className="btn primary" disabled={busy || reason.trim().length < 3 || !code} onClick={run}>Retirar item</button></>}>
       <p style={{ margin: 0 }}>{qty(item.qty_milli, item.unit)} {item.product_name} — {money(item.total_cents)}</p>
       <p className="faint" style={{ margin: 0 }}>O item sai da conta, mas fica registrado no histórico com o motivo.</p>
       <Field label="Motivo"><input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: lançado na pessoa errada" autoFocus /></Field>
+      <Field label="Código de cancelamento" hint="O mesmo usado para cancelar vendas. Peça ao responsável."><input className="input" type="password" inputMode="numeric" autoComplete="off" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} /></Field>
     </Modal>
   );
 }
