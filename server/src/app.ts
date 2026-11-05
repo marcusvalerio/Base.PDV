@@ -105,8 +105,10 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       tenantStore.run({ db: h.db }, () => {
         const token = raw.slice(dot + 1);
         users.userFromToken(h.db, token).then((u) => {
-          if (u) { req.user = u; req.token = token; req.tenant = t; }
-          next();
+          if (u) { req.user = u; req.token = token; req.tenant = t; return next(); }
+          // Sessão inválida/expirada: solta a conexão e segue SEM estabelecimento (nada do schema dele fica acessível).
+          release();
+          tenantStore.exit(() => next());
         }, (e) => { release(); next(e); });
       });
     })().catch(next);
@@ -127,8 +129,8 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   const admin = (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) return next(unauthorized());
     if (req.user.role !== 'ADMIN') {
-      audit(db, req.user.id, 'auth.forbidden', null, null, { path: req.path, method: req.method }).catch(() => {});
-      return next(forbidden());
+      return audit(db, req.user.id, 'auth.forbidden', null, null, { path: req.path, method: req.method })
+        .catch(() => {}).then(() => next(forbidden()));
     }
     next();
   };

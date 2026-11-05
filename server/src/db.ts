@@ -116,7 +116,7 @@ export function pgDb(rawUrl: string): DB {
     };
     let done = false;
     return {
-      db: wrap(client, ctx, async () => {}, cExec),
+      db: guarded(wrap(client, ctx, async () => {}, cExec), () => done),
       release: async () => {
         if (done) return;
         done = true;
@@ -172,9 +172,26 @@ export async function memoryDb(): Promise<DB> {
         await raw.query("SELECT set_config('search_path', 'public', false)");
       }
     });
-    return { db: wrap(q, stx, async () => {}, ex), release: async () => {} };
+    let done = false;
+    return { db: guarded(wrap(q, stx, async () => {}, ex), () => done), release: async () => { done = true; } };
   };
   return base;
+}
+
+/**
+ * Depois de liberada, a conexão volta ao pool e pode estar presa a OUTRO estabelecimento:
+ * qualquer consulta atrasada (timer, promessa solta) com o escopo antigo é recusada em vez de vazar dados.
+ */
+function guarded(d: DB, released: () => boolean): DB {
+  const chk = () => { if (released()) throw new Error('Conexão do estabelecimento já liberada.'); };
+  return {
+    all: async (s, p) => { chk(); return d.all(s, p); },
+    one: async (s, p) => { chk(); return d.one(s, p); },
+    run: async (s, p) => { chk(); return d.run(s, p); },
+    exec: async (s) => { chk(); return d.exec(s); },
+    tx: async (fn) => { chk(); return d.tx(fn); },
+    close: d.close,
+  } as DB;
 }
 
 const SCHEMA_RE = /^t_\d{1,9}$/;
