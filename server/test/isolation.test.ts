@@ -15,12 +15,12 @@ async function twoTenants() {
 describe('isolamento entre estabelecimentos', () => {
   it('produtos, configurações e usuários de A não aparecem para B', async () => {
     const { admin, b } = await twoTenants();
-    const p = (await product(admin, { name: 'Segredo da Loja A' })).body ?? {};
+    const pid = await product(admin, { name: 'Segredo da Loja A' });
     const list = await b.get('/api/products');
     expect(JSON.stringify(list.body)).not.toContain('Segredo da Loja A');
     const users = await b.get('/api/users');
     expect(JSON.stringify(users.body)).not.toContain('Operadora Teste');
-    if (p.id) expect([403, 404]).toContain((await b.patch(`/api/products/${p.id}`, { name: 'hack' })).status);
+    expect([403, 404]).toContain((await b.patch(`/api/products/${pid}`, { name: 'hack' })).status);
     const again = await admin.get('/api/products');
     expect(JSON.stringify(again.body)).not.toContain('hack');
   });
