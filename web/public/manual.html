@@ -53,6 +53,7 @@ th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: v
 details { border: 1px solid var(--border); border-radius: 12px; padding: 0 16px; margin: 8px 0; }
 details[open] { padding-bottom: 8px; }
 summary { cursor: pointer; font-weight: 650; padding: 14px 0; }
+video.vertical { max-width: 340px; }
 video { width: 100%; max-width: 760px; border-radius: 16px; display: block; margin: 12px 0; background: #000; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
 .cards a { display: block; padding: 16px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); background: var(--surface); }
@@ -85,6 +86,7 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
   <a href="#mesas">Mesas</a>
   <a href="#fiado">Fiado</a>
   <a href="#offline">Sem internet</a>
+  <a href="#video-caixa">Vídeo para o caixa</a>
   <a href="#impressora">Impressora</a>
   <b>Administração</b>
   <a href="#video">Vídeo para administradores</a>
@@ -246,7 +248,7 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
   <ol>
     <li><span class="path">Mesas</span> › <span class="btn">Abrir mesa</span>.</li>
     <li>Em <b>Mesa ou identificação</b>, escreva o nome (ex.: Mesa 04). Em <b>Pessoas</b>, opcionalmente, os nomes separados por vírgula (ex.: Paula, Rodrigo).</li>
-    <li>Toque em <span class="btn">Abrir</span>. Dentro da mesa, escolha a pessoa e toque nos produtos para lançar.</li>
+    <li>Toque em <span class="btn">Abrir</span>. Dentro da mesa, toque em <span class="btn">Lançar para (nome)</span>, toque nos produtos e depois em <span class="btn">Concluir</span>. Abriu sem nomes? Toque em <span class="btn">+ Adicionar pessoa</span> (pode ser só "Mesa") para poder lançar.</li>
     <li>Chegou mais alguém? <span class="btn">+ Adicionar pessoa</span>.</li>
   </ol>
   <h3>Cobrar</h3>
@@ -293,6 +295,14 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
   </ul>
   <div class="box warn"><b>Precisa de internet</b>Fiado, mesas, cadastros, relatórios e fechamento de caixa. Vendas guardadas há mais de 24 horas são registradas com o horário do envio.</div>
   <div class="box bad"><b>Não saia do sistema</b>com vendas na fila. Espere a internet voltar e o aviso sumir.</div>
+</section>
+
+<section id="video-caixa">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Vídeo para o caixa</h2>
+  <p>O dia a dia de quem opera o caixa, no celular: abrir o caixa, vender, cobrar (dinheiro, Pix, cartão e fiado), mesas, cancelar, retirada e fechamento.</p>
+  <video class="vertical" src="/media/tutorial-operador-b44e68bc09.mp4" poster="/media/tutorial-operador-b44e68bc09.jpg" controls playsinline preload="metadata"></video>
+  <p><a href="/media/tutorial-operador-b44e68bc09.mp4" download>Baixar o vídeo</a></p>
 </section>
 
 <section id="impressora">
