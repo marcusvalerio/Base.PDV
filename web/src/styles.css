@@ -359,3 +359,118 @@ html, body, #root { min-height: 100%; }
 @media (max-width: 480px) { .onb-types { grid-template-columns: 1fr; } }
 .first-steps .fs-bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
 .first-steps .fs-bar span { display: block; height: 100%; background: var(--success); border-radius: 3px; transition: width .4s; }
+
+/* ============================================================
+   Ritmo visual (revisão de espaçamentos)
+   Uma escala só: 4 · 8 · 12 · 16 · 24 · 32. Seções separadas por 24.
+   Raios: 14 cartões, 10 campos/botões, 999 pílulas. Nada de valores soltos.
+   ============================================================ */
+:root { --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  --radius: 14px; --radius-sm: 10px; --pad: 20px; }
+@media (max-width: 699px) { :root { --pad: 16px; } }
+
+.content { padding: var(--s5) var(--s5) var(--s6); }
+@media (max-width: 699px) { .content { padding: var(--s4) var(--s4) var(--s5); } }
+.page-head { margin-bottom: var(--s5); gap: var(--s3); }
+.page-head h1 { margin-right: auto; }
+.stack { gap: var(--s4); }
+.content > .stack, .content > div > .stack { gap: var(--s5); }
+.row { gap: var(--s2); }
+.grid2 { gap: var(--s4); }
+.card { padding: var(--pad); border-radius: var(--radius); }
+.card > h2:first-child, .card > h3:first-child { margin-bottom: var(--s1); }
+.card.flush { padding: 0; }
+.notice { padding: var(--s3) var(--s4); border-radius: var(--radius-sm); line-height: 1.5; }
+
+/* Métricas: no celular, grade 2×2 com folga (em vez de colunas espremidas) */
+.metrics { gap: var(--s3); }
+.metric { padding: var(--s4); border-radius: var(--radius); }
+.metric .value { margin-top: var(--s2); }
+.metric .sub { margin-top: var(--s1); }
+@media (max-width: 699px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric .value { font-size: 22px; } }
+
+/* Tabelas: linhas com respiro; no celular cada linha vira um bloco espaçado */
+.table th { padding: var(--s3) var(--s4); }
+.table td { padding: var(--s3) var(--s4); }
+@media (max-width: 720px) {
+  .table.responsive tr { padding: var(--s4); }
+  .table.responsive td { padding: var(--s1) 0; }
+  .table.responsive td:last-child:not(:first-child) { padding-top: var(--s3); }
+}
+
+/* Topo enxuto */
+.topbar { height: 56px; padding: 0 var(--s5); gap: var(--s3); }
+@media (max-width: 699px) { .topbar { padding: 0 var(--s4); } }
+.help-btn { width: 36px; height: 36px; padding: 0; border-radius: 999px; font-weight: 700; }
+
+/* Navegação lateral do admin; no celular vira trilho de pílulas com respiro */
+.sidenav { padding: var(--s5) var(--s3); gap: var(--s1); }
+.sidenav a { padding: 10px var(--s3); }
+@media (max-width: 860px) {
+  .sidenav { padding: var(--s3) var(--s4); gap: var(--s2); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .sidenav a { padding: var(--s2) 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
+  .sidenav a.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+}
+
+/* PDV */
+.pos { gap: var(--s5); }
+.tiles { gap: var(--s3); }
+.tile { padding: var(--s3); border-radius: var(--radius); gap: var(--s1); }
+.chips { gap: var(--s2); }
+.cart-line { padding: var(--s3) var(--s4); }
+.cart-total { padding: var(--s4); }
+.pay-grid { gap: var(--s2); }
+.pay-btn { border-radius: var(--radius-sm); }
+
+/* Modais */
+.modal { border-radius: 18px; }
+.modal-head { padding: var(--s4) var(--pad); }
+.modal-body { padding: var(--pad); gap: var(--s4); }
+.modal-foot { padding: var(--s4) var(--pad); gap: var(--s2); }
+@media (max-width: 600px) { .modal { border-radius: 20px 20px 0 0; } }
+
+/* Celular: barra de navegação flutuante (pílula), longe da borda do aparelho */
+@media (max-width: 699px) {
+  .bottom-nav { left: var(--s3); right: var(--s3); bottom: calc(var(--s3) + env(safe-area-inset-bottom)); padding: var(--s1);
+    border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 8px 28px rgba(0,0,0,.12); gap: 2px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(12px); }
+  .bottom-nav a { height: 44px; border-radius: 999px; font-size: 12.5px; }
+  .bottom-nav a.active { background: var(--text); color: var(--bg); }
+  .shell { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .mobile-cart-bar { left: var(--s3); right: var(--s3); bottom: calc(72px + env(safe-area-inset-bottom)); border: 1px solid var(--border); border-radius: 18px;
+    padding: var(--s3); box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+  .content.has-bar { padding-bottom: 96px; }
+  .sys-footer { padding-bottom: var(--s5); }
+}
+
+.list-item { padding: 14px var(--s4); gap: var(--s3); }
+.filters { gap: var(--s2); }
+.segmented { border-radius: var(--radius-sm); }
+.segmented button { border-radius: 7px; }
+.empty { padding: var(--s6) var(--s4); }
+@media (max-width: 860px) {
+  .admin-layout { grid-template-rows: auto 1fr; align-content: start; }
+  .sidenav { align-self: start; align-items: center; }
+  .sidenav a { flex: none; }
+}
+@media (max-width: 699px) { .bottom-nav a { font-size: 12px; padding: 0 2px; letter-spacing: -0.01em; } }
+@media (max-width: 380px) { .bottom-nav a { font-size: 11px; } }
+
+/* Tour guiado */
+.tour { position: fixed; inset: 0; z-index: 80; }
+.tour-dim { position: absolute; inset: 0; background: rgba(10,12,20,.55); }
+.tour-spot { position: absolute; border-radius: var(--radius); box-shadow: 0 0 0 9999px rgba(10,12,20,.55), 0 0 0 3px var(--accent); transition: all .25s ease; pointer-events: none; }
+.tour-card { position: absolute; width: min(340px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 18px;
+  padding: var(--s5); box-shadow: 0 24px 60px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: var(--s2); animation: fade .2s; }
+.tour-card h2 { font-size: 18px; }
+.tour-card p { margin: 0; color: var(--text-2); line-height: 1.55; }
+.tour-count { font-size: 12px; font-weight: 700; color: var(--accent); }
+.tour-actions { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s3); }
+@media (max-width: 699px) { .tour-card { left: 12px !important; right: 12px; width: auto; transform: none !important; } }
+.help-wrap { position: relative; }
+.help-btn { border: 1px solid var(--border-strong) !important; }
+.help-menu { position: absolute; right: 0; top: 44px; z-index: 70; width: 260px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 16px 40px rgba(0,0,0,.16); padding: var(--s2); display: flex; flex-direction: column; gap: 2px; }
+.help-menu > * { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; padding: 10px var(--s3); border-radius: var(--radius-sm); border: 0; background: none; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
+.help-menu > *:hover { background: var(--surface-2); }
+.help-menu span { font-size: 13px; color: var(--text-3); }
