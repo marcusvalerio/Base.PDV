@@ -39,7 +39,7 @@ li { margin: 4px 0; }
 .who { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--s2); color: var(--t2); }
 .pill.adm { background: var(--soft); color: var(--accent); }
-.path { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; background: var(--s2); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.path { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; background: var(--s2); padding: 2px 8px; border-radius: 6px; overflow-wrap: anywhere; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .btn { display: inline-block; font-weight: 650; font-size: 14px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); white-space: nowrap; }
 .box { border-radius: 12px; padding: 14px 16px; margin: 16px 0; font-size: 15px; }
 .box.tip { background: var(--oksoft); color: var(--text); border-left: 4px solid var(--ok); }
@@ -53,7 +53,7 @@ th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: v
 details { border: 1px solid var(--border); border-radius: 12px; padding: 0 16px; margin: 8px 0; }
 details[open] { padding-bottom: 8px; }
 summary { cursor: pointer; font-weight: 650; padding: 14px 0; }
-video { width: 100%; max-width: 420px; border-radius: 16px; display: block; margin: 12px 0; background: #000; }
+video { width: 100%; max-width: 760px; border-radius: 16px; display: block; margin: 12px 0; background: #000; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
 .cards a { display: block; padding: 16px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); background: var(--surface); }
 .cards a:hover { border-color: var(--accent); }
@@ -311,8 +311,8 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
   <div class="who"><span class="pill adm">Admin</span></div>
   <h2>Vídeo para administradores</h2>
   <p>As principais funções de gestão, em poucos minutos.</p>
-  <video src="/media/tutorial-admin.mp4" controls playsinline preload="metadata"></video>
-  <p><a href="/media/tutorial-admin.mp4" download>Baixar o vídeo</a></p>
+  <video src="/media/tutorial-admin-95be052b9d.mp4" poster="/media/tutorial-admin-95be052b9d.jpg" controls playsinline preload="metadata"></video>
+  <p><a href="/media/tutorial-admin-95be052b9d.mp4" download>Baixar o vídeo</a></p>
 </section>
 
 <section id="painel">
