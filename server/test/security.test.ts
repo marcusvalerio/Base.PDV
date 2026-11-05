@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { setup, PASS } from './helpers.js';
+import { setup, PASS, CODE } from './helpers.js';
 
 const login = (app: any, username: string, password: string, ip = '10.0.0.1', path = '/api/auth/login') =>
   request(app).post(path).set('X-Requested-With', 'pdv').set('X-Forwarded-For', ip).send({ username, password });
@@ -30,5 +30,11 @@ describe('segurança: tentativas de senha', () => {
     for (let i = 0; i < 4; i++) await login(app, 'op', 'errada', '10.4.0.1');
     expect((await login(app, 'op', PASS, '10.4.0.1')).status).toBe(200);
     for (let i = 0; i < 4; i++) expect((await login(app, 'op', 'errada', '10.4.0.1')).status).toBe(401);
+  });
+
+  it('código de caixa: 5 erros bloqueiam o usuário por 15 minutos, mesmo com o código certo', async () => {
+    const { op } = await setup();
+    for (let i = 0; i < 5; i++) expect((await op.post('/api/cash/open', { code: '000' + i, openingFloatCents: 0 })).status).toBe(403);
+    expect((await op.post('/api/cash/open', { code: CODE, openingFloatCents: 0 })).status).toBe(429);
   });
 });

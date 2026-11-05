@@ -137,6 +137,19 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     modules.requireModule(db, k).then(() => next(), next);
   };
   const uid = (req: Request) => req.user!.id;
+  /**
+   * Códigos de caixa e de cancelamento têm só 4 a 8 dígitos: sem limite, dá para descobrir na tentativa.
+   * 5 erros em 15 minutos bloqueiam o usuário por 15 minutos (guardado no banco, vale para todas as instâncias).
+   */
+  const withCodeLimit = async <T,>(req: Request, kind: 'cash' | 'cancel', fn: () => Promise<T>): Promise<T> => {
+    const key = `code|${kind}|${req.tenant!.id}|${uid(req)}`;
+    if (await platform.isLimited(base, key)) throw TOO_MANY();
+    try { return await fn(); }
+    catch (e) {
+      if (e instanceof AppError && e.status === 403 && /incorreto/i.test(e.message)) await platform.hitLimit(base, key, 5, 15 * MIN, 15 * MIN);
+      throw e;
+    }
+  };
   const isAdmin = (req: Request) => req.user?.role === 'ADMIN';
   const r = express.Router();
   // Express 4 não captura promessas rejeitadas: encaminha erros de handlers assíncronos.
@@ -357,7 +370,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     const b = z.object({ reason: z.string().trim().min(3).max(300), code: z.string().max(20) }).parse(req.body);
     const sid = id.parse(req.params.id);
     if (!isAdmin(req) && (await cash.currentRegister(db, uid(req)))?.id !== (await sales.getSale(db, sid)).register_id) throw forbidden('Você só pode cancelar vendas do seu caixa.');
-    res.json(await sales.cancelSale(db, sid, b.reason, b.code, uid(req)));
+    res.json(await withCodeLimit(req, 'cancel', () => sales.cancelSale(db, sid, b.reason, b.code, uid(req))));
   });
 
   // ---------- Clientes e fiado ----------
@@ -386,7 +399,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
   r.post('/cash/open', auth, async (req, res) => {
     const b = z.object({ code: z.string().max(20), openingFloatCents: cents }).parse(req.body);
-    res.status(201).json({ id: await cash.openRegister(db, b, uid(req)) });
+    res.status(201).json({ id: await withCodeLimit(req, 'cash', () => cash.openRegister(db, b, uid(req))) });
   });
   r.post('/cash/movements', auth, async (req, res) => {
     const b = z.object({ type: z.enum(['SUPRIMENTO', 'SANGRIA']), amountCents: cents, reason: z.string().max(200).optional() }).parse(req.body);
@@ -399,7 +412,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
   r.post('/cash/:id/close', auth, async (req, res) => {
     const b = z.object({ code: z.string().max(20), countedCashCents: cents }).parse(req.body);
-    res.json(await cash.closeRegister(db, { ...b, registerId: id.parse(req.params.id) }, uid(req)));
+    res.json(await withCodeLimit(req, 'cash', () => cash.closeRegister(db, { ...b, registerId: id.parse(req.params.id) }, uid(req))));
   });
   r.get('/cash/active', admin, async (_req, res) => res.json(await cash.openRegisters(db)));
   r.get('/cash', admin, async (req, res) => {
@@ -707,7 +720,14 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       const tables = (await tdb.all<{ tablename: string }>('SELECT tablename FROM pg_tables WHERE schemaname = ? ORDER BY tablename', [t.schema_name]))
         .map((r) => r.tablename).filter((n) => n !== 'sessions');
       const out: Record<string, unknown[]> = {};
-      for (const n of tables) out[n] = await tdb.all(`SELECT * FROM "${n.replace(/"/g, '')}"`);
+      // Sem hashes de senha e de códigos: a cópia é para guardar os dados do negócio, não credenciais.
+      const SECRET_COLS = /(_hash|^totp_)/;
+      for (const n of tables) {
+        const rows = await tdb.all(`SELECT * FROM "${n.replace(/"/g, '')}"`);
+        out[n] = rows
+          .filter((r: any) => !(n === 'settings' && /_hash$/.test(String(r.key))))
+          .map((r: any) => Object.fromEntries(Object.entries(r).filter(([k]) => !SECRET_COLS.test(k))));
+      }
       return out;
     });
     await platform.platformAudit(base, req.central!.id, 'tenant.backup', t.id);
