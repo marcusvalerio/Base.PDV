@@ -5,6 +5,34 @@ import { money, pct, qty, date } from '../../lib/format';
 import { Loading, ErrorState, Empty, Metric, Change } from '../../components/ui';
 import { OpenRegisters } from './Admin';
 
+/** Cartão de primeiros passos: mostra o que falta até o estabelecimento estar rodando, e some quando está tudo feito. */
+function FirstSteps() {
+  const { boot } = useSession();
+  const ob = boot?.onboarding;
+  if (!ob) return null;
+  const steps = [
+    { done: ob.products > 0, label: 'Cadastrar os produtos', to: '/admin/produtos', cta: 'Produtos' },
+    { done: ob.cancelCode, label: 'Criar o código de cancelamento', to: '/admin/config', cta: 'Configurações' },
+    { done: ob.team > 0, label: 'Criar o acesso da equipe', to: '/admin/usuarios', cta: 'Usuários' },
+    { done: ob.firstSale, label: 'Fazer a primeira venda', to: '/', cta: 'Vender' },
+  ];
+  const left = steps.filter((s) => !s.done).length;
+  if (!left) return null;
+  return (
+    <div className="card stack first-steps">
+      <div className="row"><h2>Primeiros passos</h2><span className="spacer" /><span className="faint">{steps.length - left} de {steps.length} feitos</span></div>
+      <div className="fs-bar"><span style={{ width: `${((steps.length - left) / steps.length) * 100}%` }} /></div>
+      {steps.map((s) => (
+        <div key={s.label} className="list-item" style={{ cursor: 'default' }}>
+          <span className={`badge ${s.done ? 'success' : ''}`}>{s.done ? '' : 'falta'}</span>
+          <span style={s.done ? { textDecoration: 'line-through', opacity: .6 } : undefined}>{s.label}</span><span className="spacer" />
+          {!s.done && <Link className="btn sm" to={s.to}>{s.cta}</Link>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { data: d, loading, error, reload } = useApi<any>('/dashboard');
   const { boot } = useSession();
@@ -22,6 +50,7 @@ export default function Dashboard() {
         <Metric label="Fiado pendente" value={money(d.fiado.pendingCents)} sub={`${d.fiado.customers} cliente(s)`} />
         <Metric label="Caixas abertos" value={d.openRegisters.length} sub={d.openRegisters.length ? d.openRegisters.map((r: any) => r.openedByName).join(', ') : 'Nenhum caixa aberto'} />
       </div>
+      <FirstSteps />
       <StatusStrip d={d} />
       <OpenRegisters />
       <div className="grid2">

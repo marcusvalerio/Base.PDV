@@ -262,6 +262,15 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       // Primeiro acesso: falta definir o código do caixa (sem ele ninguém abre o caixa).
       setupPending: (await settings.getSetting(db, 'cash_code_mode')) === 'SHARED' && !(await settings.getSetting(db, 'shared_cash_code_hash')),
       storeLogo: await settings.getSetting(db, 'store_logo_url'),
+      // Primeiros passos do administrador (passo a passo do primeiro acesso e o cartão no painel).
+      onboarding: {
+        done: (await settings.getSetting(db, 'onboarding_done')) === '1',
+        businessType: await settings.getSetting(db, 'business_type'),
+        products: (await db.one('SELECT COUNT(*)::int AS n FROM products WHERE active = 1')).n as number,
+        team: (await db.one("SELECT COUNT(*)::int AS n FROM users WHERE active = 1 AND role = 'OPERADOR'")).n as number,
+        cancelCode: !!(await settings.getSetting(db, 'cancel_code_hash')),
+        firstSale: !!(await db.one("SELECT 1 AS x FROM sales WHERE status = 'COMPLETED' LIMIT 1")),
+      },
     });
   });
 
@@ -535,6 +544,8 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       card_debit_surcharge_value: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       card_credit_surcharge_value: z.coerce.number().int().min(0).max(100000).transform(String).optional(),
       inventory_accuracy_target: z.union([z.literal(''), z.coerce.number().min(0).max(100).transform(String)]).optional(),
+      business_type: z.enum(['', 'bar', 'mercearia', 'deposito', 'lanchonete']).optional(),
+      onboarding_done: z.enum(['', '1']).optional(),
     }).parse(req.body);
     for (const [k, v] of Object.entries(b)) if (v !== undefined) await settings.setSetting(db, k, String(v), uid(req));
     res.json(await settings.publicSettings(db));
