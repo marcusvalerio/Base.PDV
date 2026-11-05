@@ -618,7 +618,12 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   c.post('/setup', async (req, res) => {
     const b = loginSchema.extend({ token: z.string().min(1).max(200), name: z.string().trim().min(2).max(80) }).parse(req.body);
     const expected = process.env.SETUP_TOKEN;
-    if (!expected || b.token.length !== expected.length || !timingSafeEqual(Buffer.from(b.token), Buffer.from(expected))) throw forbidden('Token de configuração inválido.');
+    const sk = `setup|${req.ip}`;
+    if (await platform.isLimited(base, sk)) throw TOO_MANY();
+    if (!expected || b.token.length !== expected.length || !timingSafeEqual(Buffer.from(b.token), Buffer.from(expected))) {
+      await platform.hitLimit(base, sk, 5, 60 * MIN, 60 * MIN);
+      throw forbidden('Token de configuração inválido.');
+    }
     await base.tx(async (t) => {
       await t.exec('SELECT pg_advisory_xact_lock(4242003)');
       if ((await t.one('SELECT COUNT(*)::int AS n FROM platform_admins')).n > 0) throw forbidden('O painel central já foi configurado.');
@@ -643,16 +648,24 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.json({ ok: true });
   });
   c.get('/me', central, async (req, res) => res.json({ admin: req.central, stripe: stripe.stripeConfigured(), totp: (await platform.totpStatus(base, req.central!.id)).enabled }));
-  // Verificação em duas etapas (opcional, recomendada).
+  // Verificação em duas etapas (opcional, recomendada). Erros de senha/código contam para bloqueio (5 em 15 min).
+  const with2faLimit = async (req: Request, fn: () => Promise<unknown>) => {
+    const k = `central-2fa|${req.central!.id}`;
+    if (await platform.isLimited(base, k)) throw TOO_MANY();
+    try { await fn(); } catch (e) {
+      if (e instanceof AppError && e.status < 500) await platform.hitLimit(base, k, 5, 15 * MIN, 15 * MIN);
+      throw e;
+    }
+  };
   c.post('/2fa/begin', central, async (req, res) => res.json(await platform.totpBegin(base, req.central!.id)));
   c.post('/2fa/enable', central, async (req, res) => {
     const b = z.object({ code: z.string().min(6).max(12) }).parse(req.body);
-    await platform.totpEnable(base, req.central!.id, b.code);
+    await with2faLimit(req, () => platform.totpEnable(base, req.central!.id, b.code));
     res.json({ ok: true });
   });
   c.post('/2fa/disable', central, async (req, res) => {
     const b = z.object({ password: z.string().min(1).max(200), code: z.string().min(6).max(12) }).parse(req.body);
-    await platform.totpDisable(base, req.central!.id, b.password, b.code);
+    await with2faLimit(req, () => platform.totpDisable(base, req.central!.id, b.password, b.code));
     res.json({ ok: true });
   });
 

@@ -105,6 +105,6 @@ export function useOffline(owner?: string) {
     addEventListener('pdv:outbox', upd); addEventListener('storage', upd);
     return () => { removeEventListener('online', on); removeEventListener('offline', off); removeEventListener('pdv:outbox', upd); removeEventListener('storage', upd); };
   }, []);
-  const mine = list.filter((x) => !owner || x.owner === owner);
+  const mine = list.filter((x) => !!owner && x.owner === owner);
   return { online, pending: mine.filter((x) => !x.error), failed: mine.filter((x) => x.error) };
 }

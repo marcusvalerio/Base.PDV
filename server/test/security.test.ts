@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { setup, PASS, CODE } from './helpers.js';
+import { setup, agent, PASS, CODE } from './helpers.js';
 
 const login = (app: any, username: string, password: string, ip = '10.0.0.1', path = '/api/auth/login') =>
   request(app).post(path).set('X-Requested-With', 'pdv').set('X-Forwarded-For', ip).send({ username, password });
@@ -36,5 +36,21 @@ describe('segurança: tentativas de senha', () => {
     const { op } = await setup();
     for (let i = 0; i < 5; i++) expect((await op.post('/api/cash/open', { code: '000' + i, openingFloatCents: 0 })).status).toBe(403);
     expect((await op.post('/api/cash/open', { code: CODE, openingFloatCents: 0 })).status).toBe(429);
+  });
+});
+
+describe('segurança: painel central', () => {
+  it('desligar o 2FA com senha errada bloqueia após 5 tentativas', async () => {
+    const { app } = await setup();
+    const sup = await agent(app, 'super', true);
+    for (let i = 0; i < 5; i++) expect((await sup.post('/api/central/2fa/disable', { password: 'errada', code: '000000' })).status).toBeLessThan(500);
+    expect((await sup.post('/api/central/2fa/disable', { password: 'errada', code: '000000' })).status).toBe(429);
+  });
+  it('token de configuração inicial tem limite de tentativas', async () => {
+    const { app } = await setup();
+    const tryIt = () => request(app).post('/api/central/setup').set('X-Requested-With', 'pdv').set('X-Forwarded-For', '10.9.0.1')
+      .send({ token: 'x', username: 'novo.admin', password: 'senha-forte-123', name: 'Novo' });
+    for (let i = 0; i < 5; i++) expect((await tryIt()).status).toBe(403);
+    expect((await tryIt()).status).toBe(429);
   });
 });
