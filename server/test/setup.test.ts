@@ -96,5 +96,8 @@ describe('saúde e cópia de segurança', () => {
     expect(b.body.tables.users.length).toBeGreaterThan(0);
     expect(b.body.tables.sessions).toBeUndefined();
     expect(b.body.tables.payment_methods.length).toBeGreaterThan(0);
+    // Sem hashes de senha nem de códigos de caixa/cancelamento
+    expect(JSON.stringify(b.body)).not.toMatch(/scrypt\$/);
+    expect(b.body.tables.users[0].password_hash).toBeUndefined();
   });
 });
