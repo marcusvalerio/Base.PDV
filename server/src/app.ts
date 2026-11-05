@@ -334,7 +334,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     const sale = await sales.createSale(db, b, uid(req));
     if (b.offlineAt && !sale.replayed) {
       const at = Date.parse(b.offlineAt);
-      if (at > Date.now() - 3 * 864e5 && at < Date.now() + 5 * 60e3) {
+      if (at > Date.now() - 864e5 && at < Date.now() + 5 * 60e3) {
         const iso = new Date(at).toISOString();
         await db.run('UPDATE sales SET created_at = ? WHERE id = ?', [iso, sale.id]);
         await db.run("UPDATE stock_movements SET at = ? WHERE ref_type = 'sale' AND type = 'SALE' AND ref_id = ?", [iso, sale.id]);
@@ -448,8 +448,12 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     res.json(await tabs.addTabItems(db, id.parse(req.params.id), b.personId, b.items, uid(req)));
   });
   r.post('/tabs/:id/items/:itemId/void', auth, async (req, res) => {
-    const b = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
-    res.json(await tabs.voidTabItem(db, id.parse(req.params.id), id.parse(req.params.itemId), b.reason, uid(req)));
+    const b = z.object({ reason: z.string().trim().min(3).max(200), code: z.string().max(20) }).parse(req.body);
+    // Tirar um item ainda não pago da mesa pede o mesmo código do cancelamento de venda.
+    res.json(await withCodeLimit(req, 'cancel', async () => {
+      await sales.verifyCancelCode(db, uid(req), b.code);
+      return tabs.voidTabItem(db, id.parse(req.params.id), id.parse(req.params.itemId), b.reason, uid(req));
+    }));
   });
   r.post('/tabs/:id/close', auth, async (req, res) => {
     const b = z.object({ idempotencyKey: idemKey, personId: id.nullable(), paymentMethodCode: z.string().max(20), customerId: id.nullish(), receivedCents: cents.nullish() }).parse(req.body);

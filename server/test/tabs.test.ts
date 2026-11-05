@@ -50,8 +50,10 @@ describe('mesas e comandas', () => {
   it('corrige lançamento indevido preservando histórico', async () => {
     const { op, tabId, tab } = await ctx();
     const item = tab.people[2].items[0];
-    expect((await op.post(`/api/tabs/${tabId}/items/${item.id}/void`, { reason: 'x' })).status).toBe(400);
-    const t = (await op.post(`/api/tabs/${tabId}/items/${item.id}/void`, { reason: 'lançado na pessoa errada' })).body;
+    expect((await op.post(`/api/tabs/${tabId}/items/${item.id}/void`, { reason: 'x', code: CANCEL })).status).toBe(400);
+    // Sem o código de cancelamento (ou com o código errado) o item não sai da mesa
+    expect((await op.post(`/api/tabs/${tabId}/items/${item.id}/void`, { reason: 'lançado na pessoa errada', code: '1111' })).status).toBe(403);
+    const t = (await op.post(`/api/tabs/${tabId}/items/${item.id}/void`, { reason: 'lançado na pessoa errada', code: CANCEL })).body;
     expect(t.pending_cents).toBe(2400);
     expect(t.people[2].items[0]).toMatchObject({ status: 'VOIDED', void_reason: 'lançado na pessoa errada' });
   });
