@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual do Central.PDV</title>
+<meta name="description" content="Manual completo do Central.PDV: vender, caixa, mesas, fiado, estoque, inventário e administração, passo a passo.">
+<link rel="icon" href="/icon-192.png">
+<style>
+:root { --bg:#f7f7f8; --surface:#fff; --s2:#f1f1f3; --border:#e4e4e7; --text:#18181b; --t2:#52525b; --t3:#8a8a93; --accent:#2f5bea; --soft:#eaf0fe;
+  --ok:#15803d; --oksoft:#e8f6ec; --warn:#a16207; --warnsoft:#fdf5e1; --bad:#c22a2a; --badsoft:#fcebeb; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0b0b0c; --surface:#141416; --s2:#1c1c1f; --border:#26262a; --text:#ededef; --t2:#a1a1aa; --t3:#71717a;
+  --accent:#7593ff; --soft:#18203d; --ok:#4ade80; --oksoft:#11291a; --warn:#fbbf24; --warnsoft:#2a2110; --bad:#f87171; --badsoft:#2d1414; color-scheme: dark; } }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0,1fr); padding: 24px 16px 48px; gap: 24px; } }
+header.top { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+header.top .tag { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+h1 { font-size: 34px; line-height: 1.15; letter-spacing: -0.03em; margin: 0; }
+header.top p { margin: 0; color: var(--t2); max-width: 680px; }
+nav.toc { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow: auto; font-size: 14px; }
+nav.toc b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--t3); margin: 16px 0 8px; }
+nav.toc b:first-child { margin-top: 0; }
+nav.toc a { display: block; padding: 6px 12px; border-radius: 8px; color: var(--t2); text-decoration: none; }
+nav.toc a:hover { background: var(--s2); color: var(--text); }
+@media (max-width: 860px) { nav.toc { position: static; max-height: none; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; } }
+main { min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+@media (max-width: 860px) { section { padding: 20px; } }
+h2 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 4px; }
+h3 { font-size: 16px; margin: 24px 0 8px; }
+section > p:first-of-type { margin-top: 4px; }
+p { margin: 8px 0; }
+ol, ul { margin: 8px 0; padding-left: 24px; }
+li { margin: 4px 0; }
+.who { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--s2); color: var(--t2); }
+.pill.adm { background: var(--soft); color: var(--accent); }
+.path { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; background: var(--s2); padding: 2px 8px; border-radius: 6px; overflow-wrap: anywhere; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.btn { display: inline-block; font-weight: 650; font-size: 14px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); white-space: nowrap; }
+.box { border-radius: 12px; padding: 14px 16px; margin: 16px 0; font-size: 15px; }
+.box.tip { background: var(--oksoft); color: var(--text); border-left: 4px solid var(--ok); }
+.box.warn { background: var(--warnsoft); color: var(--text); border-left: 4px solid var(--warn); }
+.box.bad { background: var(--badsoft); color: var(--text); border-left: 4px solid var(--bad); }
+.box b:first-child { display: block; margin-bottom: 2px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 12px 0; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--t3); }
+.tablewrap { overflow-x: auto; }
+details { border: 1px solid var(--border); border-radius: 12px; padding: 0 16px; margin: 8px 0; }
+details[open] { padding-bottom: 8px; }
+summary { cursor: pointer; font-weight: 650; padding: 14px 0; }
+video { width: 100%; max-width: 760px; border-radius: 16px; display: block; margin: 12px 0; background: #000; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+.cards a { display: block; padding: 16px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); background: var(--surface); }
+.cards a:hover { border-color: var(--accent); }
+.cards a span { display: block; font-size: 14px; color: var(--t2); margin-top: 4px; }
+footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 14px; padding-top: 24px; border-top: 1px solid var(--border); }
+@media print { nav.toc, .cards { display: none; } .wrap { display: block; } section { break-inside: avoid; border: 0; padding: 0 0 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <span class="tag">CENTRAL.PDV · MANUAL</span>
+  <h1>Manual completo</h1>
+  <p>Tudo o que dá para fazer no sistema, em passos numerados. Cada seção diz <b>quem pode usar</b>: <span class="pill">Todos</span> = qualquer pessoa da equipe; <span class="pill adm">Admin</span> = só administradores.</p>
+  <p>Dentro do sistema, o botão <b>?</b> no topo abre este manual e também repete o <b>tour guiado</b> pelas telas.</p>
+</header>
+
+<nav class="toc" aria-label="Índice">
+  <b>Começo</b>
+  <a href="#inicio">Começo rápido (5 passos)</a>
+  <a href="#entrar">Entrar e sair</a>
+  <a href="#perfis">Perfis: Operador e Admin</a>
+  <a href="#tela">Como a tela é organizada</a>
+  <b>Dia a dia</b>
+  <a href="#caixa">Abrir e fechar o caixa</a>
+  <a href="#vender">Vender no balcão</a>
+  <a href="#pagamento">Formas de pagamento</a>
+  <a href="#cancelar">Cancelar uma venda</a>
+  <a href="#mesas">Mesas</a>
+  <a href="#fiado">Fiado</a>
+  <a href="#offline">Sem internet</a>
+  <a href="#impressora">Impressora</a>
+  <b>Administração</b>
+  <a href="#video">Vídeo para administradores</a>
+  <a href="#painel">Painel</a>
+  <a href="#produtos">Produtos</a>
+  <a href="#estoque">Estoque e validade</a>
+  <a href="#inventario">Inventário</a>
+  <a href="#reposicao">Reposição</a>
+  <a href="#analise">Análise</a>
+  <a href="#clientes">Clientes</a>
+  <a href="#vendas">Vendas e Caixas</a>
+  <a href="#usuarios">Usuários e senhas</a>
+  <a href="#config">Configurações</a>
+  <a href="#codigos">Códigos de caixa e cancelamento</a>
+  <a href="#auditoria">Auditoria</a>
+  <a href="#assinatura">Assinatura</a>
+  <b>Ajuda</b>
+  <a href="#duvidas">Dúvidas comuns</a>
+  <a href="#problemas">Algo deu errado</a>
+</nav>
+
+<main>
+
+<section id="inicio">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Começo rápido (5 passos)</h2>
+  <p>Do zero até a primeira venda:</p>
+  <ol>
+    <li><b>Preencha o primeiro acesso.</b> Na primeira entrada aparece um passo a passo: seu nome, nome do estabelecimento, tipo de negócio, código do caixa e código de cancelamento.</li>
+    <li><b>Cadastre os produtos.</b> <span class="path">Administração › Produtos</span> › <span class="btn">Produtos prontos</span>: marque o que você vende, ajuste o preço e salve. Para itens que não estão no catálogo, use <span class="btn">Novo produto</span>.</li>
+    <li><b>Lance o estoque.</b> Em cada produto, toque em <span class="btn">Entrada</span> e informe quanto chegou (opcional, mas sem isso o sistema não avisa falta de estoque).</li>
+    <li><b>Crie o acesso da equipe.</b> <span class="path">Administração › Usuários</span> › <span class="btn">Novo usuário</span>, perfil <b>Operador</b>. Envie o acesso pelo WhatsApp.</li>
+    <li><b>Abra o caixa e venda.</b> <span class="path">Caixa</span> › <span class="btn">Abrir caixa</span>, depois <span class="path">Vender</span>.</li>
+  </ol>
+  <div class="box tip"><b>Dica</b>O cartão "Primeiros passos" no Painel mostra o que ainda falta. Ele some quando tudo estiver feito.</div>
+</section>
+
+<section id="entrar">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Entrar e sair</h2>
+  <ol>
+    <li>Abra o endereço do sistema no navegador (celular, tablet ou computador).</li>
+    <li>Digite seu <b>Usuário</b> e <b>Senha</b> e toque em <span class="btn">Entrar</span>.</li>
+    <li>Para sair, toque em <span class="btn">Sair</span> no canto superior direito.</li>
+  </ol>
+  <p>A sessão dura 12 horas. Depois disso, o sistema pede a senha de novo.</p>
+  <div class="box warn"><b>Esqueceu a senha?</b>Não há "esqueci minha senha" automático. O <b>administrador</b> gera uma nova em <span class="path">Administração › Usuários › Editar › Gerar nova senha</span>. Se quem esqueceu foi o próprio administrador, fale com o suporte do Central.PDV.</div>
+  <div class="box warn"><b>5 senhas erradas seguidas</b>bloqueiam o login daquele usuário por 15 minutos, mesmo que depois digite a senha certa. Espere e tente de novo.</div>
+  <h3>Instalar como aplicativo</h3>
+  <p><b>Celular Android (Chrome):</b> menu ⋮ › <i>Adicionar à tela inicial</i>. <b>iPhone (Safari):</b> botão compartilhar › <i>Adicionar à Tela de Início</i>. O ícone abre o sistema em tela cheia.</p>
+</section>
+
+<section id="perfis">
+  <h2>Perfis: Operador e Administrador</h2>
+  <div class="tablewrap"><table>
+    <tr><th>O que</th><th>Operador</th><th>Administrador</th></tr>
+    <tr><td>Vender, mesas, fiado, abrir/fechar o próprio caixa</td><td>Sim</td><td>Sim</td></tr>
+    <tr><td>Ver vendas</td><td>Só as do próprio caixa aberto</td><td>Todas</td></tr>
+    <tr><td>Cancelar venda</td><td>Só do próprio caixa, com código de cancelamento</td><td>Qualquer uma, com código</td></tr>
+    <tr><td>Ver custo e margem</td><td>Não</td><td>Sim</td></tr>
+    <tr><td>Administração (produtos, estoque, equipe, configurações, relatórios)</td><td>Não</td><td>Sim</td></tr>
+  </table></div>
+</section>
+
+<section id="tela">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Como a tela é organizada</h2>
+  <ul>
+    <li><b>Topo:</b> nome do estabelecimento, menu (no computador), botão <b>?</b> (tour e manual) e <span class="btn">Sair</span>.</li>
+    <li><b>Menu:</b> Vender · Mesas · Fiado · Caixa · Inventário · Administração. No celular ele fica <b>embaixo</b>, numa barra flutuante.</li>
+    <li><b>Administração:</b> no computador, menu à esquerda; no celular, uma faixa de botões que rola para o lado.</li>
+    <li><b>Faixa colorida no topo:</b> avisos do Central.PDV (manutenção, novidades, vencimento da assinatura). Toque no × para fechar.</li>
+  </ul>
+  <p>Mesas, Fiado, Inventário, Estoque, Reposição, Análise e Auditoria são <b>módulos</b>. Se algum não aparece, ele não está liberado no seu plano.</p>
+  <h3>Cores dos avisos</h3>
+  <ul>
+    <li><b style="color:var(--bad)">Vermelho</b>: problema (sem estoque, vencido).</li>
+    <li><b style="color:var(--warn)">Amarelo</b>: atenção (estoque baixo, validade próxima, fiado em aberto).</li>
+    <li><b style="color:var(--ok)">Verde</b>: em dia.</li>
+  </ul>
+</section>
+
+<section id="caixa">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Abrir e fechar o caixa</h2>
+  <p>Sem caixa aberto não dá para vender nem receber fiado. Cada pessoa abre o seu próprio caixa.</p>
+  <h3>Abrir</h3>
+  <ol>
+    <li>Toque em <span class="path">Caixa</span> › <span class="btn">Abrir caixa</span>.</li>
+    <li>Em <b>Dinheiro inicial na gaveta</b>, informe o troco que está na gaveta (ex.: 100,00). Pode ser 0.</li>
+    <li>Digite o <b>Código do caixa</b> e confirme.</li>
+  </ol>
+  <h3>Suprimento e Retirada</h3>
+  <ul>
+    <li><span class="btn">Suprimento</span>: você <b>colocou</b> dinheiro na gaveta (ex.: mais troco).</li>
+    <li><span class="btn">Retirada</span>: você <b>tirou</b> dinheiro da gaveta (ex.: levou para o cofre, pagou um fornecedor).</li>
+  </ul>
+  <p>Informe o valor e, se quiser, o motivo. Sem isso o fechamento não bate.</p>
+  <h3>Fechar</h3>
+  <ol>
+    <li>Toque em <span class="btn">Fechar caixa</span>.</li>
+    <li>Conte o dinheiro da gaveta e digite em <b>Quanto dinheiro há na gaveta agora?</b></li>
+    <li>Toque em <span class="btn">Conferir</span>. O sistema mostra o esperado e a <b>diferença</b> (sobra ou falta).</li>
+    <li>Digite o código do caixa e toque em <span class="btn">Confirmar fechamento</span>.</li>
+    <li>Use <span class="btn">Enviar o resumo para o dono</span> para mandar o fechamento pelo WhatsApp.</li>
+  </ol>
+  <div class="box tip"><b>Como o esperado é calculado</b>Dinheiro inicial + vendas em dinheiro + fiado recebido em dinheiro + suprimentos − retiradas. Pix e cartão não entram na gaveta.</div>
+  <div class="box warn"><b>Código errado</b>5 códigos errados em 15 minutos bloqueiam por 15 minutos.</div>
+</section>
+
+<section id="vender">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Vender no balcão</h2>
+  <ol>
+    <li>Toque em <span class="path">Vender</span>.</li>
+    <li><b>Ache o produto:</b> digite o nome, leia o código de barras com o leitor ou toque em <span class="btn">Câmera</span> para ler pela câmera do celular. As categorias logo abaixo filtram a lista.</li>
+    <li><b>Toque no produto</b> para adicionar. Cada toque soma 1. Produtos vendidos por <b>kg</b> ou <b>litro</b> pedem a quantidade (ex.: 350g ou 0,35).</li>
+    <li>No pedido, use <b>−</b> e <b>+</b> para mudar a quantidade ou <span class="btn">Remover</span>. No celular, toque em <span class="btn">Ver pedido</span> para ver o pedido.</li>
+    <li>Toque em <span class="btn">Cobrar</span>, escolha a forma de pagamento e confirme.</li>
+    <li>Toque em <span class="btn">Nova venda</span> para começar a próxima (ou <span class="btn">Imprimir</span> o comprovante).</li>
+  </ol>
+  <p><b>Borda vermelha</b> no produto = sem estoque. <b>Borda amarela</b> = estoque baixo. Vender sem estoque só é possível se o administrador permitir nas Configurações.</p>
+  <p><span class="btn">Limpar pedido</span> remove todos os itens de uma vez.</p>
+</section>
+
+<section id="pagamento">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Formas de pagamento</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Forma</th><th>Como funciona</th></tr>
+    <tr><td><b>Dinheiro</b></td><td>Digite o <b>valor recebido do cliente</b>; o sistema mostra o <b>troco a devolver</b>. "Valor exato" preenche o total.</td></tr>
+    <tr><td><b>Pix</b></td><td>Com a chave Pix cadastrada, aparece um <b>QR Code com o valor exato</b>. O dinheiro cai direto na sua conta. <b>Confira no app do banco que o Pix chegou antes de confirmar</b>: o sistema não consegue verificar isso.</td></tr>
+    <tr><td><b>Cartão</b></td><td>Escolha <b>Débito</b> ou <b>Crédito</b>. Se houver acréscimo configurado, ele aparece antes de confirmar. A maquininha é separada: passe o cartão nela.</td></tr>
+    <tr><td><b>Fiado (a prazo)</b></td><td>Escolha o cliente (ou <span class="btn">+ Novo cliente</span>). A venda vai para a conta dele. Precisa de internet.</td></tr>
+  </table></div>
+</section>
+
+<section id="cancelar">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Cancelar uma venda</h2>
+  <ol>
+    <li>Vá em <span class="path">Caixa</span> › <b>Vendas deste caixa</b> (administrador: também em <span class="path">Administração › Vendas</span>).</li>
+    <li>Toque na venda para abrir os detalhes.</li>
+    <li>Na parte <b>Cancelar esta venda</b>, escreva o <b>motivo</b> (ex.: produto lançado errado) e digite o <b>código de cancelamento</b>.</li>
+    <li>Toque em <span class="btn">Cancelar venda</span>.</li>
+  </ol>
+  <p>O estoque volta automaticamente. Se a venda veio de uma <b>mesa</b>, os itens voltam para a mesa. Vendas canceladas continuam no histórico marcadas como "cancelada".</p>
+  <div class="box bad"><b>Quando NÃO dá para cancelar</b>
+    • Venda de um caixa <b>já fechado</b>: fale com o administrador (registre o acerto como Suprimento/Retirada e ajuste o estoque).<br>
+    • Venda <b>fiado</b> que já recebeu algum pagamento.<br>
+    • Venda de mesa quando já existe <b>outra mesa aberta com o mesmo nome</b>: feche-a antes.</div>
+  <div class="box warn"><b>Operador</b>só cancela vendas do próprio caixa aberto. 5 códigos errados em 15 minutos bloqueiam por 15 minutos.</div>
+</section>
+
+<section id="mesas">
+  <div class="who"><span class="pill">Todos</span><span class="pill">Módulo Mesas</span></div>
+  <h2>Mesas (comandas)</h2>
+  <h3>Abrir e lançar</h3>
+  <ol>
+    <li><span class="path">Mesas</span> › <span class="btn">Abrir mesa</span>.</li>
+    <li>Em <b>Mesa ou identificação</b>, escreva o nome (ex.: Mesa 04). Em <b>Pessoas</b>, opcionalmente, os nomes separados por vírgula (ex.: Paula, Rodrigo).</li>
+    <li>Toque em <span class="btn">Abrir</span>. Dentro da mesa, escolha a pessoa e toque nos produtos para lançar.</li>
+    <li>Chegou mais alguém? <span class="btn">+ Adicionar pessoa</span>.</li>
+  </ol>
+  <h3>Cobrar</h3>
+  <ul>
+    <li><span class="btn">Fechar conta</span> na pessoa: cobra só o que ela consumiu.</li>
+    <li><span class="btn">Fechar mesa inteira</span>: cobra tudo o que está em aberto, de uma vez.</li>
+    <li><span class="btn">Imprimir conta</span>: imprime para o cliente conferir.</li>
+    <li>Com tudo pago, toque em <span class="btn">Encerrar mesa</span>.</li>
+  </ul>
+  <h3>Lançou errado?</h3>
+  <p>No item, toque em <span class="btn">Corrigir</span>, escreva o motivo e digite o <b>código de cancelamento</b>. O item sai da conta, mas fica registrado no histórico com o motivo.</p>
+</section>
+
+<section id="fiado">
+  <div class="who"><span class="pill">Todos</span><span class="pill">Módulo Fiado</span></div>
+  <h2>Fiado (venda a prazo)</h2>
+  <h3>Vender fiado</h3>
+  <p>Na hora de cobrar, escolha <b>Fiado</b> e o cliente. Se o administrador configurou <b>acréscimo do fiado</b>, ele é somado por item (ex.: R$ 0,50 por item).</p>
+  <h3>Receber um pagamento</h3>
+  <ol>
+    <li><span class="path">Fiado</span>. A lista mostra quem deve, quanto e há quantos dias. Marque <b>Só quem tem saldo</b> para esconder quem está em dia.</li>
+    <li>Toque no <b>nome do cliente</b>. Aparece o <b>saldo devedor</b>, as compras a prazo e os pagamentos.</li>
+    <li>Em <b>Registrar pagamento</b>, escolha a forma (dinheiro, Pix ou cartão), digite o <b>valor pago</b> e confirme. Pode ser parcial, mas não maior que o saldo.</li>
+  </ol>
+  <h3>Lembrete rápido</h3>
+  <p>O botão verde <span class="btn">Cobrar</span> na lista <b>não registra pagamento</b>: ele abre uma mensagem curta com o valor devido, pronta para mandar pelo WhatsApp.</p>
+  <p>O pagamento abate as compras mais antigas primeiro. Recebimentos em dinheiro entram na gaveta do seu caixa.</p>
+  <h3>Mandar a cobrança pelo WhatsApp</h3>
+  <ol>
+    <li>Toque no nome do cliente na lista de Fiado.</li>
+    <li>Toque em <span class="btn">Gerar extrato para enviar</span>. Escolha <b>Só o que está em aberto</b> ou <b>Tudo (com pagamentos)</b>.</li>
+    <li>Toque no botão do WhatsApp. Com o celular do cliente cadastrado, abre direto a conversa dele. Sem número, você escolhe o contato.</li>
+  </ol>
+</section>
+
+<section id="offline">
+  <div class="who"><span class="pill">Todos</span></div>
+  <h2>Sem internet</h2>
+  <p>O caixa continua vendendo sem internet:</p>
+  <ul>
+    <li>Produtos, preços e o caixa aberto ficam guardados no aparelho.</li>
+    <li>Vendas feitas sem internet ficam numa <b>fila</b> e são enviadas sozinhas quando a conexão volta. Nunca duplicam.</li>
+    <li>No topo aparece um aviso com quantas vendas estão esperando.</li>
+  </ul>
+  <div class="box warn"><b>Precisa de internet</b>Fiado, mesas, cadastros, relatórios e fechamento de caixa. Vendas guardadas há mais de 24 horas são registradas com o horário do envio.</div>
+  <div class="box bad"><b>Não saia do sistema</b>com vendas na fila. Espere a internet voltar e o aviso sumir.</div>
+</section>
+
+<section id="impressora">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Impressora (comprovante)</h2>
+  <p>Funciona com impressora térmica instalada <b>no aparelho</b> (USB, Bluetooth ou rede). A configuração vale só para aquele aparelho.</p>
+  <ol>
+    <li><span class="path">Administração › Configurações</span> › <b>Impressora (deste aparelho)</b>.</li>
+    <li>Escolha <b>Papel 58 mm</b> ou <b>Papel 80 mm</b> (veja na bobina).</li>
+    <li>Se quiser, marque <b>Imprimir o comprovante automaticamente</b> após cada venda.</li>
+    <li>Toque em <span class="btn">Imprimir teste</span>. Na primeira vez, escolha a impressora no quadro de impressão e marque como <b>padrão</b>.</li>
+  </ol>
+</section>
+
+<section id="video">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Vídeo para administradores</h2>
+  <p>As principais funções de gestão, em poucos minutos.</p>
+  <video src="/media/tutorial-admin-95be052b9d.mp4" poster="/media/tutorial-admin-95be052b9d.jpg" controls playsinline preload="metadata"></video>
+  <p><a href="/media/tutorial-admin-95be052b9d.mp4" download>Baixar o vídeo</a></p>
+</section>
+
+<section id="painel">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Painel</h2>
+  <p><span class="path">Administração › Painel</span> é o resumo do dia:</p>
+  <ul>
+    <li><b>Faturamento hoje</b>, com a variação em relação ao mesmo período anterior.</li>
+    <li><b>Vendas hoje</b> e ticket médio (valor médio por venda).</li>
+    <li><b>Margem bruta hoje</b>: quanto sobra depois do custo da mercadoria. Só considera itens com custo cadastrado.</li>
+    <li><b>Fiado pendente</b>: total a receber e quantos clientes.</li>
+    <li><b>Caixas abertos</b> agora, com quem abriu, vendas e dinheiro esperado.</li>
+    <li>Listas de <b>mais vendidos (7 dias)</b>, <b>estoque baixo</b> e <b>validade próxima</b>.</li>
+  </ul>
+  <p>Toque em <span class="btn">Atualizar</span> para recarregar os números.</p>
+</section>
+
+<section id="produtos">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Produtos</h2>
+  <h3>Catálogo pronto (o jeito mais rápido)</h3>
+  <ol>
+    <li><span class="path">Administração › Produtos</span> › <span class="btn">Produtos prontos</span>.</li>
+    <li>Marque o que você vende (ou <span class="btn">Marcar todos</span>), ajuste o preço e, se quiser, o estoque inicial.</li>
+    <li>Salve. Depois lance o estoque em <span class="btn">Entrada</span> e o código de barras em <span class="btn">Editar</span>.</li>
+  </ol>
+  <h3>Novo produto</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Campo</th><th>O que pôr</th></tr>
+    <tr><td>Nome</td><td>Como aparece na venda. Ex.: Cerveja Lata 350ml.</td></tr>
+    <tr><td>Categoria</td><td>Agrupa na tela de venda e nos relatórios.</td></tr>
+    <tr><td>Unidade de venda</td><td><b>Unidade</b> (inteira), <b>kg</b> ou <b>litro</b>. <b>Não muda depois</b> do cadastro.</td></tr>
+    <tr><td>Preço</td><td>Preço de venda (por unidade, kg ou litro).</td></tr>
+    <tr><td>Custo</td><td>Opcional, mas necessário para margem e lucro.</td></tr>
+    <tr><td>Código de barras</td><td>Leia com o coletor ou a câmera. Não pode repetir.</td></tr>
+    <tr><td>Código interno</td><td>Opcional. Um código seu para digitar rápido.</td></tr>
+    <tr><td>Estoque mínimo</td><td>Abaixo dele o produto fica amarelo e entra na reposição.</td></tr>
+    <tr><td>Desenho ou foto</td><td>O desenho já vem escolhido pelo nome. Pode colar um link https de foto.</td></tr>
+    <tr><td>Controlar validade</td><td>Marque para informar a validade em cada entrada.</td></tr>
+    <tr><td>Embalagem de compra</td><td>Como chega do fornecedor (ex.: caixa com 12). Na entrada você informa só quantas caixas chegaram.</td></tr>
+  </table></div>
+  <h3>Produto que desconta de outro (ex.: chopp)</h3>
+  <p>Em <b>Estoque deste produto</b>, escolha <b>Desconta de outro produto</b>. Ex.: "Copo de Chopp 300ml" vendido por unidade, que desconta 300 mL do "Chopp (barril)". O custo e o estoque vêm do produto de origem.</p>
+  <h3>Botões de cada produto</h3>
+  <ul>
+    <li><span class="btn">Entrada</span>: chegou mercadoria. Informe a quantidade (ou caixas), o custo e a validade (se controlada). Marque <b>Atualizar custo</b> para usar o novo custo.</li>
+    <li><span class="btn">Editar</span>: muda dados. Desmarque <b>Produto ativo</b> para parar de vender sem apagar o histórico.</li>
+    <li><span class="btn">Histórico</span>: movimentações de estoque e alterações de cadastro (quem, quando, de/para).</li>
+  </ul>
+  <p><span class="btn">Exportar planilha</span> baixa a lista em CSV (abre no Excel).</p>
+</section>
+
+<section id="estoque">
+  <div class="who"><span class="pill adm">Admin</span><span class="pill">Módulo Estoque</span></div>
+  <h2>Estoque e validade</h2>
+  <p>O estoque <b>sai sozinho</b> a cada venda e <b>volta</b> a cada cancelamento. Só muda por: entrada, ajuste/perda ou inventário.</p>
+  <h3>Registrar perda ou ajuste</h3>
+  <ol>
+    <li><span class="path">Administração › Estoque</span> › aba <b>Movimentações</b> › <span class="btn">Registrar ajuste ou perda</span>.</li>
+    <li>Escolha o produto e o tipo: <b>Perda / baixa</b> (quebrou, venceu) ou <b>Acrescentar</b>.</li>
+    <li>Informe a quantidade e o motivo (ex.: garrafa quebrada) e registre.</li>
+  </ol>
+  <h3>O que a tela mostra</h3>
+  <ul>
+    <li><b>Abaixo do mínimo</b>: produtos para repor.</li>
+    <li><b>Validade próxima ou vencida</b>: lotes perto de vencer. Os lotes não são baixados um a um: confira na prateleira e registre a perda quando jogar fora.</li>
+    <li>Aba <b>Alertas</b>: as duas listas acima. Aba <b>Movimentações</b>: tudo que entrou e saiu, com filtros por produto, tipo, pessoa e data. Pode exportar.</li>
+  </ul>
+</section>
+
+<section id="inventario">
+  <div class="who"><span class="pill">Todos</span><span class="pill">Módulo Inventário</span></div>
+  <h2>Inventário (contagem)</h2>
+  <ol>
+    <li><span class="path">Inventário</span> › <span class="btn">Novo inventário</span>.</li>
+    <li>Escolha o tipo:
+      <ul>
+        <li><b>Geral</b>: todos os produtos ativos. Ideal uma vez por mês.</li>
+        <li><b>Por categoria</b>: só uma categoria (ex.: Cervejas). Bom para contagens semanais.</li>
+        <li><b>Parcial</b> (contagem rápida): conte só o que ler ou digitar, como os itens de maior giro.</li>
+      </ul></li>
+    <li>Deixe marcada a <b>Contagem cega</b> (quem conta não vê a quantidade do sistema). É o recomendado.</li>
+    <li>Toque em <span class="btn">Começar contagem</span>. Leia o código com o coletor (não precisa clicar no campo) ou digite o nome, e informe a quantidade. Produtos por kg ou litro sempre pedem a quantidade.</li>
+    <li>Toque em <span class="btn">Revisar e concluir</span>. Veja as diferenças. Use <span class="btn">Recontar</span> no que estiver estranho.</li>
+    <li>Marque <b>Ajustar o estoque do sistema para as quantidades contadas</b> e toque em <span class="btn">Concluir</span>.</li>
+  </ol>
+  <p>A <b>acuracidade</b> (quanto o sistema batia com a prateleira) é registrada antes do ajuste. Defina uma meta em Configurações (ex.: 98%). <span class="btn">Descartar</span> apaga a contagem sem ajustar nada.</p>
+</section>
+
+<section id="reposicao">
+  <div class="who"><span class="pill adm">Admin</span><span class="pill">Módulo Reposição</span></div>
+  <h2>Reposição (lista de compras)</h2>
+  <p><span class="path">Administração › Reposição</span> sugere quanto comprar de cada produto:</p>
+  <ul>
+    <li><b>Média/dia</b>: quanto vende por dia, nos últimos dias.</li>
+    <li><b>Cobertura</b>: para quantos dias o estoque atual dá.</li>
+    <li><b>Comprar</b>: sugestão = o maior entre o estoque mínimo e (média por dia × dias de prazo e reserva), menos o estoque atual.</li>
+  </ul>
+  <p>Ajuste prazo de entrega e reserva de segurança em <span class="path">Configurações › Estoque e reposição</span>. É só uma sugestão: nenhum pedido é feito ao fornecedor.</p>
+</section>
+
+<section id="analise">
+  <div class="who"><span class="pill adm">Admin</span><span class="pill">Módulo Análise</span></div>
+  <h2>Análise</h2>
+  <p>Escolha o período (Hoje, 7 dias, 15 dias, 30 dias, Mês atual ou Personalizado) e, se quiser, a categoria. Veja:</p>
+  <ul>
+    <li>Faturamento, número de vendas, custo das mercadorias, <b>lucro bruto estimado</b> e margem.</li>
+    <li><b>Evolução diária</b> e faturamento por categoria.</li>
+    <li><b>Mais vendidos</b>, <b>menor giro</b> e <b>sem vendas</b> (produto parado).</li>
+    <li><b>Alta saída, baixa margem</b>: vende muito mas ganha pouco. Candidatos a revisar o preço.</li>
+  </ul>
+  <p>Sem custo cadastrado, margem e lucro aparecem como "sem custo".</p>
+</section>
+
+<section id="clientes">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Clientes</h2>
+  <p><span class="path">Administração › Clientes</span>: cadastre nome, <b>telefone (com DDD)</b> e observações. Desmarque <b>Ativo</b> para impedir novas compras a prazo daquele cliente. Toque em <span class="btn">Extrato</span> para ver o histórico.</p>
+</section>
+
+<section id="vendas">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Vendas e Caixas</h2>
+  <h3>Vendas</h3>
+  <p><span class="path">Administração › Vendas</span>: todas as vendas, por período (Hoje, Semana, Quinzena, Mês atual, Escolher mês, Personalizado, Tudo). Filtre por forma de pagamento, categoria, balcão ou mesas, situação, operador e cliente do fiado. Toque numa venda para ver os itens, imprimir ou cancelar. <span class="btn">Exportar planilha</span> baixa o que está filtrado.</p>
+  <h3>Caixas</h3>
+  <p><span class="path">Administração › Caixas</span>: caixas abertos agora e o histórico de fechamentos, com esperado, contado e <b>diferença</b>. Toque em <span class="btn">Detalhes</span> para ver o resumo completo de um caixa.</p>
+</section>
+
+<section id="usuarios">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Usuários e senhas</h2>
+  <h3>Criar acesso</h3>
+  <ol>
+    <li><span class="path">Administração › Usuários</span> › <span class="btn">Novo usuário</span>.</li>
+    <li>Nome, login e perfil (<b>Operador</b> ou <b>Administrador</b>). A senha é gerada com letras fáceis de digitar.</li>
+    <li>Na tela seguinte, envie o acesso pelo WhatsApp (endereço, login e senha numa mensagem pronta).</li>
+  </ol>
+  <h3>Trocar senha, perfil ou bloquear</h3>
+  <p><span class="btn">Editar</span> no usuário: <b>Gerar nova senha</b>, trocar o perfil ou desmarcar <b>Ativo</b> para bloquear na hora. Qualquer uma dessas mudanças <b>desconecta</b> a pessoa de todos os aparelhos.</p>
+  <p>Você não pode bloquear nem rebaixar a sua própria conta.</p>
+</section>
+
+<section id="config">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Configurações</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Item</th><th>Para que serve</th></tr>
+    <tr><td>Impressora (deste aparelho)</td><td>Ver <a href="#impressora">Impressora</a>.</td></tr>
+    <tr><td>Estabelecimento</td><td>Nome (aparece no topo e na tela de entrada) e logo (link https de uma imagem).</td></tr>
+    <tr><td>Pix</td><td>Chave (CPF, CNPJ, e-mail, celular com +55 ou aleatória), nome do recebedor (até 25 letras, como no banco) e cidade. Com isso, o Pix mostra QR Code com o valor.</td></tr>
+    <tr><td>Caixa</td><td>Código de caixa: único do estabelecimento ou individual por pessoa. Ver <a href="#codigos">Códigos</a>.</td></tr>
+    <tr><td>Cancelamento de vendas</td><td>Código pedido para cancelar qualquer venda ou corrigir item de mesa.</td></tr>
+    <tr><td>Venda a prazo (fiado)</td><td>Acréscimo em R$ por item vendido no fiado. Vale só para vendas novas.</td></tr>
+    <tr><td>Cartão</td><td>Acréscimo no débito e no crédito: valor por unidade ou % sobre o total. Em branco = sem acréscimo.</td></tr>
+    <tr><td>Estoque e reposição</td><td>Permitir vender sem estoque, prazo de reposição e reserva de segurança.</td></tr>
+    <tr><td>Inventário</td><td>Meta de acuracidade (ex.: 98%). Cada inventário concluído é comparado com ela.</td></tr>
+    <tr><td>Categorias</td><td>Crie categorias e toque nelas para ativar ou desativar.</td></tr>
+  </table></div>
+  <p>Toque em <span class="btn">Salvar configurações</span> no fim da página.</p>
+</section>
+
+<section id="codigos">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Códigos de caixa e de cancelamento</h2>
+  <p>São números curtos (4 a 8 dígitos), diferentes da senha, para confirmar ações de dinheiro.</p>
+  <ul>
+    <li><b>Código de caixa</b>: pedido para abrir e fechar o caixa.
+      <ul>
+        <li><b>Único do estabelecimento</b>: todos usam o mesmo.</li>
+        <li><b>Individual por usuário</b>: cada pessoa tem o seu, definido em <span class="path">Usuários › Definir código</span>. Mostra quem fez o quê.</li>
+      </ul></li>
+    <li><b>Código de cancelamento</b>: pedido para cancelar venda e corrigir item de mesa. Use um código <b>diferente</b> do caixa e passe só para quem pode cancelar.</li>
+  </ul>
+  <div class="box warn"><b>Segurança</b>5 erros em 15 minutos bloqueiam aquela pessoa por 15 minutos.</div>
+</section>
+
+<section id="auditoria">
+  <div class="who"><span class="pill adm">Admin</span><span class="pill">Módulo Auditoria</span></div>
+  <h2>Auditoria</h2>
+  <p><span class="path">Administração › Auditoria</span>: os últimos 300 registros de ações importantes (cancelamentos, mudanças de preço, usuários, configurações, tentativas de acesso negado), com quem, quando e o quê. Nada pode ser apagado.</p>
+</section>
+
+<section id="assinatura">
+  <div class="who"><span class="pill adm">Admin</span></div>
+  <h2>Assinatura</h2>
+  <ul>
+    <li><span class="path">Administração › Assinatura</span> mostra a situação, a data do teste grátis e a próxima cobrança.</li>
+    <li><span class="btn">Assinar agora</span> abre o pagamento seguro (cartão). <span class="btn">Atualizar cartão e ver faturas</span> abre o portal de pagamento.</li>
+    <li>Sem pagamento em dia, o sistema <b>fica fora do ar para todos</b> do estabelecimento. <b>Os dados ficam guardados</b> e voltam assim que o pagamento é confirmado. Toque em <span class="btn">Já paguei, verificar</span>.</li>
+  </ul>
+</section>
+
+<section id="duvidas">
+  <h2>Dúvidas comuns</h2>
+  <details><summary>O Pix foi confirmado automaticamente?</summary><p>Não. O sistema gera o QR Code com o valor, mas não tem acesso ao seu banco. Confira no app do banco antes de confirmar a venda.</p></details>
+  <details><summary>Vendi errado. Edito ou cancelo?</summary><p>Venda concluída não se edita: cancele (com motivo e código) e faça de novo, enquanto o caixa estiver aberto. Na mesa, use "Corrigir" no item.</p></details>
+  <details><summary>O fechamento deu diferença. E agora?</summary><p>Confira se todo suprimento e toda retirada foram registrados e se o troco foi dado certo. O fechamento fica gravado com a diferença; ele não pode ser refeito.</p></details>
+  <details><summary>Posso usar em mais de um aparelho ao mesmo tempo?</summary><p>Sim. Cada pessoa entra com o próprio usuário e abre o próprio caixa. A impressora é configurada em cada aparelho.</p></details>
+  <details><summary>O estoque ficou negativo.</summary><p>Aconteceu uma venda sem entrada registrada (só é possível se "Permitir vender sem estoque" estiver ligado). Registre a entrada ou faça um inventário do produto.</p></details>
+  <details><summary>Apaguei um produto sem querer?</summary><p>Produtos não são apagados, só desativados. Em Produtos, abra o produto e marque "Produto ativo".</p></details>
+  <details><summary>Um módulo (Mesas, Fiado…) sumiu.</summary><p>Ele não está liberado para o seu estabelecimento. Fale com o suporte do Central.PDV.</p></details>
+  <details><summary>Como trocar o nome ou a logo?</summary><p>Administração › Configurações › Estabelecimento. Salve no fim da página.</p></details>
+  <details><summary>Como vejo o que um funcionário fez?</summary><p>Administração › Vendas (filtro por operador), Caixas (fechamentos) e Auditoria (ações).</p></details>
+  <details><summary>Meus dados estão seguros?</summary><p>Cada estabelecimento tem os dados separados dos outros. Senhas são guardadas de forma que nem o suporte consegue ler. O acesso é só por conexão segura (https).</p></details>
+</section>
+
+<section id="problemas">
+  <h2>Algo deu errado</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Mensagem ou sintoma</th><th>O que fazer</th></tr>
+    <tr><td>"Usuário ou senha incorretos"</td><td>Confira maiúsculas e o login. Peça ao administrador uma nova senha.</td></tr>
+    <tr><td>"Muitas tentativas"</td><td>Espere 15 minutos e tente de novo.</td></tr>
+    <tr><td>"O caixa está fechado"</td><td>Abra o caixa em Caixa › Abrir caixa.</td></tr>
+    <tr><td>"Código incorreto"</td><td>Confira com o administrador o código de caixa ou de cancelamento.</td></tr>
+    <tr><td>"Sistema fora do ar" / assinatura</td><td>O administrador regulariza em Administração › Assinatura.</td></tr>
+    <tr><td>Aviso de sem internet no topo</td><td>Continue vendendo; as vendas sobem sozinhas quando a conexão voltar. Não saia do sistema.</td></tr>
+    <tr><td>Não imprime</td><td>Confira se a impressora está ligada e é a padrão do aparelho. Faça o "Imprimir teste".</td></tr>
+    <tr><td>Câmera não lê o código</td><td>Permita o acesso à câmera no navegador, limpe a lente e aproxime devagar com boa luz.</td></tr>
+    <tr><td>Tela estranha ou desatualizada</td><td>Feche e abra o navegador (ou puxe a tela para baixo para recarregar).</td></tr>
+  </table></div>
+</section>
+
+</main>
+<footer>Central.PDV · Manual · Toque em "?" dentro do sistema para fazer o tour guiado.</footer>
+</div>
+</body>
+</html>

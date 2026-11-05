@@ -1,4 +1,5 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Tour, HelpMenu } from './components/Tour';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './components/session';
 import { ToastProvider, Loading } from './components/ui';
@@ -44,10 +45,12 @@ function Shell({ children }: { children: ReactNode }) {
         </nav>
         <span className="spacer" />
         <OfflineStatus />
+        <HelpMenu />
         <span className="faint user-name">{user?.name}</span>
         <button className="btn ghost sm" onClick={logout}>Sair</button>
       </header>
       <NoticeBar />
+      <Tour />
       {inAdmin ? children : <main className={`content ${loc.pathname === '/' ? 'has-bar' : ''}`}>{children}</main>}
       {loc.pathname !== '/' && <SystemFooter />}
       <nav className="bottom-nav" aria-label="Navegação principal">
@@ -63,9 +66,13 @@ function AdminLayout({ children }: { children: ReactNode }) {
   const all: [string, string, ModuleKey?][] = [['/admin', 'Painel'], ['/admin/analise', 'Análise', 'analise'], ['/admin/reposicao', 'Reposição', 'reposicao'], ['/admin/produtos', 'Produtos'], ['/admin/estoque', 'Estoque', 'estoque'], ['/inventario', 'Inventário', 'inventario'], ['/admin/clientes', 'Clientes', 'fiado'], ['/admin/vendas', 'Vendas'], ['/admin/caixas', 'Caixas'], ['/admin/usuarios', 'Usuários'], ['/admin/config', 'Configurações'], ['/admin/auditoria', 'Auditoria', 'auditoria']];
   const links = all.filter(([, , m]) => !m || boot?.modules[m]);
   links.push(['/admin/assinatura', 'Assinatura']);
+  const nav = useRef<HTMLElement>(null);
+  const loc = useLocation();
+  // No celular o menu do admin rola de lado: mantém a tela atual visível.
+  useEffect(() => { nav.current?.querySelector('a.active')?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [loc.pathname]);
   return (
     <div className="admin-layout">
-      <nav className="sidenav">{links.map(([to, l]) => <NavLink key={to} to={to} end={to === '/admin'}>{l}</NavLink>)}</nav>
+      <nav className="sidenav" ref={nav}>{links.map(([to, l]) => <NavLink key={to} to={to} end={to === '/admin'}>{l}</NavLink>)}</nav>
       <main className="content">{children}</main>
     </div>
   );
