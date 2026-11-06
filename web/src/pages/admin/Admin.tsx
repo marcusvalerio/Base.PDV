@@ -266,7 +266,8 @@ function MercadoPagoCard() {
       await api('/mp/disconnect', { body: {} }); toast('Mercado Pago desconectado.', 'success'); reload(); refreshBoot();
     } catch (e: any) { toast(e.message, 'error'); }
   });
-  if (!data || !data.available) return null;
+  // Pix automático só aparece para o plano Pro (ainda não lançado).
+  if (!data || !data.available || data.plan !== 'pro') return null;
   return (
     <div className="notice stack" style={{ gap: 8, background: data.connected ? 'var(--success-soft)' : 'var(--accent-soft)', color: 'var(--text)' }}>
       {back === 'ok' && <b style={{ color: 'var(--success)' }}>Conta do Mercado Pago conectada.</b>}
