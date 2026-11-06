@@ -108,3 +108,30 @@ export function printLabels(p: { name: string; price_cents?: number | null; unit
   d.open(); d.write(html); d.close();
   setTimeout(() => { f.contentWindow!.focus(); f.contentWindow!.print(); setTimeout(() => f.remove(), 2000); }, 200);
 }
+
+/**
+ * Folha de códigos (A4) para deixar no balcão: nome, preço e código de barras de cada produto.
+ * O funcionário lê com o leitor ou a câmera e o produto entra no pedido. Pela janela de impressão dá para salvar em PDF.
+ */
+export function printBarcodeSheet(items: { name: string; price_cents?: number | null; unit?: string; code: string; svg: string }[], opts: { storeName?: string; price: boolean }) {
+  const per = (u?: string) => (u === 'KG' ? '/kg' : u === 'L' ? '/L' : '');
+  const rows = items.map((i) => `<div class="it"><div class="tx"><div class="nm">${esc(i.name)}</div>${opts.price && i.price_cents != null ? `<div class="pr">${money(i.price_cents)}${per(i.unit)}</div>` : ''}</div><div class="bc">${i.svg}</div></div>`).join('');
+  const css = `@page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
+    h1 { font-size: 15pt; margin: 0 0 1mm; } .sub { font-size: 9pt; margin-bottom: 5mm; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 6mm; }
+    .it { display: flex; align-items: center; gap: 3mm; padding: 2.5mm 3mm; border: .3mm solid #999; border-radius: 2mm; break-inside: avoid; page-break-inside: avoid; }
+    .tx { flex: 1; min-width: 0; } .nm { font-size: 10.5pt; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; } .pr { font-size: 10pt; margin-top: 1mm; }
+    .bc { width: 40mm; flex: none; } .bc svg { width: 100%; height: auto; display: block; }`;
+  const when = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, dateStyle: 'short' }).format(new Date());
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Códigos de barras${opts.storeName ? ' - ' + esc(opts.storeName) : ''}</title><style>${css}</style></head><body>
+    <h1>${esc(opts.storeName || 'Códigos de barras')}</h1><div class="sub">Folha de códigos · ${items.length} produto(s) · ${when}. Leia o código com o leitor ou a câmera para lançar o produto.</div>
+    <div class="grid">${rows}</div></body></html>`;
+  const f = document.createElement('iframe');
+  f.setAttribute('aria-hidden', 'true');
+  Object.assign(f.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0' });
+  document.body.appendChild(f);
+  const d = f.contentWindow!.document;
+  d.open(); d.write(html); d.close();
+  setTimeout(() => { f.contentWindow!.focus(); f.contentWindow!.print(); setTimeout(() => f.remove(), 2000); }, 250);
+}

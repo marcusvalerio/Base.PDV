@@ -17,6 +17,7 @@ import Dashboard from './pages/admin/Dashboard';
 import Analysis from './pages/admin/Analysis';
 import Restock from './pages/admin/Restock';
 import Products from './pages/admin/Products';
+import Barcodes from './pages/admin/Barcodes';
 import Stock from './pages/admin/Stock';
 import { Customers, Sales, Registers, Users, Settings, Audit } from './pages/admin/Admin';
 import { InventoryList, InventoryCount } from './pages/Inventory';
@@ -64,7 +65,7 @@ function Shell({ children }: { children: ReactNode }) {
 function AdminLayout({ children }: { children: ReactNode }) {
   const { user, boot } = useSession();
   if (user?.role !== 'ADMIN') return <Navigate to="/" replace />;
-  const all: [string, string, ModuleKey?][] = [['/admin', 'Painel'], ['/admin/analise', 'Análise', 'analise'], ['/admin/reposicao', 'Reposição', 'reposicao'], ['/admin/produtos', 'Produtos'], ['/admin/estoque', 'Estoque', 'estoque'], ['/inventario', 'Inventário', 'inventario'], ['/admin/clientes', 'Clientes', 'fiado'], ['/admin/vendas', 'Vendas'], ['/admin/caixas', 'Caixas'], ['/admin/usuarios', 'Usuários'], ['/admin/config', 'Configurações'], ['/admin/auditoria', 'Auditoria', 'auditoria']];
+  const all: [string, string, ModuleKey?][] = [['/admin', 'Painel'], ['/admin/analise', 'Análise', 'analise'], ['/admin/reposicao', 'Reposição', 'reposicao'], ['/admin/produtos', 'Produtos'], ['/admin/codigos', 'Códigos de barras'], ['/admin/estoque', 'Estoque', 'estoque'], ['/inventario', 'Inventário', 'inventario'], ['/admin/clientes', 'Clientes', 'fiado'], ['/admin/vendas', 'Vendas'], ['/admin/caixas', 'Caixas'], ['/admin/usuarios', 'Usuários'], ['/admin/config', 'Configurações'], ['/admin/auditoria', 'Auditoria', 'auditoria']];
   const links = all.filter(([, , m]) => !m || boot?.modules[m]);
   links.push(['/admin/assinatura', 'Assinatura']);
   const nav = useRef<HTMLElement>(null);
@@ -117,6 +118,7 @@ function Routed() {
         <Route path="/admin/vendas" element={A(<Sales />)} />
         <Route path="/admin/caixas" element={A(<Registers />)} />
         <Route path="/admin/usuarios" element={A(<Users />)} />
+        <Route path="/admin/codigos" element={A(<Barcodes />)} />
         <Route path="/admin/config" element={A(<Settings />)} />
         <Route path="/admin/auditoria" element={A(<M k="auditoria"><Audit /></M>)} />
         <Route path="/admin/assinatura" element={A(<BillingPage />)} />
