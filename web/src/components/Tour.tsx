@@ -64,7 +64,8 @@ export function Tour() {
     if (!owner || !boot) return;
     let seen = '1';
     try { seen = localStorage.getItem(KEY + owner) || ''; } catch { /* ignorar */ }
-    if (!seen) { const t = setTimeout(() => setI(0), 700); return () => clearTimeout(t); }
+    // Espera a abertura do app terminar antes de começar.
+    if (!seen) { let t: any; const go = () => { t = setTimeout(() => (document.querySelector('.splash') ? go() : setI(0)), 700); }; go(); return () => clearTimeout(t); }
   }, [owner, boot]);
 
   useEffect(() => { if (step && loc.pathname !== step.path) nav(step.path); }, [step, loc.pathname, nav]);

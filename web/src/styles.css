@@ -482,3 +482,32 @@ html, body, #root { min-height: 100%; }
 .plan .btn { margin-top: auto; }
 .pix-ok { display: flex; align-items: center; justify-content: center; font-size: 72px; font-weight: 800; color: #fff !important; background: var(--success) !important; }
 .pix-box.pix-paid { border-color: var(--success); background: var(--success-soft); }
+
+/* Abertura do app */
+.splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: #0b0d14; color: #fff; cursor: pointer; overflow: hidden; padding: 24px; text-align: center; transition: opacity .42s ease, transform .42s ease; }
+.splash.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+.splash-glow { position: absolute; width: 900px; height: 900px; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.6);
+  background: radial-gradient(circle, rgba(59,108,255,.38) 0%, rgba(124,92,255,.18) 35%, transparent 65%); transform: translate(-50%, -50%); }
+.splash-brand { position: relative; font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: .3em; text-transform: uppercase; color: rgba(255,255,255,.75);
+  animation: sp-brand 1.7s cubic-bezier(.2,.7,.2,1) forwards; }
+.splash-brand span { color: #5b7fff; }
+.splash-hello { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0; transform: translateY(14px);
+  animation: sp-hello .6s .45s cubic-bezier(.2,.7,.2,1) forwards; }
+.splash-hello img { width: 64px; height: 64px; border-radius: 18px; object-fit: cover; margin-bottom: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.splash-hello .g { font-size: 18px; color: rgba(255,255,255,.6); }
+.splash-hello .n { font-family: var(--display); font-weight: 750; font-size: clamp(30px, 8vw, 52px); letter-spacing: -0.03em; line-height: 1.05; max-width: 90vw;
+  background: linear-gradient(120deg, #fff 30%, #aab9ff 70%, #c9b8ff); -webkit-background-clip: text; background-clip: text; color: transparent; overflow-wrap: anywhere; }
+.splash-bar { position: absolute; bottom: calc(48px + env(safe-area-inset-bottom)); width: 120px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.splash-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #3b6cff, #7c5cff); transform-origin: left; transform: scaleX(0); animation: sp-bar 1.6s ease-in-out forwards; }
+@keyframes sp-glow { to { transform: translate(-50%, -50%) scale(1); } }
+@keyframes sp-brand { 0% { opacity: 0; letter-spacing: .6em; } 25% { opacity: 1; letter-spacing: .3em; } 100% { opacity: 1; letter-spacing: .3em; } }
+@keyframes sp-hello { to { opacity: 1; transform: none; } }
+@keyframes sp-bar { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .splash-glow, .splash-brand, .splash-hello, .splash-bar i { animation: none; opacity: 1; transform: none; }
+  .splash-glow { transform: translate(-50%, -50%); }
+  .splash-bar { display: none; }
+}
+.splash.warm .splash-brand { animation: none; }
+.splash.warm .splash-glow { animation: none; transform: translate(-50%, -50%) scale(1); }
