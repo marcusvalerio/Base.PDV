@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Tour, HelpMenu } from './components/Tour';
+import { Splash, SplashLoading, splashPending } from './components/Splash';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './components/session';
 import { ToastProvider, Loading } from './components/ui';
@@ -50,6 +51,7 @@ function Shell({ children }: { children: ReactNode }) {
         <button className="btn ghost sm" onClick={logout}>Sair</button>
       </header>
       <NoticeBar />
+      <Splash />
       <Tour />
       {inAdmin ? children : <main className={`content ${loc.pathname === '/' ? 'has-bar' : ''}`}>{children}</main>}
       {loc.pathname !== '/' && <SystemFooter />}
@@ -88,7 +90,8 @@ function M({ k, children }: { k: ModuleKey; children: ReactNode }) {
 function Routed() {
   const { user, ready, boot, access } = useSession();
   const [onbDone, setOnbDone] = useState(false);
-  if (!ready) return <Loading />;
+  // Carregando na primeira abertura: já usa o fundo da abertura (sem piscar branco antes da animação).
+  if (!ready) return splashPending() ? <SplashLoading /> : <Loading />;
   if (!user) return location.pathname === '/app/cadastro' ? <Signup /> : <Login />;
   if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/app/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
     // Passo a passo do primeiro acesso: enquanto não foi concluído e ainda falta o básico (nome ou códigos)
