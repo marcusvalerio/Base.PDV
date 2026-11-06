@@ -172,6 +172,8 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   r.use('/audit', mod('auditoria'));
 
   // Informações públicas (tela de entrada): nome e logo do estabelecimento do último acesso, se houver sessão.
+  // Cadastro pelo site: quantos dias de teste grátis (SIGNUP_TRIAL_DAYS; 0 = sem teste, vai direto ao pagamento).
+  r.get('/public/signup', (_req, res) => res.json({ trialDays: Math.max(0, Math.min(365, Number(process.env.SIGNUP_TRIAL_DAYS || 0) || 0)) }));
   r.get('/public/info', async (req, res) => res.json(req.tenant ? {
     storeName: await settings.getSetting(db, 'store_name'),
     storeLogo: await settings.getSetting(db, 'store_logo_url'),

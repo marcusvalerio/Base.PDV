@@ -108,6 +108,28 @@ describe('assinatura (Stripe)', () => {
 });
 
 describe('cadastro pelo site e painel central', () => {
+  it('com SIGNUP_TRIAL_DAYS=5: entra liberado por 5 dias, sem Stripe; depois bloqueia', async () => {
+    process.env.SIGNUP_TRIAL_DAYS = '5';
+    try {
+      const { app, base } = await setup();
+      expect((await request(app).get('/api/public/signup')).body.trialDays).toBe(5);
+      const body = { storeName: 'Bar Teste Grátis', name: 'Dona Teste', phone: '11999990000', username: 'dona.teste.gratis', password: 'senha-forte-123' };
+      const r = await request(app).post('/api/signup').set('X-Requested-With', 'pdv').send(body);
+      expect(r.status).toBe(201);
+      const cookie = (r.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+      const me = await request(app).get('/api/auth/me').set('Cookie', cookie);
+      expect(me.body.access.ok).toBe(true);
+      const days = (Date.parse(me.body.access.trialEndsAt) - Date.now()) / 864e5;
+      expect(days).toBeGreaterThan(4.9); expect(days).toBeLessThanOrEqual(5);
+      expect((await request(app).get('/api/products').set('Cookie', cookie)).status).toBe(200);
+      // Aviso automático no topo do sistema.
+      expect(JSON.stringify((await request(app).get('/api/notices').set('Cookie', cookie)).body)).toContain('teste grátis');
+      // Teste vencido: bloqueia até assinar.
+      await base.run('UPDATE tenants SET trial_ends_at = ? WHERE id = ?', [new Date(Date.now() - 1000).toISOString(), me.body.user.tenantId]);
+      expect((await request(app).get('/api/products').set('Cookie', cookie)).status).toBe(402);
+    } finally { delete process.env.SIGNUP_TRIAL_DAYS; }
+  });
+
   it('cria estabelecimento, entra e fica aguardando assinatura; aparece nos números do painel', async () => {
     const { app } = await setup();
     const body = { storeName: 'Bar Novo', name: 'Rafa Lima', phone: '11987654321', username: 'rafa.lima', password: 'senha-rafa-123' };
