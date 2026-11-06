@@ -607,3 +607,25 @@ html, body, #root { min-height: 100%; }
 .op-wait i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55);animation:op-wait 1s ease-in-out infinite}
 .op-wait i:nth-child(2){animation-delay:.15s}.op-wait i:nth-child(3){animation-delay:.3s}
 @keyframes op-wait{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+/* Painel central: mesmos espaçamentos do sistema, ajustes para o celular */
+.central-tag .short { display: none; }
+.inline-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s4); }
+.inline-field { display: flex; gap: var(--s2); }
+.inline-field .input { flex: 1; min-width: 0; }
+.central-shell .content > .stack, .central-shell .content.stack { gap: var(--s5); }
+@media (max-width: 699px) {
+  .central-shell .topbar .brand { max-width: none; overflow: visible; }
+  .central-tag .long { display: none; }
+  .central-tag .short { display: inline; }
+  .central-shell .topbar .btn.ghost.sm { padding: 0 var(--s2); }
+  .central-shell .segmented { display: flex; flex-wrap: wrap; overflow: visible; }
+  .central-shell .segmented button { flex: 1 1 auto; }
+  .central-shell .page-head .btn.primary { width: 100%; }
+  /* lista de estabelecimentos: nome e contato em cima, ocupando a linha toda */
+  .table.responsive.tenants td:first-child { display: block; text-align: left; padding-bottom: var(--s2); margin-bottom: var(--s1); border-bottom: 1px dashed var(--border) !important; }
+  .table.responsive.tenants td:first-child::before { content: none; }
+  .table.responsive.tenants td:first-child b { font-size: 16px; }
+  .table.responsive.tenants td:first-child a { display: inline-block; margin-top: var(--s1); }
+  .central-shell .shell, .central-shell { padding-bottom: 0; }
+}
