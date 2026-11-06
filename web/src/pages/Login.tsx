@@ -12,6 +12,7 @@ export default function Login() {
 function LoginForm({ login }: { login: (u: string, p: string) => Promise<void> }) {
   const [u, setU] = useState('');
   const [p, setP] = useState('');
+  const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [store, setStore] = useState('');
@@ -28,7 +29,8 @@ function LoginForm({ login }: { login: (u: string, p: string) => Promise<void> }
       <form className="card stack" onSubmit={submit}>
         {logo && <img className="login-logo" src={logo} alt="" />}<div><h1>{store || <>Central<span className="brand-dot">.</span>PDV</>}</h1><p className="muted" style={{ margin: '4px 0 8px' }}>Entre com a sua conta.</p></div>
         <Field label="Usuário"><input className="input lg" autoComplete="username" autoCapitalize="none" value={u} onChange={(e) => setU(e.target.value)} autoFocus required /></Field>
-        <Field label="Senha"><input className="input lg" type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} required /></Field>
+        <Field label="Senha"><div className="pw-wrap"><input className="input lg" type={show ? 'text' : 'password'} autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={p} onChange={(e) => setP(e.target.value)} required />
+          <button type="button" className="pw-eye" aria-label={show ? 'Esconder senha' : 'Mostrar senha'} onClick={() => setShow(!show)}>{show ? 'Esconder' : 'Mostrar'}</button></div></Field>
         {err && <div className="notice danger" role="alert">{err}</div>}
         <button className="btn primary lg block" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
         <div className="faint" style={{ textAlign: 'center' }}>Ainda não usa o Central.PDV? <a href="/app/cadastro">Contratar</a></div>

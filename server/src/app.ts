@@ -58,7 +58,7 @@ const productSchema = z.object({
 });
 
 const MIN = 60e3;
-const TOO_MANY = () => new AppError(429, 'TOO_MANY', 'Muitas tentativas. Aguarde alguns minutos e tente de novo.');
+const TOO_MANY = () => new AppError(429, 'TOO_MANY', 'Muitas tentativas erradas: este acesso ficou bloqueado por 15 minutos por segurança. Aguarde e tente de novo, ou peça ao administrador uma nova senha.');
 
 export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: string; fetch?: stripe.Fetch } = {}) {
   // "db" usa automaticamente o schema do estabelecimento da requisição; "base" é a plataforma (schema public).
