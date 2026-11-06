@@ -8,6 +8,8 @@ import { CameraButton } from '../../components/scanner';
 import { ProductArt, ArtPicker } from '../../components/ProductArt';
 import { downloadCsv, csvMoney, csvQty } from '../../lib/csv';
 import { CATALOG } from '../../lib/catalog';
+import { ean13Svg, isInternalEan, newInternalEan, toEan13 } from '../../lib/barcode';
+import { printLabels, LabelPaper, getPrinter } from '../../lib/print';
 
 const FIELD_LABEL: Record<string, string> = { name: 'Nome', price_cents: 'Preço', cost_cents: 'Custo', active: 'Ativo', category_id: 'Categoria', min_stock_milli: 'Estoque mínimo', barcode: 'Código de barras', internal_code: 'Código interno', unit: 'Unidade', track_expiry: 'Controla validade' };
 
@@ -20,6 +22,7 @@ export default function Products() {
   const [edit, setEdit] = useState<any | null>(null);
   const [entry, setEntry] = useState<any | null>(null);
   const [history, setHistory] = useState<any | null>(null);
+  const [label, setLabel] = useState<any | null>(null);
   const [catalog, setCatalog] = useState(false);
   return (
     <div className="stack">
@@ -46,6 +49,7 @@ export default function Products() {
                   <td className="r"><div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
                     {!p.stock_source_id && <button className="btn sm" onClick={() => setEntry(p)}>Entrada</button>}
                     <button className="btn sm" onClick={() => setEdit(p)}>Editar</button>
+                    <button className="btn sm" onClick={() => setLabel(p)}>Etiqueta</button>
                     <button className="btn sm ghost" onClick={() => setHistory(p)}>Histórico</button>
                   </div></td>
                 </tr>
@@ -57,6 +61,7 @@ export default function Products() {
       {edit && <ProductForm catalog={data ?? []} p={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {entry && <EntryForm p={entry} onClose={() => setEntry(null)} onSaved={() => { setEntry(null); reload(); }} />}
       {history && <HistoryModal p={history} onClose={() => setHistory(null)} />}
+      {label && <LabelModal p={label} onClose={() => setLabel(null)} onSaved={reload} />}
     </div>
   );
 }
@@ -128,7 +133,10 @@ function ProductForm({ p, catalog, onClose, onSaved }: { p: any; catalog: any[];
         <Field label={`Preço de venda${f.unit === 'L' ? ' (por litro)' : f.unit === 'KG' ? ' (por kg)' : ''}`}><input className="input num" inputMode="decimal" value={f.price} onChange={set('price')} placeholder="0,00" /></Field>
         {!derived && <Field label={`Custo por ${UNIT_LABEL[f.unit]}`} hint="Opcional, mas necessário para margem. Na entrada dá para informar o custo da caixa/barril."><input className="input num" inputMode="decimal" value={f.cost} onChange={set('cost')} placeholder="0,00" /></Field>}
         <Field label="Código interno"><input className="input" value={f.internal_code} onChange={set('internal_code')} /></Field>
-        <Field group label="Código de barras"><div className="row"><input className="input" value={f.barcode} onChange={set('barcode')} inputMode="numeric" placeholder="Leia com o coletor ou a câmera" /><CameraButton label="" onScan={(c) => setF((x) => ({ ...x, barcode: c }))} /></div></Field>
+        <Field group label="Código de barras" hint={isInternalEan(f.barcode) ? 'Código interno da loja (gerado aqui). Imprima a etiqueta em Produtos › Etiqueta.' : 'Produto sem código? Toque em "Gerar" e depois imprima a etiqueta.'}>
+          <div className="row"><input className="input" value={f.barcode} onChange={set('barcode')} inputMode="numeric" placeholder="Leia com o coletor ou a câmera" /><CameraButton label="" onScan={(c) => setF((x) => ({ ...x, barcode: c }))} />
+            {!f.barcode && <button type="button" className="btn" onClick={() => setF((x) => ({ ...x, barcode: newInternalEan() }))}>Gerar</button>}</div>
+        </Field>
         {!derived && <Field label="Estoque mínimo" hint={unitHint}><input className="input num" inputMode="decimal" value={f.min} onChange={set('min')} /></Field>}
         {isNew && !derived && <Field label="Estoque inicial" hint={unitHint}><input className="input num" inputMode="decimal" value={f.initial} onChange={set('initial')} /></Field>}
       </div>
@@ -259,6 +267,49 @@ function CatalogModal({ existing, onClose, onDone }: { existing: string[]; onClo
           </div>
         </div>
       ))}
+    </Modal>
+  );
+}
+
+/** Etiquetas com código de barras: gera um código interno se o produto não tiver e imprime (térmica ou folha A4). */
+function LabelModal({ p, onClose, onSaved }: { p: any; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const { boot } = useSession();
+  const [code, setCode] = useState<string | null>(toEan13(p.barcode));
+  const pr = getPrinter();
+  const [paper, setPaper] = useState<LabelPaper>(pr.width || 'a4');
+  const [copies, setCopies] = useState('1');
+  const [price, setPrice] = useState(true);
+  const [gen, generating] = useAction(async () => {
+    const c = newInternalEan();
+    try { await api(`/products/${p.id}`, { method: 'PATCH', body: { barcode: c } }); setCode(c); onSaved(); toast('Código gerado e salvo no produto.', 'success'); }
+    catch (e: any) { toast(e.message, 'error'); }
+  });
+  const n = Number(copies);
+  return (
+    <Modal title={`Etiqueta · ${p.name}`} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Fechar</button>
+      <button className="btn primary" disabled={!code || !(n >= 1 && n <= 500)} onClick={() => printLabels(p, code!, ean13Svg(code!), { copies: n, paper, price, storeName: boot?.storeName })}>Imprimir {n >= 1 ? n : ''} etiqueta{n === 1 ? '' : 's'}</button></>}>
+      {!code ? (
+        <div className="stack">
+          <div className="notice">{p.barcode ? `O código "${p.barcode}" não é um código de barras de mercado (EAN-13). Gere um código interno para imprimir a etiqueta.` : 'Este produto não tem código de barras. Gere um código interno da loja: ele é salvo no produto e lido no caixa como qualquer outro.'}</div>
+          <button className="btn primary" disabled={generating} onClick={gen}>Gerar código de barras</button>
+        </div>
+      ) : (<>
+        <div className="label-preview">
+          <b>{p.name}</b>
+          {price && <span className="num" style={{ fontSize: 22, fontWeight: 800 }}>{money(p.price_cents)}</span>}
+          <div className="label-bc" dangerouslySetInnerHTML={{ __html: ean13Svg(code) }} />
+        </div>
+        {isInternalEan(code) && <div className="faint">Código interno da loja (começa com 2): vale só aqui, não coincide com códigos de fábrica.</div>}
+        <Field group label="Papel">
+          <Segmented value={paper} onChange={setPaper} options={[{ value: 'a4', label: 'Folha A4 (adesiva)' }, { value: '80', label: 'Térmica 80 mm' }, { value: '58', label: 'Térmica 58 mm' }]} />
+        </Field>
+        {paper === 'a4' && <div className="faint">Folha A4 de etiquetas 63,5 × 38,1 mm (21 por folha, ex.: Pimaco A4256). Na janela de impressão, deixe a escala em 100%.</div>}
+        <div className="grid2">
+          <Field label="Quantidade"><input className="input num" inputMode="numeric" value={copies} onChange={(e) => setCopies(e.target.value.replace(/\D/g, '').slice(0, 3))} /></Field>
+          <label className="check" style={{ alignSelf: 'end', minHeight: 40 }}><input type="checkbox" checked={price} onChange={(e) => setPrice(e.target.checked)} /> Mostrar o preço</label>
+        </div>
+      </>)}
     </Modal>
   );
 }

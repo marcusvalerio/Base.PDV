@@ -633,3 +633,5 @@ html, body, #root { min-height: 100%; }
 /* O fundo escuro do app.html só serve para não piscar branco antes de carregar; com o sistema carregado,
    o fundo da página volta a ser o do sistema (senão páginas longas mostram preto abaixo da altura da tela). */
 html { background: var(--bg); }
+.label-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--s4); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: #fff; color: #000; text-align: center; }
+.label-bc { width: 220px; max-width: 100%; } .label-bc svg { width: 100%; height: auto; display: block; }
