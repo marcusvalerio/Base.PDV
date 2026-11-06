@@ -19,7 +19,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const refreshBoot = useCallback(async () => setBoot(await api<Boot>('/bootstrap')), []);
   const refreshAccess = useCallback(async () => { const r = await api<{ user: User; access: Access }>('/auth/me'); setAccess(r.access); }, []);
   useEffect(() => {
-    api<{ user: User; access: Access }>('/auth/me').then(async (r) => { setUser(r.user); setAccess(r.access); await refreshBoot(); }).catch(() => {}).finally(() => setReady(true));
+    // Sessão e dados do sistema pedidos ao mesmo tempo (abre mais rápido, principalmente com o servidor "acordando").
+    const bootP = api<Boot>('/bootstrap').catch(() => null);
+    api<{ user: User; access: Access }>('/auth/me').then(async (r) => {
+      const b = await bootP;
+      if (b) setBoot(b); else await refreshBoot();
+      setUser(r.user); setAccess(r.access);
+    }).catch(() => {}).finally(() => setReady(true));
     const h = () => setUser(null);
     // Assinatura vencida ou estabelecimento suspenso: o servidor responde 402.
     const b = () => setAccess((a) => ({ ok: false, reason: a?.reason === 'OK' || !a ? 'UNPAID' : a.reason, trialEndsAt: null }));
