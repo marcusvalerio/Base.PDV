@@ -89,7 +89,7 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
   return (
     <div className="shell central-shell">
       <header className="topbar">
-        <span className="brand">Central<span className="brand-dot">.</span>PDV</span><span className="central-tag">Administração da plataforma</span>
+        <span className="brand">Central<span className="brand-dot">.</span>PDV</span><span className="central-tag"><span className="long">Administração da plataforma</span><span className="short">Admin</span></span>
         <span className="spacer" /><span className="faint user-name">{me.admin.name}</span>
         <button className="btn ghost sm" onClick={() => setSecurity(true)}>Segurança</button>
         <button className="btn ghost sm" onClick={onLogout}>Sair</button>
@@ -123,7 +123,7 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
         </div>}
         {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
           <div className="card flush">{!data?.length ? <Empty>Nenhum estabelecimento ainda.</Empty> : (
-            <table className="table responsive"><thead><tr><th>Estabelecimento</th><th>Situação</th><th>Saúde</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
+            <table className="table responsive tenants"><thead><tr><th>Estabelecimento</th><th>Situação</th><th>Saúde</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
               {shown!.map((t) => (
                 <tr key={t.id} className="click" onClick={() => setSel(t)}>
                   <td data-label="Estabelecimento"><b>{t.name}</b><div className="faint">nº {t.id} · desde {date(t.created_at)}{t.signup_source === 'site' ? ' · pelo site' : ''}</div>
@@ -228,13 +228,19 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
           <button className="btn" onClick={() => { const to = t.plan === 'pro' ? 'essencial' : 'pro'; window.confirm(`Mudar ${t.name} para o plano ${to === 'pro' ? 'Pro' : 'Essencial'}? Se ele assina pelo Stripe, o próximo aviso do Stripe volta a definir o plano pelo que foi pago.`) && patch({ plan: to }, `Plano ${to === 'pro' ? 'Pro' : 'Essencial'}.`); }}>Plano: {t.plan === 'pro' ? 'Pro' : 'Essencial'} · trocar</button>
           <a className="btn" href={`/api/central/tenants/${t.id}/backup`} download>Baixar cópia de segurança</a>
         </div>
-        <div className="row wrap">
-          <input className="input num" style={{ width: 110 }} inputMode="numeric" placeholder="dias" value={trialDays} onChange={(e) => setTrialDays(e.target.value)} aria-label="Dias de teste" />
-          <button className="btn" disabled={!Number(trialDays)} onClick={() => patch({ trial_ends_at: new Date(Date.now() + Number(trialDays) * 864e5).toISOString() }, 'Período de teste definido.')}>Dar dias de teste</button>
-        </div>
-        <div className="row wrap">
-          <input className="input" style={{ maxWidth: 300 }} value={name} onChange={(e) => setName(e.target.value)} aria-label="Nome" />
-          <button className="btn" disabled={!name.trim() || name === t.name} onClick={() => patch({ name }, 'Nome alterado.')}>Renomear</button>
+        <div className="inline-fields">
+          <Field label="Dias de teste (a partir de hoje)">
+            <div className="inline-field">
+              <input className="input num" inputMode="numeric" placeholder="Ex.: 5" value={trialDays} onChange={(e) => setTrialDays(e.target.value)} />
+              <button className="btn" disabled={!Number(trialDays)} onClick={() => patch({ trial_ends_at: new Date(Date.now() + Number(trialDays) * 864e5).toISOString() }, 'Período de teste definido.')}>Aplicar</button>
+            </div>
+          </Field>
+          <Field label="Nome do estabelecimento">
+            <div className="inline-field">
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+              <button className="btn" disabled={!name.trim() || name === t.name} onClick={() => patch({ name }, 'Nome alterado.')}>Renomear</button>
+            </div>
+          </Field>
         </div>
       </div>
       {t.health && <div className="card stack">
