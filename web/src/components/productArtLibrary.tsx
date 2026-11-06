@@ -127,42 +127,53 @@ export const ART: Record<string, Art> = {
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-/** Escolhe o desenho pelo nome do produto (quando o produto não tem desenho nem foto definidos). */
+/**
+ * Escolhe o desenho pelo nome do produto (quando o produto não tem desenho nem foto definidos).
+ * Ordem importa: primeiro o que NÃO é bebida apesar do nome (ex.: "Biscoito Água e Sal", "Água Sanitária"),
+ * depois comidas, depois bebidas. Palavras inteiras (\b) para não confundir "Cocada" com Coca ou
+ * "Guaraná Antarctica" com cerveja.
+ */
 export function guessArt(name = ''): string | null {
   const n = norm(name);
   const has = (re: RegExp) => re.test(n);
+  // Não são produtos com desenho próprio (melhor sem desenho que desenho errado).
+  if (has(/sanitaria|\bmaria[ -]mole|arroz doce|doce de leite|gelo de coco|\bpicole|sorvete|\bsabao|detergente/)) return null;
+  // Comidas (antes das bebidas: "Biscoito Água e Sal" é biscoito, "Batata Original" é salgadinho)
+  if (has(/maizena|maisena|\bmaria\b/)) return 'biscoito-maizena';
+  if (has(/cream ?cracker|agua e sal|cracker/)) return 'biscoito-cream-cracker';
+  if (has(/wafer/)) return 'biscoito-wafer';
+  if (has(/recheado|recheada|oreo|negresco|passatempo|trakinas|\bbono\b/)) return 'biscoito-recheado';
+  if (has(/biscoito|bolacha/)) return 'biscoito-maizena';
+  if (has(/salgadinho|\bchips|doritos|ruffles|cheetos|fandangos|pringles|\blays\b|batata palha|batata (original|frita) (lays|elma)/)) return 'salgadinho';
+  if (has(/porcao|\bfritas?\b|batata/)) return 'porcao-fritas';
+  if (has(/chocolate|bombom|kit ?kat|\bbis\b|lacta/)) return 'chocolate';
+  if (has(/\bbalas?\b|chiclete|pirulito|halls/)) return 'bala';
+  if (has(/cachorro|hot ?dog/)) return 'cachorro-quente';
+  if (has(/\barroz\b/)) return 'arroz';
+  if (has(/feijao/)) return 'feijao';
+  if (has(/\boleo\b/)) return 'oleo';
+  if (has(/carvao/)) return 'carvao';
+  // Bebidas
   if (has(/chopp|chope/)) return has(/barril/) ? 'chopp-barril' : has(/caneca/) ? 'chopp-caneca' : has(/jarra/) ? 'chopp-jarra' : 'chopp-copo';
-  if (has(/cerveja|brahma|skol|heineken|amstel|budweiser|original|stella|itaipava|corona|antarctica/)) {
+  if (has(/energ|red ?bull|monster/)) return 'energetico';
+  if (has(/tonica/)) return 'refri-lata';
+  if (has(/agua de coco|\bsuco|del valle|caixinha/)) return 'suco';
+  if (has(/\bagua\b/)) return has(/gas/) ? 'agua-gas' : 'agua';
+  // Refrigerante antes de cerveja: "Guaraná Antarctica" é refrigerante.
+  if (has(/\brefri|\bcoca\b|coca[ -]cola|guarana|fanta|sprite|pepsi|\bsoda\b|kuat|tubaina/)) {
+    const big = has(/\b2 ?l\b|2 ?litros|2000|1,5|1\.5/);
+    if (big) return has(/guarana|kuat/) ? 'guarana-2l' : 'refri-2l';
+    if (has(/600|garrafa/)) return 'refri-600';
+    return 'refri-lata';
+  }
+  if (has(/cerveja|\bbrahma|\bskol|heineken|amstel|budweiser|\boriginal\b|stella|itaipava|corona|antarctica|\bbohemia|spaten|eisenbahn/)) {
     if (has(/473|latao/)) return 'cerveja-latao';
     if (has(/long ?neck|355|330/)) return 'cerveja-longneck';
     if (has(/600/)) return 'cerveja-600';
     if (has(/\b1 ?l\b|1 ?litro|litrao|1000/)) return 'cerveja-1l';
     return 'cerveja-lata';
   }
-  if (has(/energ|red ?bull|monster/)) return 'energetico';
-  if (has(/agua/)) return has(/gas/) ? 'agua-gas' : 'agua';
-  if (has(/refri|coca|guarana|fanta|sprite|pepsi|soda|kuat|tubaina/)) {
-    const big = has(/\b2 ?l\b|2 ?litros|2000|1,5|1\.5/);
-    if (big) return has(/guarana|kuat/) ? 'guarana-2l' : 'refri-2l';
-    if (has(/600|garrafa/)) return 'refri-600';
-    return 'refri-lata';
-  }
-  if (has(/suco|del valle|caixinha/)) return 'suco';
-  if (has(/dose|cachaca|pinga|whisky|vodka|conhaque|51\b/)) return 'dose';
-  if (has(/gelo/)) return 'gelo';
-  if (has(/maizena|maisena|maria\b/)) return 'biscoito-maizena';
-  if (has(/cream ?cracker|agua e sal|cracker/)) return 'biscoito-cream-cracker';
-  if (has(/wafer/)) return 'biscoito-wafer';
-  if (has(/recheado|oreo|negresco|passatempo|trakinas|bono/)) return 'biscoito-recheado';
-  if (has(/biscoito|bolacha/)) return 'biscoito-maizena';
-  if (has(/frita|batata/)) return 'porcao-fritas';
-  if (has(/salgadinho|chips|doritos|ruffles|cheetos|fandangos/)) return 'salgadinho';
-  if (has(/chocolate|bombom|kit ?kat|bis\b|lacta/)) return 'chocolate';
-  if (has(/bala|chiclete|pirulito|doce/)) return 'bala';
-  if (has(/cachorro|hot ?dog/)) return 'cachorro-quente';
-  if (has(/arroz/)) return 'arroz';
-  if (has(/feijao/)) return 'feijao';
-  if (has(/oleo/)) return 'oleo';
-  if (has(/carvao/)) return 'carvao';
+  if (has(/\bdose\b|cachaca|pinga|whisky|vodka|conhaque|\b51\b/)) return 'dose';
+  if (has(/\bgelo\b/)) return 'gelo';
   return null;
 }
