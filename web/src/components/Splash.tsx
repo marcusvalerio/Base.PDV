@@ -9,6 +9,7 @@ import { useSession } from './session';
  */
 const KEY = 'pdv.splash.seen';
 const LENGTH = 3800;
+const DAY = 'pdv.splash.day';
 export const splashPending = () => { try { return !sessionStorage.getItem(KEY); } catch { return false; } };
 
 function greeting(d = new Date()) {
@@ -45,23 +46,34 @@ function Cube({ full }: { full: boolean }) {
 }
 
 export function Splash() {
-  const { boot } = useSession();
-  const calm = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  // Começa na hora em que o app abre, sem esperar o servidor: o sistema carrega por trás.
+  // Se a animação terminar antes do carregamento, segura no logo (com indicador) até ficar pronto.
+  const { boot, ready } = useSession();
+  const [done, setDone] = useState(false);
+  // Animação completa na primeira abertura do dia; nas outras do mesmo dia, só o logo e o nome (rápido).
+  const [calm] = useState(() => {
+    const reduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const today = new Date().toDateString();
+    let seenToday = false;
+    try { seenToday = localStorage.getItem(DAY) === today; localStorage.setItem(DAY, today); } catch { /* sem armazenamento */ }
+    return reduce || seenToday;
+  });
   const [phase, setPhase] = useState<'on' | 'out' | 'off'>(() => (splashPending() ? 'on' : 'off'));
   useEffect(() => {
     if (phase !== 'on') return;
     try { sessionStorage.setItem(KEY, '1'); } catch { /* sem armazenamento: mostra mesmo assim */ }
-    const t = setTimeout(() => setPhase('out'), calm ? 1200 : LENGTH + 700);
+    const t = setTimeout(() => setDone(true), calm ? 900 : LENGTH + 250);
     return () => clearTimeout(t);
   }, [phase, calm]);
+  useEffect(() => { if (done && ready && phase === 'on') setPhase('out'); }, [done, ready, phase]);
   useEffect(() => {
     if (phase !== 'out') return;
-    const t = setTimeout(() => setPhase('off'), 500);
+    const t = setTimeout(() => setPhase('off'), 450);
     return () => clearTimeout(t);
   }, [phase]);
   if (phase === 'off') return null;
   return (
-    <div className={`op splash ${calm ? 'calm' : ''} ${phase === 'out' ? 'out' : ''}`} role="presentation" onClick={() => setPhase('out')}>
+    <div className={`op splash ${calm ? 'calm' : ''} ${phase === 'out' ? 'out' : ''}`} role="presentation" onClick={() => setDone(true)}>
       <div className="op-floor" />
       <div className="op-stage">
         <div className="op-pool" />
@@ -78,6 +90,7 @@ export function Splash() {
       <div className="op-logo">c.</div>
       <div className="op-name">
         <div className="op-word">{[...WORD].map((ch, i) => <span key={i} className={ch === '.' ? 'dot' : ''} style={{ animationDelay: `calc(var(--T) * .80 + ${(i * 0.035).toFixed(3)}s)` }}>{ch}</span>)}</div>
+        {done && !ready && <div className="op-wait" aria-label="Carregando"><i /><i /><i /></div>}
         <div className="op-hi">{greeting()}, <strong>{boot?.storeName || 'bem-vindo'}</strong></div>
       </div>
     </div>

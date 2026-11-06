@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Tour, HelpMenu } from './components/Tour';
-import { Splash, SplashLoading, splashPending } from './components/Splash';
+import { Splash } from './components/Splash';
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { SessionProvider, useSession } from './components/session';
 import { ToastProvider, Loading } from './components/ui';
@@ -51,7 +51,6 @@ function Shell({ children }: { children: ReactNode }) {
         <button className="btn ghost sm" onClick={logout}>Sair</button>
       </header>
       <NoticeBar />
-      <Splash />
       <Tour />
       {inAdmin ? children : <main className={`content ${loc.pathname === '/' ? 'has-bar' : ''}`}>{children}</main>}
       {loc.pathname !== '/' && <SystemFooter />}
@@ -91,7 +90,7 @@ function Routed() {
   const { user, ready, boot, access } = useSession();
   const [onbDone, setOnbDone] = useState(false);
   // Carregando na primeira abertura: já usa o fundo da abertura (sem piscar branco antes da animação).
-  if (!ready) return splashPending() ? <SplashLoading /> : <Loading />;
+  if (!ready) return <Loading />;
   if (!user) return location.pathname === '/app/cadastro' ? <Signup /> : <Login />;
   if (access && !access.ok) return user.role === 'ADMIN' && location.pathname === '/app/admin/assinatura' ? <main className="content"><BillingPage /></main> : <Blocked />;
     // Passo a passo do primeiro acesso: enquanto não foi concluído e ainda falta o básico (nome ou códigos)
@@ -131,5 +130,5 @@ export default function App() {
   // Painel do administrador central: área separada, com login próprio.
   if (location.pathname.startsWith('/central')) return <BrowserRouter basename="/central"><ToastProvider><Central /></ToastProvider></BrowserRouter>;
   // O sistema do estabelecimento fica em /app; a página inicial do site é a apresentação.
-  return <BrowserRouter basename="/app"><SessionProvider><ToastProvider><Routed /></ToastProvider></SessionProvider></BrowserRouter>;
+  return <BrowserRouter basename="/app"><SessionProvider><ToastProvider><Routed /><Splash /></ToastProvider></SessionProvider></BrowserRouter>;
 }
