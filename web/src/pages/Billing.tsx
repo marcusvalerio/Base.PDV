@@ -14,7 +14,7 @@ const STATUS: Record<string, [string, 'success' | 'warning' | 'danger']> = {
 
 export const PLANS = {
   essencial: { name: 'Essencial', items: ['Vendas, caixa, mesas e fiado', 'Estoque, inventário e relatórios', 'Pix pela chave (QR Code com o valor; o caixa confere no banco)'] },
-  pro: { name: 'Pro', items: ['Tudo do Essencial', 'Pix com confirmação automática: a venda fecha sozinha quando o pagamento cai', 'Dinheiro direto na conta do Mercado Pago do estabelecimento'] },
+  pro: { name: 'Pro', items: [] as string[] },
 } as const;
 type PlanKey = keyof typeof PLANS;
 
@@ -35,6 +35,14 @@ function PlanCards({ data, onChanged }: { data: any; onChanged: () => void }) {
     <div className="plans">
       {(Object.keys(PLANS) as PlanKey[]).map((k) => {
         const current = data.plan === k && (valid || data.exempt);
+        // Plano Pro ainda não lançado: só "Em breve" para quem não está nele (o central pode liberar antes).
+        const soon = k === 'pro' && data.plan !== 'pro';
+        if (soon) return (
+          <div key={k} className="card stack plan">
+            <div className="row"><h2>{PLANS[k].name}</h2><span className="spacer" /><span className="badge accent">em breve</span></div>
+            <span className="faint">Novidades chegando.</span>
+          </div>
+        );
         const off = k === 'pro' && !data.proAvailable;
         const price = data.prices?.[k];
         return (
