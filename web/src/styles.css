@@ -635,3 +635,6 @@ html, body, #root { min-height: 100%; }
 html { background: var(--bg); }
 .label-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--s4); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: #fff; color: #000; text-align: center; }
 .label-bc { width: 220px; max-width: 100%; } .label-bc svg { width: 100%; height: auto; display: block; }
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 92px; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--surface-2); color: var(--text-2); font: 600 13px var(--font); cursor: pointer; }

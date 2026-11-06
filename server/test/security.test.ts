@@ -25,6 +25,13 @@ describe('segurança: tentativas de senha', () => {
     expect((await login(app, 'super', PASS, '10.3.0.1', '/api/central/login')).status).toBe(429);
   });
 
+  it('senha digitada com espaço antes/depois (teclado do celular) entra; senha errada continua recusada', async () => {
+    const { app } = await setup();
+    expect((await login(app, ' op ', PASS + ' ', '10.6.0.1')).status).toBe(200);
+    expect((await login(app, 'op', ' ' + PASS, '10.6.0.2')).status).toBe(200);
+    expect((await login(app, 'op', PASS + 'x', '10.6.0.3')).status).toBe(401);
+  });
+
   it('login certo zera a contagem do IP', async () => {
     const { app } = await setup();
     for (let i = 0; i < 4; i++) await login(app, 'op', 'errada', '10.4.0.1');

@@ -57,7 +57,9 @@ export function listUsers(db: DB) {
 export async function login(db: DB, username: string, password: string): Promise<{ token: string; user: SessionUser } | null> {
   const u = await db.one('SELECT * FROM users WHERE lower(username) = lower(?)', [username.trim()]);
   // Executa a verificação mesmo se o usuário não existir para reduzir diferença de tempo.
-  const ok = verifySecret(password, u?.password_hash ?? 'scrypt$AAAA$AAAA');
+  // No celular o teclado às vezes põe espaço antes/depois: tenta a senha como digitada e, se falhar, sem esses espaços.
+  const hash = u?.password_hash ?? 'scrypt$AAAA$AAAA';
+  const ok = verifySecret(password, hash) || (password.trim() !== password && verifySecret(password.trim(), hash));
   if (!u || !ok || !u.active) {
     await audit(db, u?.id ?? null, 'auth.login_failed', 'user', u?.id ?? null, { username });
     return null;
