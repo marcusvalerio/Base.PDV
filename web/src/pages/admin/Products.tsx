@@ -272,7 +272,7 @@ function CatalogModal({ existing, onClose, onDone }: { existing: string[]; onClo
 }
 
 /** Etiquetas com código de barras: gera um código interno se o produto não tiver e imprime (térmica ou folha A4). */
-function LabelModal({ p, onClose, onSaved }: { p: any; onClose: () => void; onSaved: () => void }) {
+export function LabelModal({ p, onClose, onSaved }: { p: any; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
   const { boot } = useSession();
   const [code, setCode] = useState<string | null>(toEan13(p.barcode));
