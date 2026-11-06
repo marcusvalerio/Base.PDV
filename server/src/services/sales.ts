@@ -7,19 +7,24 @@ import { requireOpenRegister } from './cash.js';
 import { getSetting } from './settings.js';
 import { verifySecret } from '../security.js';
 
-export interface SaleLineInput { productId: number; qtyMilli: number }
+/** unitPriceCents: preço só desta venda (exige autorização com o código de cancelamento; ver app.ts). */
+export interface SaleLineInput { productId: number; qtyMilli: number; unitPriceCents?: number | null }
 export interface CreateSaleInput {
   idempotencyKey: string;
   paymentMethodCode: string;
   items: SaleLineInput[];
   customerId?: number | null;
   receivedCents?: number | null;
+  /** Motivo da alteração de preço (a rota só envia depois de conferir o código de cancelamento). */
+  priceNote?: string | null;
   /** Pix automático (plano Pro): cobrança aprovada pelo Mercado Pago que paga esta venda. */
   pixChargeId?: number | null;
 }
 export interface PreparedLine {
   productId: number; productName: string; categoryId: number; unit: Unit; qtyMilli: number;
   unitPriceCents: number; unitCostCents: number | null; totalCents: number; tabPersonId?: number | null;
+  /** Preço de cadastro, quando o item foi vendido por outro valor. */
+  listPriceCents?: number | null;
 }
 
 export async function getPaymentMethod(db: DB, code: string) {
@@ -43,7 +48,7 @@ export async function stockTarget(db: DB, productId: number, qtyMilli: number) {
 }
 
 /** Monta as linhas a partir do cadastro atual (preço definido no servidor, nunca pelo navegador). */
-export async function prepareLines(db: DB, items: SaleLineInput[]): Promise<PreparedLine[]> {
+export async function prepareLines(db: DB, items: SaleLineInput[], allowPriceOverride = false): Promise<PreparedLine[]> {
   if (!items?.length) throw badRequest('Adicione ao menos um produto.');
   const out: PreparedLine[] = [];
   for (const it of items) {
@@ -51,9 +56,13 @@ export async function prepareLines(db: DB, items: SaleLineInput[]): Promise<Prep
     if (!p) throw notFound('Produto não encontrado.');
     if (!p.active) throw badRequest(`O produto "${p.name}" está inativo e não pode ser vendido.`, 'PRODUCT_INACTIVE');
     try { assertQty(p.unit, it.qtyMilli); } catch (e: any) { throw badRequest(`${p.name}: ${e.message}`); }
+    const changed = it.unitPriceCents != null && it.unitPriceCents !== p.price_cents;
+    if (changed && !allowPriceOverride) throw forbidden('Para mudar o preço é preciso o código de cancelamento.');
+    const price = changed ? it.unitPriceCents! : p.price_cents;
     out.push({
       productId: p.id, productName: p.name, categoryId: p.category_id, unit: p.unit, qtyMilli: it.qtyMilli,
-      unitPriceCents: p.price_cents, unitCostCents: p.cost_cents, totalCents: lineTotal(p.price_cents, it.qtyMilli),
+      unitPriceCents: price, unitCostCents: p.cost_cents, totalCents: lineTotal(price, it.qtyMilli),
+      listPriceCents: changed ? p.price_cents : null,
     });
   }
   return out;
@@ -109,9 +118,9 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
   }
   const ts = now();
   const r = await t.one<{ id: number }>(
-    `INSERT INTO sales (idempotency_key, register_id, user_id, payment_method_id, customer_id, tab_id, status, subtotal_cents, surcharge_cents, total_cents, received_cents, change_cents, created_at)
-     VALUES (?,?,?,?,?,?,'COMPLETED',?,?,?,?,?,?) RETURNING id`,
-    [input.idempotencyKey, registerId, userId, pm.id, customerId, input.tabId ?? null, subtotal, surcharge, total, received, change, ts],
+    `INSERT INTO sales (idempotency_key, register_id, user_id, payment_method_id, customer_id, tab_id, status, subtotal_cents, surcharge_cents, total_cents, received_cents, change_cents, created_at, price_note)
+     VALUES (?,?,?,?,?,?,'COMPLETED',?,?,?,?,?,?,?) RETURNING id`,
+    [input.idempotencyKey, registerId, userId, pm.id, customerId, input.tabId ?? null, subtotal, surcharge, total, received, change, ts, input.priceNote ?? null],
   );
   const saleId = r!.id;
   if (input.pixChargeId) await linkCharge(t, input.pixChargeId, saleId);
@@ -119,9 +128,9 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
     const st = await stockTarget(t, l.productId, l.qtyMilli);
     const cost = st.unitCostCents === undefined ? l.unitCostCents : st.unitCostCents;
     await t.run(
-      `INSERT INTO sale_items (sale_id, product_id, product_name, category_id, unit, qty_milli, unit_price_cents, unit_cost_cents, total_cents, tab_person_id, stock_product_id, stock_qty_milli)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [saleId, l.productId, l.productName, l.categoryId, l.unit, l.qtyMilli, l.unitPriceCents, cost, l.totalCents, l.tabPersonId ?? null, st.productId, st.qtyMilli],
+      `INSERT INTO sale_items (sale_id, product_id, product_name, category_id, unit, qty_milli, unit_price_cents, unit_cost_cents, total_cents, tab_person_id, stock_product_id, stock_qty_milli, list_price_cents)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [saleId, l.productId, l.productName, l.categoryId, l.unit, l.qtyMilli, l.unitPriceCents, cost, l.totalCents, l.tabPersonId ?? null, st.productId, st.qtyMilli, l.listPriceCents ?? null],
     );
     if (st.qtyMilli > 0) await moveStock(t, { productId: st.productId, type: 'SALE', qtyMilli: -st.qtyMilli, userId, refType: 'sale', refId: saleId });
   }
@@ -133,6 +142,10 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
     );
   }
   await audit(t, userId, 'sale.create', 'sale', saleId, { total, method: pm.code });
+  const changed = input.lines.filter((l) => l.listPriceCents != null);
+  if (changed.length) await audit(t, userId, 'sale.price_change', 'sale', saleId, {
+    reason: input.priceNote, items: changed.map((l) => ({ product: l.productName, de: l.listPriceCents, para: l.unitPriceCents, qtd: l.qtyMilli })),
+  });
   return saleId;
 }
 
@@ -155,7 +168,7 @@ export async function idempotentSale<T>(db: DB, key: string, fn: () => Promise<T
 export async function createSale(db: DB, input: CreateSaleInput, userId: number) {
   return idempotentSale(db, input.idempotencyKey,
     async () => {
-      const lines = await prepareLines(db, input.items);
+      const lines = await prepareLines(db, input.items, !!input.priceNote);
       const id = await tx(db, (t) => persistSaleTx(t, { ...input, lines }, userId));
       return { ...(await getSale(db, id)), replayed: false };
     },

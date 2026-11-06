@@ -27,7 +27,8 @@ export function SaleModal({ id, onClose, onChanged }: { id: number; onClose: () 
       {loading && !s ? <Loading /> : s && <>
         <div className="row wrap"><span>{dateTime(s.created_at)} · {s.user_name} · {s.payment_method}{s.customer_name ? ` · ${s.customer_name}` : ''}</span><span className="spacer" />{s.status === 'CANCELLED' ? <span className="badge danger">cancelada</span> : <button className="btn sm" onClick={() => printSaleReceipt(s, { storeName: boot?.storeName, width: getPrinter().width || '80' })}>Imprimir comprovante</button>}</div>
         <table className="table"><tbody>
-          {s.items.map((i: any) => <tr key={i.id}><td>{qty(i.qty_milli, i.unit)} {i.product_name}</td><td className="r num">{money(i.total_cents)}</td></tr>)}
+          {s.items.map((i: any) => <tr key={i.id}><td>{qty(i.qty_milli, i.unit)} {i.product_name}{i.list_price_cents != null && <div className="price-changed">preço alterado: de <s>{money(i.list_price_cents)}</s> por <b>{money(i.unit_price_cents)}</b></div>}</td><td className="r num">{money(i.total_cents)}</td></tr>)}
+          {s.price_note && <tr><td colSpan={2} className="faint">Motivo da mudança de preço: {s.price_note}</td></tr>}
           {s.surcharge_cents > 0 && <tr><td>Acréscimo</td><td className="r num">{money(s.surcharge_cents)}</td></tr>}
           <tr><td><b>Total</b></td><td className="r num"><b>{money(s.total_cents)}</b></td></tr>
           {s.received_cents != null && <tr><td className="muted">Recebido / troco</td><td className="r num">{money(s.received_cents)} / {money(s.change_cents)}</td></tr>}

@@ -36,7 +36,9 @@ const id = z.coerce.number().int().positive();
 const cents = z.number().int().min(0).max(100_000_000);
 const qty = z.number().int().positive().max(1_000_000_000);
 const idemKey = z.string().min(8).max(100);
-const lines = z.array(z.object({ productId: id, qtyMilli: qty })).min(1).max(200);
+const lines = z.array(z.object({ productId: id, qtyMilli: qty, unitPriceCents: cents.nullish() })).min(1).max(200);
+/** Autorização para mudar o preço de itens nesta venda: código de cancelamento + motivo. */
+const priceAuth = z.object({ code: z.string().max(20), reason: z.string().trim().min(3, 'Informe o motivo da mudança de preço.').max(200) });
 
 const productSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -377,12 +379,19 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   r.post('/sales', auth, async (req, res) => {
     const b = z.object({
       idempotencyKey: idemKey, paymentMethodCode: z.string().max(20), items: lines,
-      customerId: id.nullish(), receivedCents: cents.nullish(), pixChargeId: id.nullish(),
+      customerId: id.nullish(), receivedCents: cents.nullish(), pixChargeId: id.nullish(), priceAuth: priceAuth.nullish(),
       // Venda feita sem internet: horário real da venda no aparelho (aceito até 3 dias atrás).
       offlineAt: z.string().datetime().optional(),
     }).parse(req.body);
     if ((await sales.getPaymentMethod(db, b.paymentMethodCode)).kind === 'CREDIT') await modules.requireModule(db, 'fiado');
-    const sale = await sales.createSale(db, b, uid(req));
+    // Preço alterado em algum item: confere o código de cancelamento (com limite de tentativas) e guarda o motivo.
+    let priceNote: string | null = null;
+    // (Sem autorização, a venda só passa se nenhum preço for diferente do cadastro: conferido em prepareLines.)
+    if (b.priceAuth) {
+      await withCodeLimit(req, 'cancel', () => sales.verifyCancelCode(db, uid(req), b.priceAuth!.code));
+      priceNote = b.priceAuth.reason;
+    }
+    const sale = await sales.createSale(db, { ...b, priceNote }, uid(req));
     if (b.offlineAt && !sale.replayed) {
       const at = Date.parse(b.offlineAt);
       if (at > Date.now() - 864e5 && at < Date.now() + 5 * 60e3) {
@@ -416,6 +425,12 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     if (!isAdmin(req) && (await cash.currentRegister(db, uid(req)))?.id !== s.register_id) throw forbidden();
     if (!isAdmin(req)) s.items = s.items.map(({ unit_cost_cents, ...x }: any) => x);
     res.json(s);
+  });
+  // Confere o código antes de aplicar o novo preço na tela (a venda confere de novo ao ser registrada).
+  r.post('/sales/price-auth', auth, async (req, res) => {
+    const b = z.object({ code: z.string().max(20) }).parse(req.body);
+    await withCodeLimit(req, 'cancel', () => sales.verifyCancelCode(db, uid(req), b.code));
+    res.json({ ok: true });
   });
   r.post('/sales/:id/cancel', auth, async (req, res) => {
     const b = z.object({ reason: z.string().trim().min(3).max(300), code: z.string().max(20) }).parse(req.body);
