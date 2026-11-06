@@ -200,6 +200,13 @@ function UserForm({ u, onClose, onSaved }: { u: any; onClose: () => void; onSave
   const [loginTouched, setLoginTouched] = useState(!isNew);
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState<{ name: string; username: string; password: string } | null>(null);
+  const toast = useToast();
+  // Editando: gerar a senha já salva na hora (antes só preenchia o campo e era preciso tocar em Salvar).
+  const [resetNow, resetting] = useAction(async () => {
+    const password = easyPassword();
+    try { await api(`/users/${u.id}`, { method: 'PATCH', body: { password } }); setSent({ name: f.name || u.name, username: u.username, password }); }
+    catch (e: any) { toast(e.message, 'error'); }
+  });
   const [save, busy] = useAction(async () => {
     setErr(null);
     try {
@@ -216,7 +223,7 @@ function UserForm({ u, onClose, onSaved }: { u: any; onClose: () => void; onSave
       {isNew && <Field label="Login" hint="Sugestão: nome.sobrenome. Precisa ser único em todo o Central.PDV; se já existir, acrescente algo (ex.: ana.souza.bar)."><input className="input" autoCapitalize="none" value={f.username} onChange={(e) => { setLoginTouched(true); setF({ ...f, username: e.target.value.toLowerCase() }); }} /></Field>}
       <Field group label={isNew ? 'Senha' : 'Nova senha (deixe em branco para manter)'} hint="Gerada só com letras para facilitar. Trocar a senha encerra as sessões abertas.">
         <div className="row"><input className="input num" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} placeholder={isNew ? '' : 'manter a atual'} />
-          <button className="btn" type="button" onClick={() => setF({ ...f, password: easyPassword() })}>{isNew ? 'Gerar outra' : 'Gerar nova senha'}</button></div>
+          <button className="btn" type="button" disabled={busy || resetting} onClick={() => (isNew ? setF({ ...f, password: easyPassword() }) : resetNow())}>{isNew ? 'Gerar outra' : 'Gerar e salvar nova senha'}</button></div>
       </Field>
       <Field label="Perfil"><select className="input" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}><option value="OPERADOR">Operador (PDV)</option><option value="ADMIN">Administrador</option></select></Field>
       {!isNew && <label className="check"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> Ativo (desmarque para bloquear o acesso na hora)</label>}
