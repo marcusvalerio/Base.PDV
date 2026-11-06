@@ -80,3 +80,31 @@ export function getPrinter(): { width: PaperWidth | ''; auto: boolean } {
 export function setPrinter(v: { width: PaperWidth | ''; auto: boolean }) {
   try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* sem armazenamento */ }
 }
+
+/** Papel das etiquetas: térmica (rolo) ou folha A4 de etiquetas adesivas 63,5 × 38,1 mm (3 × 7, ex.: Pimaco A4256). */
+export type LabelPaper = '58' | '80' | 'a4';
+
+/** Etiquetas com nome, preço e código de barras EAN-13 (lidas no caixa pelo leitor ou pela câmera). */
+export function printLabels(p: { name: string; price_cents?: number | null; unit?: string }, code: string, svg: string, opts: { copies: number; paper: LabelPaper; price: boolean; storeName?: string }) {
+  const one = `<div class="lb"><div class="nm">${esc(p.name)}</div>${opts.price && p.price_cents != null ? `<div class="pr">${money(p.price_cents)}${p.unit && p.unit !== 'UN' ? `<small>/${p.unit === 'KG' ? 'kg' : p.unit === 'L' ? 'L' : esc(p.unit)}</small>` : ''}</div>` : ''}<div class="bc">${svg}</div></div>`;
+  const n = Math.max(1, Math.min(500, Math.floor(opts.copies)));
+  const a4 = opts.paper === 'a4';
+  const page = a4 ? '@page { size: A4; margin: 15mm 7mm; }' : `@page { size: ${opts.paper}mm auto; margin: 2mm; }`;
+  const w = a4 ? '63.5mm' : opts.paper === '58' ? '48mm' : '72mm';
+  const css = `${page}
+    * { box-sizing: border-box; } body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #000; }
+    .grid { display: ${a4 ? 'grid' : 'block'}; grid-template-columns: repeat(3, 63.5mm); grid-auto-rows: 38.1mm; column-gap: 2.5mm; }
+    .lb { width: ${w}; ${a4 ? 'height: 38.1mm;' : ''} padding: ${a4 ? '2mm 3mm' : '1.5mm 0 3mm'}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6mm; overflow: hidden;
+      ${a4 ? '' : 'border-bottom: 1px dashed #000; break-inside: avoid; page-break-inside: avoid;'} }
+    .nm { font-size: ${a4 ? '9pt' : '10pt'}; font-weight: 700; text-align: center; line-height: 1.15; max-height: 2.4em; overflow: hidden; }
+    .pr { font-size: ${a4 ? '12pt' : '16pt'}; font-weight: 800; line-height: 1.1; } .pr small { font-size: .55em; font-weight: 600; }
+    .bc { width: ${a4 ? '40mm' : opts.paper === '58' ? '44mm' : '56mm'}; } .bc svg { width: 100%; height: auto; display: block; }`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas ${esc(code)}</title><style>${css}</style></head><body><div class="grid">${one.repeat(n)}</div></body></html>`;
+  const f = document.createElement('iframe');
+  f.setAttribute('aria-hidden', 'true');
+  Object.assign(f.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0' });
+  document.body.appendChild(f);
+  const d = f.contentWindow!.document;
+  d.open(); d.write(html); d.close();
+  setTimeout(() => { f.contentWindow!.focus(); f.contentWindow!.print(); setTimeout(() => f.remove(), 2000); }, 200);
+}

@@ -372,6 +372,15 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
     <li><span class="btn">Editar</span>: muda dados. Desmarque <b>Produto ativo</b> para parar de vender sem apagar o histórico.</li>
     <li><span class="btn">Histórico</span>: movimentações de estoque e alterações de cadastro (quem, quando, de/para).</li>
   </ul>
+  <h3>Código de barras e etiquetas</h3>
+  <p>Produto sem código de barras (pão, porção, granel, produto da casa)? O sistema gera um:</p>
+  <ol>
+    <li>Na lista de produtos, toque em <span class="btn">Etiqueta</span> no produto › <span class="btn">Gerar código de barras</span>. (Ou, no cadastro, toque em <span class="btn">Gerar</span> ao lado do campo Código de barras.)</li>
+    <li>Escolha o papel: <b>Folha A4</b> de etiquetas adesivas 63,5 × 38,1 mm (21 por folha, ex.: Pimaco A4256), ou impressora <b>térmica 80 mm / 58 mm</b>.</li>
+    <li>Escolha a quantidade e se quer mostrar o preço, e toque em <span class="btn">Imprimir</span>. Na folha A4, deixe a escala em <b>100%</b>.</li>
+  </ol>
+  <p>O código gerado começa com <b>2</b>: é da faixa reservada para uso interno da loja e nunca coincide com o código de fábrica de um produto. No caixa, ele é lido pelo leitor ou pela câmera como qualquer outro.</p>
+  <div class="box warn"><b>Mudou o preço?</b>Imprima as etiquetas de novo: o preço impresso não muda sozinho (o caixa sempre cobra o preço atual do cadastro).</div>
   <p><span class="btn">Exportar planilha</span> baixa a lista em CSV (abre no Excel).</p>
 </section>
 
