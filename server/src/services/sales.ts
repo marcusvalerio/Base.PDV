@@ -1,4 +1,5 @@
 import { DB, now, audit, tx, isUniqueViolation } from '../db.js';
+import { claimCharge, linkCharge } from './mercadopago.js';
 import { badRequest, conflict, notFound, forbidden } from '../errors.js';
 import { assertQty, lineTotal, surchargeUnits, Unit } from '../money.js';
 import { moveStock } from './stock.js';
@@ -13,6 +14,8 @@ export interface CreateSaleInput {
   items: SaleLineInput[];
   customerId?: number | null;
   receivedCents?: number | null;
+  /** Pix automático (plano Pro): cobrança aprovada pelo Mercado Pago que paga esta venda. */
+  pixChargeId?: number | null;
 }
 export interface PreparedLine {
   productId: number; productName: string; categoryId: number; unit: Unit; qtyMilli: number;
@@ -93,6 +96,10 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
     customerId = c.id;
   }
   const total = subtotal + surcharge;
+  if (input.pixChargeId) {
+    if (pm.kind !== 'PIX') throw badRequest('Cobrança Pix só vale para venda em Pix.');
+    await claimCharge(t, input.pixChargeId, total);
+  }
   let received: number | null = null;
   let change: number | null = null;
   if (pm.kind === 'CASH') {
@@ -107,6 +114,7 @@ export async function persistSaleTx(t: DB, input: Omit<CreateSaleInput, 'items'>
     [input.idempotencyKey, registerId, userId, pm.id, customerId, input.tabId ?? null, subtotal, surcharge, total, received, change, ts],
   );
   const saleId = r!.id;
+  if (input.pixChargeId) await linkCharge(t, input.pixChargeId, saleId);
   for (const l of input.lines) {
     const st = await stockTarget(t, l.productId, l.qtyMilli);
     const cost = st.unitCostCents === undefined ? l.unitCostCents : st.unitCostCents;

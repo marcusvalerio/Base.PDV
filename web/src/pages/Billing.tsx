@@ -1,6 +1,6 @@
 import { useApi, useAction } from '../lib/hooks';
 import { api } from '../lib/api';
-import { date } from '../lib/format';
+import { date, money } from '../lib/format';
 import { Loading, ErrorState, useToast } from '../components/ui';
 import { useSession } from '../components/session';
 import { SystemFooter } from '../components/SystemFooter';
@@ -12,17 +12,58 @@ const STATUS: Record<string, [string, 'success' | 'warning' | 'danger']> = {
   incomplete_expired: ['Expirada', 'danger'], paused: ['Pausada', 'warning'],
 };
 
+export const PLANS = {
+  essencial: { name: 'Essencial', items: ['Vendas, caixa, mesas e fiado', 'Estoque, inventário e relatórios', 'Pix pela chave (QR Code com o valor; o caixa confere no banco)'] },
+  pro: { name: 'Pro', items: ['Tudo do Essencial', 'Pix com confirmação automática: a venda fecha sozinha quando o pagamento cai', 'Dinheiro direto na conta do Mercado Pago do estabelecimento'] },
+} as const;
+type PlanKey = keyof typeof PLANS;
+
+/** Os dois planos lado a lado: assinar, ou mudar de plano quem já assina. */
+function PlanCards({ data, onChanged }: { data: any; onChanged: () => void }) {
+  const toast = useToast();
+  const { refreshBoot } = useSession();
+  const valid = data.status === 'active' || data.status === 'trialing';
+  const [pick, busy] = useAction(async (plan: PlanKey) => {
+    try {
+      if (valid && !window.confirm(`Mudar para o plano ${PLANS[plan].name}? A diferença é ajustada na próxima fatura.`)) return;
+      const r = await api<{ url?: string; changed?: boolean }>(valid ? '/billing/plan' : '/billing/checkout', { body: { plan } });
+      if (r.url) { window.location.href = r.url; return; }
+      toast(`Plano ${PLANS[plan].name} ativado.`, 'success'); await refreshBoot(); onChanged();
+    } catch (e: any) { toast(e.message, 'error'); }
+  });
+  return (
+    <div className="plans">
+      {(Object.keys(PLANS) as PlanKey[]).map((k) => {
+        const current = data.plan === k && (valid || data.exempt);
+        const off = k === 'pro' && !data.proAvailable;
+        const price = data.prices?.[k];
+        return (
+          <div key={k} className={`card stack plan ${current ? 'current' : ''}`}>
+            <div className="row"><h2>{PLANS[k].name}</h2><span className="spacer" />{current && <span className="badge success">seu plano</span>}</div>
+            {price != null && <div><span className="total-big num" style={{ fontSize: 28 }}>{money(price)}</span><span className="muted"> /mês</span></div>}
+            <ul className="plan-items">{PLANS[k].items.map((i) => <li key={i}>{i}</li>)}</ul>
+            {data.exempt ? null : off ? <span className="faint">Em breve.</span>
+              : !data.configured ? null
+              : current ? null
+              : <button className={`btn ${k === 'pro' ? 'primary' : ''} lg block`} disabled={busy} onClick={() => pick(k)}>{valid ? `Mudar para ${PLANS[k].name}` : `Assinar ${PLANS[k].name}`}</button>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Botões para assinar (Checkout) ou gerenciar pagamento (Portal do Stripe). */
-function BillingActions({ data }: { data: any }) {
+function BillingActions({ data, plans = true }: { data: any; plans?: boolean }) {
   const toast = useToast();
   const [go, busy] = useAction(async (kind: 'checkout' | 'portal') => {
-    try { const r = await api<{ url: string }>(`/billing/${kind}`, { body: {} }); window.location.href = r.url; } catch (e: any) { toast(e.message, 'error'); }
+    try { const r = await api<{ url: string }>(`/billing/${kind}`, { body: { plan: data.plan || 'essencial' } }); window.location.href = r.url; } catch (e: any) { toast(e.message, 'error'); }
   });
   if (!data.configured) return <div className="notice warning">O pagamento online ainda não foi configurado. Fale com o suporte do Central.PDV.</div>;
   const valid = data.status === 'active' || data.status === 'trialing';
   return (
     <div className="row wrap">
-      {!valid && <button className="btn primary lg" disabled={busy} onClick={() => go('checkout')}>{data.hasCustomer ? 'Assinar novamente' : 'Assinar agora'}</button>}
+      {!valid && !plans && <button className="btn primary lg" disabled={busy} onClick={() => go('checkout')}>{data.hasCustomer ? 'Assinar novamente' : 'Assinar agora'}</button>}
       {data.hasCustomer && <button className={`btn ${valid ? 'primary' : ''} lg`} disabled={busy} onClick={() => go('portal')}>Atualizar cartão e ver faturas</button>}
     </div>
   );
@@ -36,7 +77,7 @@ export function BillingPage() {
   if (loading && !data) return <Loading />;
   const [label, tone] = data.exempt ? ['Isento (cortesia)', 'success'] as const : STATUS[data.status] ?? (data.trialEndsAt ? ['Período de teste', 'success'] as const : ['Sem assinatura', 'danger'] as const);
   return (
-    <div className="stack" style={{ maxWidth: 640 }}>
+    <div className="stack" style={{ maxWidth: 820 }}>
       <div className="page-head"><h1>Assinatura</h1></div>
       {ok && <div className="notice">Pagamento recebido pelo Stripe. A liberação acontece em instantes; se ainda aparecer bloqueado, toque em Atualizar.</div>}
       <div className="card stack">
@@ -47,6 +88,8 @@ export function BillingPage() {
         {!data.exempt && <BillingActions data={data} />}
         <div><button className="btn ghost sm" onClick={reload}>Atualizar</button></div>
       </div>
+      <h2>Planos</h2>
+      <PlanCards data={data} onChanged={reload} />
     </div>
   );
 }
@@ -67,7 +110,7 @@ export function Blocked() {
             : isAdmin ? 'Regularize o pagamento para liberar o sistema na hora. Seus dados continuam guardados.'
             : 'Peça ao administrador do estabelecimento para regularizar a assinatura.'}
         </p>
-        {isAdmin && status.data && <BillingActions data={status.data} />}
+        {isAdmin && status.data && <BillingActions data={status.data} plans={false} />}
         <div className="row"><button className="btn ghost" onClick={() => refreshAccess().catch(() => {})}>Já paguei, verificar</button><span className="spacer" /><button className="btn ghost" onClick={logout}>Sair</button></div>
       </div>
       <SystemFooter />

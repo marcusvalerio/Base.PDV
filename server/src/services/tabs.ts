@@ -71,7 +71,7 @@ export async function voidTabItem(db: DB, tabId: number, itemId: number, reason:
  * Fecha a conta de uma pessoa (personId) ou de toda a mesa (personId = null), cobrando apenas os itens pendentes.
  * Idempotente pela chave. Quando não restam itens pendentes após o fechamento da mesa inteira, a mesa é encerrada.
  */
-export async function closeTabBill(db: DB, tabId: number, input: { idempotencyKey: string; personId: number | null; paymentMethodCode: string; customerId?: number | null; receivedCents?: number | null }, userId: number) {
+export async function closeTabBill(db: DB, tabId: number, input: { idempotencyKey: string; personId: number | null; paymentMethodCode: string; customerId?: number | null; receivedCents?: number | null; pixChargeId?: number | null }, userId: number) {
   return idempotentSale(db, input.idempotencyKey,
     async () => {
       const saleId = await tx(db, async (t) => {
@@ -89,7 +89,7 @@ export async function closeTabBill(db: DB, tabId: number, input: { idempotencyKe
             unitPriceCents: it.unit_price_cents, unitCostCents: p.cost_cents, totalCents: it.total_cents, tabPersonId: it.person_id,
           });
         }
-        const id = await persistSaleTx(t, { idempotencyKey: input.idempotencyKey, paymentMethodCode: input.paymentMethodCode, customerId: input.customerId, receivedCents: input.receivedCents, lines, tabId }, userId);
+        const id = await persistSaleTx(t, { idempotencyKey: input.idempotencyKey, paymentMethodCode: input.paymentMethodCode, customerId: input.customerId, receivedCents: input.receivedCents, pixChargeId: input.pixChargeId, lines, tabId }, userId);
         for (const it of items) {
           const u = await t.run("UPDATE tab_items SET status='PAID', sale_id=? WHERE id=? AND status='PENDING'", [id, it.id]);
           if (u.rowCount !== 1) throw conflict('Um dos itens já foi cobrado. Atualize a tela.');

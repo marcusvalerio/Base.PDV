@@ -474,3 +474,11 @@ html, body, #root { min-height: 100%; }
 .help-menu > * { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; padding: 10px var(--s3); border-radius: var(--radius-sm); border: 0; background: none; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
 .help-menu > *:hover { background: var(--surface-2); }
 .help-menu span { font-size: 13px; color: var(--text-3); }
+
+/* Planos (Assinatura) */
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s4); }
+.plan.current { border-color: var(--success); box-shadow: 0 0 0 1px var(--success) inset; }
+.plan-items { margin: 0; padding-left: 20px; color: var(--text-2); display: flex; flex-direction: column; gap: var(--s2); line-height: 1.45; }
+.plan .btn { margin-top: auto; }
+.pix-ok { display: flex; align-items: center; justify-content: center; font-size: 72px; font-weight: 800; color: #fff !important; background: var(--success) !important; }
+.pix-box.pix-paid { border-color: var(--success); background: var(--success-soft); }

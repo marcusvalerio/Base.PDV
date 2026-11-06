@@ -7,7 +7,7 @@ import { useSession } from './session';
 import { useHidScanner, CameraButton } from './scanner';
 import { ProductArt } from './ProductArt';
 import { useOffline } from '../lib/offline';
-import { PixQr } from './PixQr';
+import { PixQr, PixAuto } from './PixQr';
 
 export interface Product { id: number; name: string; image_url?: string | null; unit: Unit; price_cents: number; stock_milli: number; category_id: number; category: string; barcode: string | null; internal_code: string | null; low_stock?: boolean }
 
@@ -160,7 +160,7 @@ export function CustomerPicker({ value, onChange }: { value: Customer | null; on
   );
 }
 
-export interface CheckoutResult { paymentMethodCode: string; customerId: number | null; receivedCents: number | null }
+export interface CheckoutResult { paymentMethodCode: string; customerId: number | null; receivedCents: number | null; pixChargeId?: number | null }
 
 /** Etapa de pagamento: forma, cliente (fiado), valor recebido e troco. */
 /** Unidades que contam para acréscimos: cada unidade/pacote conta 1; chopp/kg contam 1 por item. Igual ao servidor. */
@@ -184,7 +184,10 @@ export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm,
   const [cardOpen, setCardOpen] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [received, setReceived] = useState('');
+  // Plano Pro com Mercado Pago conectado: o Pix confirma sozinho (com opção de voltar ao Pix pela chave).
+  const [pixManual, setPixManual] = useState(false);
   const pm = boot?.paymentMethods.find((m) => m.code === method);
+  const pixAuto = pm?.kind === 'PIX' && !!boot?.pixAuto && online && !pixManual;
   const cards = boot?.paymentMethods.filter((m) => m.kind === 'CARD') ?? [];
   // Sem internet não dá para vender fiado (precisa do saldo do cliente no servidor).
   const others = boot?.paymentMethods.filter((m) => m.kind !== 'CARD' && (online || m.kind !== 'CREDIT')) ?? [];
@@ -198,13 +201,13 @@ export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm,
     for (const b of [500, 1000, 2000, 5000, 10000, 20000]) if (b > total) opts.add(Math.ceil(total / b) * b);
     return [...opts].sort((a, b) => a - b).slice(0, 4);
   }, [total]);
-  const canConfirm = !!pm && !busy && (pm.kind !== 'CREDIT' || !!customer) && (pm.kind !== 'CASH' || (receivedCents != null && receivedCents >= total));
+  const canConfirm = !!pm && !busy && !pixAuto && (pm.kind !== 'CREDIT' || !!customer) && (pm.kind !== 'CASH' || (receivedCents != null && receivedCents >= total));
   const confirm = () => canConfirm && onConfirm({ paymentMethodCode: pm!.code, customerId: customer?.id ?? null, receivedCents: pm!.kind === 'CASH' ? receivedCents : null });
 
   return (
     <Modal title={title} onClose={onClose} footer={<>
       <button className="btn lg" onClick={onClose} disabled={busy}>Voltar</button>
-      <button className="btn primary lg" onClick={confirm} disabled={!canConfirm}>{busy ? 'Registrando…' : `Confirmar ${money(total)}`}</button>
+      <button className="btn primary lg" onClick={confirm} disabled={!canConfirm}>{busy ? 'Registrando…' : pixAuto ? 'Aguardando Pix…' : `Confirmar ${money(total)}`}</button>
     </>}>
       {!online && <div className="notice warning">Sem internet: a venda fica guardada no aparelho e é enviada sozinha quando a conexão voltar. Fiado só com internet.</div>}
       <div className="row"><span className="muted">Total a pagar</span><span className="spacer" /><span className="total-big num">{money(total)}</span></div>
@@ -227,7 +230,9 @@ export function CheckoutModal({ title, subtotalCents, units, onClose, onConfirm,
           </div>
         </div>
       )}
-      {pm?.kind === 'PIX' && (boot?.pix?.key
+      {pixAuto && <PixAuto amountCents={total} onFallback={() => setPixManual(true)}
+        onPaid={(chargeId) => onConfirm({ paymentMethodCode: pm!.code, customerId: null, receivedCents: null, pixChargeId: chargeId })} />}
+      {pm?.kind === 'PIX' && !pixAuto && (boot?.pix?.key
         ? <PixQr pix={boot.pix} amountCents={total} />
         : <div className="faint">Dica: cadastre a chave Pix em Administração → Configurações para mostrar o QR Code com o valor.</div>)}
       {pm?.kind === 'CASH' && (

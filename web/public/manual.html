@@ -102,7 +102,7 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
   <a href="#config">Configurações</a>
   <a href="#codigos">Códigos de caixa e cancelamento</a>
   <a href="#auditoria">Auditoria</a>
-  <a href="#assinatura">Assinatura</a>
+  <a href="#assinatura">Assinatura e planos</a>
   <b>Ajuda</b>
   <a href="#duvidas">Dúvidas comuns</a>
   <a href="#problemas">Algo deu errado</a>
@@ -218,6 +218,7 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
   <div class="tablewrap"><table>
     <tr><th>Forma</th><th>Como funciona</th></tr>
     <tr><td><b>Dinheiro</b></td><td>Digite o <b>valor recebido do cliente</b>; o sistema mostra o <b>troco a devolver</b>. "Valor exato" preenche o total.</td></tr>
+    <tr><td><b>Pix automático</b> <span class="pill adm">Pro</span></td><td>No plano Pro, com a conta do Mercado Pago conectada, aparece um QR Code da venda e a tela fica em <b>"Aguardando pagamento…"</b>. Quando o cliente paga, a venda <b>confirma sozinha</b> em poucos segundos: não precisa conferir o banco. O QR vale 15 minutos; se vencer, toque em "Gerar outro QR Code". Se o Mercado Pago estiver fora, toque em "Usar Pix pela chave" (conferência manual).</td></tr>
     <tr><td><b>Pix</b></td><td>Com a chave Pix cadastrada, aparece um <b>QR Code com o valor exato</b>. O dinheiro cai direto na sua conta. <b>Confira no app do banco que o Pix chegou antes de confirmar</b>: o sistema não consegue verificar isso.</td></tr>
     <tr><td><b>Cartão</b></td><td>Escolha <b>Débito</b> ou <b>Crédito</b>. Se houver acréscimo configurado, ele aparece antes de confirmar. A maquininha é separada: passe o cartão nela.</td></tr>
     <tr><td><b>Fiado (a prazo)</b></td><td>Escolha o cliente (ou <span class="btn">+ Novo cliente</span>). A venda vai para a conta dele. Precisa de internet.</td></tr>
@@ -233,7 +234,7 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
     <li>Na parte <b>Cancelar esta venda</b>, escreva o <b>motivo</b> (ex.: produto lançado errado) e digite o <b>código de cancelamento</b>.</li>
     <li>Toque em <span class="btn">Cancelar venda</span>.</li>
   </ol>
-  <p>O estoque volta automaticamente. Se a venda veio de uma <b>mesa</b>, os itens voltam para a mesa. Vendas canceladas continuam no histórico marcadas como "cancelada".</p>
+  <p>O estoque volta automaticamente. <b>Pix automático:</b> cancelar a venda <b>não devolve</b> o dinheiro ao cliente; faça a devolução no app do Mercado Pago. Se a venda veio de uma <b>mesa</b>, os itens voltam para a mesa. Vendas canceladas continuam no histórico marcadas como "cancelada".</p>
   <div class="box bad"><b>Quando NÃO dá para cancelar</b>
     • Venda de um caixa <b>já fechado</b>: fale com o administrador (registre o acerto como Suprimento/Retirada e ajuste o estoque).<br>
     • Venda <b>fiado</b> que já recebeu algum pagamento.<br>
@@ -508,7 +509,21 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
 
 <section id="assinatura">
   <div class="who"><span class="pill adm">Admin</span></div>
-  <h2>Assinatura</h2>
+  <h2>Assinatura e planos</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Plano</th><th>O que tem</th></tr>
+    <tr><td><b>Essencial</b></td><td>Todo o sistema: vendas, caixa, mesas, fiado, estoque, inventário e relatórios. Pix pela chave (QR com o valor; o caixa confere no banco).</td></tr>
+    <tr><td><b>Pro</b></td><td>Tudo do Essencial + <b>Pix com confirmação automática</b> pelo Mercado Pago. O dinheiro cai direto na conta do Mercado Pago do estabelecimento.</td></tr>
+  </table></div>
+  <h3>Mudar de plano</h3>
+  <p><span class="path">Administração › Assinatura</span> › <b>Planos</b> › <span class="btn">Mudar para Pro</span> (ou Essencial). Quem já assina tem a diferença ajustada na próxima fatura.</p>
+  <h3>Ligar o Pix automático (plano Pro)</h3>
+  <ol>
+    <li><span class="path">Administração › Configurações</span> › <b>Pix</b> › <span class="btn">Conectar Mercado Pago</span>.</li>
+    <li>Entre na conta do Mercado Pago <b>do estabelecimento</b> e toque em <b>Autorizar</b>.</li>
+    <li>Você volta para o sistema com o aviso "Conta do Mercado Pago conectada". Pronto: no caixa, o Pix já confirma sozinho.</li>
+  </ol>
+  <p>Para parar, toque em <span class="btn">Desconectar</span>: o Pix volta a ser pela chave.</p>
   <ul>
     <li><span class="path">Administração › Assinatura</span> mostra a situação, a data do teste grátis e a próxima cobrança.</li>
     <li><span class="btn">Assinar agora</span> abre o pagamento seguro (cartão). <span class="btn">Atualizar cartão e ver faturas</span> abre o portal de pagamento.</li>
@@ -518,7 +533,7 @@ footer { grid-column: 1 / -1; text-align: center; color: var(--t3); font-size: 1
 
 <section id="duvidas">
   <h2>Dúvidas comuns</h2>
-  <details><summary>O Pix foi confirmado automaticamente?</summary><p>Não. O sistema gera o QR Code com o valor, mas não tem acesso ao seu banco. Confira no app do banco antes de confirmar a venda.</p></details>
+  <details><summary>O Pix foi confirmado automaticamente?</summary><p>No plano <b>Pro</b> com o Mercado Pago conectado, sim: a venda só fecha quando o Mercado Pago confirma o pagamento. No <b>Essencial</b> (Pix pela chave), não: o sistema não tem acesso ao seu banco, então confira no app do banco antes de confirmar a venda.</p></details>
   <details><summary>Vendi errado. Edito ou cancelo?</summary><p>Venda concluída não se edita: cancele (com motivo e código) e faça de novo, enquanto o caixa estiver aberto. Na mesa, use "Corrigir" no item.</p></details>
   <details><summary>O fechamento deu diferença. E agora?</summary><p>Confira se todo suprimento e toda retirada foram registrados e se o troco foi dado certo. O fechamento fica gravado com a diferença; ele não pode ser refeito.</p></details>
   <details><summary>Posso usar em mais de um aparelho ao mesmo tempo?</summary><p>Sim. Cada pessoa entra com o próprio usuário e abre o próprio caixa. A impressora é configurada em cada aparelho.</p></details>
