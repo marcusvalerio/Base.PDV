@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSession } from './session';
 
 /**
@@ -8,7 +8,7 @@ import { useSession } from './session';
  * Uma vez por abertura (sessão do navegador); toque para pular. Com "reduzir movimento", mostra só o final.
  */
 const KEY = 'pdv.splash.seen';
-const LENGTH = 3800;
+const LENGTH = 4100;
 const DAY = 'pdv.splash.day';
 export const splashPending = () => { try { return !sessionStorage.getItem(KEY); } catch { return false; } };
 
@@ -29,7 +29,6 @@ const CARDS = [
   { k: 'c4', c: '#f9a8d4', label: 'MESAS', icon: <><path d="M3 9h18M5 9v11M19 9v11M8 13h8"/><path d="M7 5h10"/></> },
 ];
 const DUST: [number, number, number][] = [[-0.16, 0.33, 0.33], [-0.38, 0.54, 0.18], [-0.40, 0.53, 0.02], [-0.06, 0.29, 0.05], [-0.07, 0.70, 0.06], [-0.25, 0.60, 0.47], [0.07, 0.47, 0.49], [-0.41, 0.72, 0.14], [-0.32, 0.31, 0.15], [0.28, 0.35, 0.29], [0.13, 0.45, 0.27], [-0.39, 0.28, 0.10]];
-const WORD = 'Central.PDV';
 
 function Cube({ full }: { full: boolean }) {
   return (
@@ -71,11 +70,29 @@ export function Splash() {
     const t = setTimeout(() => setPhase('off'), 450);
     return () => clearTimeout(t);
   }, [phase]);
+  // A caixa termina exatamente no ponto de "Central.PDV": mede onde o ponto ficou nesta tela.
+  const root = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null), slot = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    if (phase === 'off') return;
+    const place = () => {
+      const r = root.current, st = stage.current, sl = slot.current;
+      const cube = r?.querySelector<HTMLElement>(':scope > .op-stage > .op-mover');
+      if (!r || !st || !sl || !cube) return;
+      const a = st.getBoundingClientRect(), b = sl.getBoundingClientRect(), S = cube.offsetWidth;
+      r.style.setProperty('--dx', `${b.left + b.width / 2 - a.left}px`);
+      r.style.setProperty('--dy', `${b.top + b.height / 2 - a.top + S / 2}px`);
+      r.style.setProperty('--ds', String(b.width / S));
+    };
+    place();
+    document.fonts?.ready.then(place).catch(() => {});
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [phase]);
   if (phase === 'off') return null;
   return (
-    <div className={`op splash ${calm ? 'calm' : ''} ${phase === 'out' ? 'out' : ''}`} role="presentation" onClick={() => setDone(true)}>
+    <div ref={root} className={`op splash ${calm ? 'calm' : ''} ${phase === 'out' ? 'out' : ''}`} role="presentation" onClick={() => setDone(true)}>
       <div className="op-floor" />
-      <div className="op-stage">
+      <div className="op-stage" ref={stage}>
         <div className="op-pool" />
         <div className="op-light" />
         <div className="op-mirror"><Cube full={false} /></div>
@@ -87,9 +104,12 @@ export function Splash() {
           </div>
         ))}
       </div>
-      <div className="op-logo">c.</div>
       <div className="op-name">
-        <div className="op-word">{[...WORD].map((ch, i) => <span key={i} className={ch === '.' ? 'dot' : ''} style={{ animationDelay: `calc(var(--T) * .80 + ${(i * 0.035).toFixed(3)}s)` }}>{ch}</span>)}</div>
+        <div className="op-word">
+          {[...'Central'].map((ch, i) => <span key={'a' + i} style={{ animationDelay: `calc(var(--T) * .64 + ${(i * 0.04).toFixed(2)}s)` }}>{ch}</span>)}
+          <i className="op-slot" ref={slot} />
+          {[...'PDV'].map((ch, i) => <span key={'b' + i} style={{ animationDelay: `calc(var(--T) * .83 + ${(i * 0.05).toFixed(2)}s)` }}>{ch}</span>)}
+        </div>
         {done && !ready && <div className="op-wait" aria-label="Carregando"><i /><i /><i /></div>}
         <div className="op-hi">{greeting()}, <strong>{boot?.storeName || 'bem-vindo'}</strong></div>
       </div>
