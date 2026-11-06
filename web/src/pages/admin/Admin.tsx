@@ -253,6 +253,39 @@ function CodeModal({ title, path, onClose }: { title: string; path: string; onCl
   );
 }
 
+/** Pix automático (plano Pro): conectar a conta do Mercado Pago do estabelecimento. */
+function MercadoPagoCard() {
+  const toast = useToast();
+  const { refreshBoot } = useSession();
+  const { data, reload } = useApi<{ available: boolean; plan: string; connected: boolean; connectedAt: string | null }>('/mp/status');
+  const back = new URLSearchParams(location.search).get('mp');
+  const [act, busy] = useAction(async (kind: 'connect' | 'disconnect') => {
+    try {
+      if (kind === 'connect') { const r = await api<{ url: string }>('/mp/connect', { body: {} }); window.location.href = r.url; return; }
+      if (!window.confirm('Desconectar o Mercado Pago? O Pix volta a ser pela chave, com conferência manual.')) return;
+      await api('/mp/disconnect', { body: {} }); toast('Mercado Pago desconectado.', 'success'); reload(); refreshBoot();
+    } catch (e: any) { toast(e.message, 'error'); }
+  });
+  if (!data || !data.available) return null;
+  return (
+    <div className="notice stack" style={{ gap: 8, background: data.connected ? 'var(--success-soft)' : 'var(--accent-soft)', color: 'var(--text)' }}>
+      {back === 'ok' && <b style={{ color: 'var(--success)' }}>Conta do Mercado Pago conectada.</b>}
+      {back === 'erro' && <b style={{ color: 'var(--danger)' }}>Não foi possível conectar. Tente de novo.</b>}
+      <div className="row wrap">
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <b>Pix automático (Mercado Pago)</b>
+          <div className="faint">{data.plan !== 'pro' ? 'Do plano Pro: a venda em Pix fecha sozinha quando o pagamento cai na conta.'
+            : data.connected ? `Conectado em ${dateTime(data.connectedAt ?? "")}. O QR Code de cada venda é gerado na sua conta e a venda confirma sozinha.`
+            : 'Conecte a conta do Mercado Pago do estabelecimento: o dinheiro cai nela e o sistema confirma o pagamento sozinho.'}</div>
+        </div>
+        {data.plan !== 'pro' ? <a className="btn" href="/app/admin/assinatura">Ver plano Pro</a>
+          : data.connected ? <button className="btn" disabled={busy} onClick={() => act('disconnect')}>Desconectar</button>
+          : <button className="btn primary" disabled={busy} onClick={() => act('connect')}>Conectar Mercado Pago</button>}
+      </div>
+    </div>
+  );
+}
+
 export function Settings() {
   const { data, loading, error, reload, setData } = useApi<any>('/settings');
   const cats = useApi<any[]>('/categories');
@@ -298,6 +331,7 @@ export function Settings() {
       </div>
       <div className="card stack">
         <h2>Pix</h2>
+        <MercadoPagoCard />
         <div className="faint">Com a chave preenchida, ao escolher Pix aparece um QR Code com o valor exato da venda. O dinheiro cai direto na conta da chave; confira o recebimento antes de confirmar.</div>
         <Field label="Chave Pix" hint="CPF, CNPJ, e-mail, celular com +55 (ex.: +5511987654321) ou chave aleatória.">
           <input className="input" style={{ maxWidth: 420 }} autoCapitalize="none" value={v.pix_key ?? ''} onChange={set('pix_key')} />

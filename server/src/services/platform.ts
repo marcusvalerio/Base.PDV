@@ -15,7 +15,10 @@ export interface Tenant {
   id: number; name: string; schema_name: string; status: 'ACTIVE' | 'SUSPENDED'; billing_exempt: number;
   trial_ends_at: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null;
   subscription_status: string | null; current_period_end: string | null; created_at: string;
+  plan: Plan;
 }
+
+export type Plan = 'essencial' | 'pro';
 
 /** Status de assinatura do Stripe que liberam o uso. Qualquer outro (past_due, unpaid, canceled…) bloqueia na hora. */
 const PAID = new Set(['active', 'trialing']);
@@ -77,12 +80,12 @@ export async function createTenant(base: DB, input: {
   return t!.id;
 }
 
-export async function updateTenant(base: DB, id: number, patch: { name?: string; status?: 'ACTIVE' | 'SUSPENDED'; billing_exempt?: boolean; trial_ends_at?: string | null }, actorId: number) {
+export async function updateTenant(base: DB, id: number, patch: { name?: string; status?: 'ACTIVE' | 'SUSPENDED'; billing_exempt?: boolean; trial_ends_at?: string | null; plan?: Plan }, actorId: number) {
   const t = await getTenant(base, id);
   if (!t) throw notFound('Estabelecimento não encontrado.');
-  await base.run('UPDATE tenants SET name = ?, status = ?, billing_exempt = ?, trial_ends_at = ? WHERE id = ?', [
+  await base.run('UPDATE tenants SET name = ?, status = ?, billing_exempt = ?, trial_ends_at = ?, plan = ? WHERE id = ?', [
     patch.name?.trim() ?? t.name, patch.status ?? t.status, patch.billing_exempt === undefined ? t.billing_exempt : patch.billing_exempt ? 1 : 0,
-    patch.trial_ends_at === undefined ? t.trial_ends_at : patch.trial_ends_at, id,
+    patch.trial_ends_at === undefined ? t.trial_ends_at : patch.trial_ends_at, patch.plan ?? t.plan, id,
   ]);
   if (patch.name) await withSchema(base, t.schema_name, (db) => setSetting(db, 'store_name', patch.name!.trim(), null));
   await platformAudit(base, actorId, 'tenant.update', id, patch);

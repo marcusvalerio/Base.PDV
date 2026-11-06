@@ -225,6 +225,7 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
             ? <button className="btn primary" onClick={() => patch({ status: 'ACTIVE' }, 'Estabelecimento reativado.')}>Reativar</button>
             : <button className="btn danger" onClick={() => window.confirm(`Suspender ${t.name}? O sistema sai do ar para todos de lá.`) && patch({ status: 'SUSPENDED' }, 'Estabelecimento suspenso.')}>Suspender</button>}
           <button className="btn" onClick={() => patch({ billing_exempt: !t.billing_exempt }, t.billing_exempt ? 'Agora depende da assinatura.' : 'Marcado como isento.')}>{t.billing_exempt ? 'Tirar isenção' : 'Marcar como isento'}</button>
+          <button className="btn" onClick={() => { const to = t.plan === 'pro' ? 'essencial' : 'pro'; window.confirm(`Mudar ${t.name} para o plano ${to === 'pro' ? 'Pro' : 'Essencial'}? Se ele assina pelo Stripe, o próximo aviso do Stripe volta a definir o plano pelo que foi pago.`) && patch({ plan: to }, `Plano ${to === 'pro' ? 'Pro' : 'Essencial'}.`); }}>Plano: {t.plan === 'pro' ? 'Pro' : 'Essencial'} · trocar</button>
           <a className="btn" href={`/api/central/tenants/${t.id}/backup`} download>Baixar cópia de segurança</a>
         </div>
         <div className="row wrap">

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DB, audit, tenantAware, tenantStore, withSchema } from './db.js';
 import * as platform from './services/platform.js';
 import * as stripe from './services/stripe.js';
+import * as mp from './services/mercadopago.js';
 import * as centralSvc from './services/central.js';
 import { AppError, forbidden, unauthorized, badRequest } from './errors.js';
 import { UNITS } from './money.js';
@@ -241,13 +242,49 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   r.get('/billing/status', admin, async (req, res) => {
     const t = (await platform.getTenant(base, req.tenant!.id))!;
     res.json({ access: platform.access(t), status: t.subscription_status, currentPeriodEnd: t.current_period_end, exempt: !!t.billing_exempt,
-      hasCustomer: !!t.stripe_customer_id, configured: stripe.stripeConfigured(), trialEndsAt: t.trial_ends_at });
+      hasCustomer: !!t.stripe_customer_id, configured: stripe.stripeConfigured(), trialEndsAt: t.trial_ends_at,
+      plan: t.plan, proAvailable: !!process.env.STRIPE_PRICE_ID_PRO, prices: await stripe.planPrices(sfetch).catch(() => ({ essencial: null, pro: null })) });
   });
-  r.post('/billing/checkout', admin, async (req, res) => res.json({ url: await stripe.checkoutUrl(base, sfetch, req.tenant!.id) }));
+  const planBody = z.object({ plan: z.enum(['essencial', 'pro']).default('essencial') });
+  r.post('/billing/checkout', admin, async (req, res) => res.json({ url: await stripe.checkoutUrl(base, sfetch, req.tenant!.id, planBody.parse(req.body ?? {}).plan) }));
+  r.post('/billing/plan', admin, async (req, res) => res.json(await stripe.changePlan(base, sfetch, req.tenant!.id, planBody.parse(req.body).plan)));
+
+  // ---------- Pix automático (plano Pro): conta do Mercado Pago do estabelecimento ----------
+  r.get('/mp/status', admin, async (req, res) => res.json(await mp.status(base, req.tenant!)));
+  r.post('/mp/connect', admin, async (req, res) => {
+    if (req.tenant!.plan !== 'pro') throw forbidden('O Pix automático é do plano Pro. Mude de plano em Administração › Assinatura.');
+    res.json({ url: mp.connectUrl(req.tenant!.id, uid(req)) });
+  });
+  r.post('/mp/disconnect', admin, async (req, res) => {
+    await mp.disconnect(base, req.tenant!.id);
+    await audit(db, uid(req), 'mp.disconnect', null, null, {});
+    res.json({ ok: true });
+  });
+  // Volta do Mercado Pago (navegação vinda de outro site: o cookie de sessão não vem; o "state" assinado diz o estabelecimento).
+  r.get('/mp/callback', async (req, res) => {
+    const q = z.object({ code: z.string().min(1).max(500).optional(), state: z.string().max(300).optional(), error: z.string().max(200).optional() }).parse(req.query);
+    if (!q.code || !q.state) return res.redirect(302, '/app/admin/config?mp=cancelado');
+    try {
+      const s = await mp.finishConnect(base, sfetch, q.code, q.state);
+      const t = await platform.getTenant(base, s.tenantId);
+      if (t) await withSchema(base, t.schema_name, (tdb) => audit(tdb, s.userId, 'mp.connect', null, null, {}));
+      res.redirect(302, '/app/admin/config?mp=ok');
+    } catch (e) {
+      console.error('mp callback', (e as Error).message);
+      res.redirect(302, '/app/admin/config?mp=erro');
+    }
+  });
+  // Cobranças Pix do caixa
+  r.post('/pix/charges', auth, async (req, res) => {
+    const b = z.object({ amountCents: cents.refine((v) => v > 0), idempotencyKey: idemKey }).parse(req.body);
+    res.status(201).json(await mp.createCharge(base, db, sfetch, req.tenant!, uid(req), b.amountCents, b.idempotencyKey));
+  });
+  r.get('/pix/charges/:id', auth, async (req, res) => res.json(await mp.refreshCharge(base, db, sfetch, req.tenant!, id.parse(req.params.id))));
+  r.post('/pix/charges/:id/cancel', auth, async (req, res) => res.json(await mp.cancelCharge(base, db, sfetch, req.tenant!, id.parse(req.params.id))));
   r.post('/billing/portal', admin, async (req, res) => res.json({ url: await stripe.portalUrl(base, sfetch, req.tenant!.id) }));
 
   // ---------- Dados básicos para o PDV ----------
-  r.get('/bootstrap', auth, async (_req, res) => {
+  r.get('/bootstrap', auth, async (req, res) => {
     const mods = await modules.getModules(db);
     res.json({
       modules: mods,
@@ -260,6 +297,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
       },
       cashCodeMode: await settings.getSetting(db, 'cash_code_mode'),
       storeName: await settings.getSetting(db, 'store_name'),
+      pixAuto: await mp.enabled(base, req.tenant!),
       pix: { key: await settings.getSetting(db, 'pix_key'), name: await settings.getSetting(db, 'pix_name'), city: await settings.getSetting(db, 'pix_city') },
       // Primeiro acesso: falta definir o código do caixa (sem ele ninguém abre o caixa).
       setupPending: (await settings.getSetting(db, 'cash_code_mode')) === 'SHARED' && !(await settings.getSetting(db, 'shared_cash_code_hash')),
@@ -337,7 +375,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   r.post('/sales', auth, async (req, res) => {
     const b = z.object({
       idempotencyKey: idemKey, paymentMethodCode: z.string().max(20), items: lines,
-      customerId: id.nullish(), receivedCents: cents.nullish(),
+      customerId: id.nullish(), receivedCents: cents.nullish(), pixChargeId: id.nullish(),
       // Venda feita sem internet: horário real da venda no aparelho (aceito até 3 dias atrás).
       offlineAt: z.string().datetime().optional(),
     }).parse(req.body);
@@ -467,7 +505,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     }));
   });
   r.post('/tabs/:id/close', auth, async (req, res) => {
-    const b = z.object({ idempotencyKey: idemKey, personId: id.nullable(), paymentMethodCode: z.string().max(20), customerId: id.nullish(), receivedCents: cents.nullish() }).parse(req.body);
+    const b = z.object({ idempotencyKey: idemKey, personId: id.nullable(), paymentMethodCode: z.string().max(20), customerId: id.nullish(), receivedCents: cents.nullish(), pixChargeId: id.nullish() }).parse(req.body);
     if ((await sales.getPaymentMethod(db, b.paymentMethodCode)).kind === 'CREDIT') await modules.requireModule(db, 'fiado');
     res.json(await tabs.closeTabBill(db, id.parse(req.params.id), b, uid(req)));
   });
@@ -710,6 +748,7 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     const b = z.object({
       name: z.string().trim().min(2).max(60).optional(), status: z.enum(['ACTIVE', 'SUSPENDED']).optional(),
       billing_exempt: z.boolean().optional(), trial_ends_at: z.string().datetime().nullable().optional(),
+      plan: z.enum(['essencial', 'pro']).optional(),
     }).parse(req.body);
     await platform.updateTenant(base, tenantId(req), b, req.central!.id);
     res.json({ ok: true });

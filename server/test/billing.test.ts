@@ -27,7 +27,7 @@ function fakeStripe() {
 }
 
 describe('assinatura (Stripe)', () => {
-  afterEach(() => { for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_PRICE_ID', 'STRIPE_SETUP_PRICE_ID', 'STRIPE_WEBHOOK_SECRET']) delete process.env[k]; });
+  afterEach(() => { for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_PRICE_ID', 'STRIPE_PRICE_ID_PRO', 'STRIPE_SETUP_PRICE_ID', 'STRIPE_WEBHOOK_SECRET']) delete process.env[k]; });
 
   it('valida a assinatura do webhook', () => {
     const body = Buffer.from('{"a":1}');
@@ -38,6 +38,25 @@ describe('assinatura (Stripe)', () => {
     expect(verifyWebhook(Buffer.from('{"a":2}'), good, SECRET)).toBe(false);
     expect(verifyWebhook(body, good, SECRET, (t + 600) * 1000)).toBe(false);
     expect(verifyWebhook(body, undefined, SECRET)).toBe(false);
+  });
+
+  it('planos: checkout do Pro usa o preço do Pro; o webhook define o plano pelo preço assinado', async () => {
+    process.env.STRIPE_SECRET_KEY = 'sk_test_x'; process.env.STRIPE_PRICE_ID = 'price_ess'; process.env.STRIPE_PRICE_ID_PRO = 'price_pro'; process.env.STRIPE_WEBHOOK_SECRET = SECRET;
+    const stripe = fakeStripe();
+    const { app, base } = await setup({ fetch: stripe.f });
+    const sup = await agent(app, 'super', true);
+    const tid = (await sup.post('/api/central/tenants', { name: 'Loja Pro', admin: { name: 'Dono', username: 'dono.pro', password: PASS } })).body.id;
+    const dono = await agent(app, 'dono.pro');
+    expect((await dono.get('/api/billing/status')).body).toMatchObject({ plan: 'essencial', proAvailable: true });
+    await dono.post('/api/billing/checkout', { plan: 'pro' });
+    expect(decodeURIComponent(stripe.calls.find((c) => c.url.endsWith('/checkout/sessions'))!.body)).toContain('line_items[0][price]=price_pro');
+    await hook(app, { id: 'evt_p1', type: 'customer.subscription.updated', data: { object: { id: 'sub_9', customer: 'cus_1', status: 'active', metadata: { tenant_id: String(tid) }, items: { data: [{ id: 'si_1', price: { id: 'price_pro' } }] } } } });
+    expect((await base.one('SELECT plan FROM tenants WHERE id = ?', [tid])).plan).toBe('pro');
+    // Preço desconhecido não mexe no plano.
+    await hook(app, { id: 'evt_p2', type: 'customer.subscription.updated', data: { object: { id: 'sub_9', customer: 'cus_1', status: 'active', metadata: { tenant_id: String(tid) }, items: { data: [{ id: 'si_1', price: { id: 'price_outro' } }] } } } });
+    expect((await base.one('SELECT plan FROM tenants WHERE id = ?', [tid])).plan).toBe('pro');
+    await hook(app, { id: 'evt_p3', type: 'customer.subscription.updated', data: { object: { id: 'sub_9', customer: 'cus_1', status: 'active', metadata: { tenant_id: String(tid) }, items: { data: [{ id: 'si_1', price: { id: 'price_ess' } }] } } } });
+    expect((await base.one('SELECT plan FROM tenants WHERE id = ?', [tid])).plan).toBe('essencial');
   });
 
   it('checkout → webhook libera; falha de pagamento bloqueia na hora; evento repetido é ignorado', async () => {

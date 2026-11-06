@@ -1,17 +1,35 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { DB, now } from '../db.js';
 import { AppError, badRequest } from '../errors.js';
-import { Tenant, getTenant, platformAudit } from './platform.js';
+import { Tenant, Plan, getTenant, platformAudit } from './platform.js';
 
 /**
  * Assinatura via Stripe (Checkout + Portal do cliente + webhook).
  * Variáveis: STRIPE_SECRET_KEY, STRIPE_PRICE_ID (mensalidade), STRIPE_SETUP_PRICE_ID (instalação, opcional),
- * STRIPE_WEBHOOK_SECRET e APP_URL (ex.: https://centralpdv.vercel.app).
+ * STRIPE_PRICE_ID_PRO (mensalidade do plano Pro, opcional), STRIPE_WEBHOOK_SECRET e APP_URL (ex.: https://centralpdv.vercel.app).
  * O acesso do estabelecimento depende só do status salvo pelo webhook (ver platform.access).
  */
 export type Fetch = typeof fetch;
 
 export const stripeConfigured = () => !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);
+
+/** Plano Essencial = STRIPE_PRICE_ID; plano Pro = STRIPE_PRICE_ID_PRO. */
+export const priceFor = (plan: Plan) => (plan === 'pro' ? process.env.STRIPE_PRICE_ID_PRO : process.env.STRIPE_PRICE_ID);
+export const planForPrice = (priceId: string | undefined): Plan | null =>
+  !priceId ? null : priceId === process.env.STRIPE_PRICE_ID_PRO ? 'pro' : priceId === process.env.STRIPE_PRICE_ID ? 'essencial' : null;
+
+/** Preço mensal de cada plano (lido do Stripe, guardado por 10 minutos) para mostrar na tela de assinatura. */
+let priceCache: { at: number; v: Record<Plan, number | null> } | null = null;
+export async function planPrices(f: Fetch): Promise<Record<Plan, number | null>> {
+  if (priceCache && Date.now() - priceCache.at < 10 * 60e3) return priceCache.v;
+  const v: Record<Plan, number | null> = { essencial: null, pro: null };
+  for (const plan of ['essencial', 'pro'] as Plan[]) {
+    const id = priceFor(plan);
+    if (id && process.env.STRIPE_SECRET_KEY) v[plan] = (await stripeApi(f, 'GET', `/prices/${encodeURIComponent(id)}`).catch(() => null))?.unit_amount ?? null;
+  }
+  priceCache = { at: Date.now(), v };
+  return v;
+}
 
 function form(obj: Record<string, string | number | undefined>) {
   const p = new URLSearchParams();
@@ -58,7 +76,12 @@ async function ensureCustomer(base: DB, f: Fetch, t: Tenant, email?: string) {
 }
 
 /** Link do Checkout para assinar (ou o Portal, se já houver assinatura válida). */
-export async function checkoutUrl(base: DB, f: Fetch, tenantId: number) {
+const BILLING_OFF = () => new AppError(503, 'BILLING_OFF', 'Pagamento ainda não configurado. Fale com o suporte do Central.PDV.');
+
+export async function checkoutUrl(base: DB, f: Fetch, tenantId: number, plan: Plan = 'essencial') {
+  if (!stripeConfigured()) throw BILLING_OFF();
+  const price = priceFor(plan);
+  if (!price) throw badRequest('Este plano ainda não está disponível.');
   const t = await getTenant(base, tenantId);
   if (!t) throw badRequest('Estabelecimento não encontrado.');
   const customer = await ensureCustomer(base, f, t);
@@ -66,13 +89,29 @@ export async function checkoutUrl(base: DB, f: Fetch, tenantId: number) {
   const setup = process.env.STRIPE_SETUP_PRICE_ID && !t.stripe_subscription_id ? process.env.STRIPE_SETUP_PRICE_ID : undefined;
   const s = await stripeApi(f, 'POST', '/checkout/sessions', form({
     mode: 'subscription', customer, client_reference_id: t.id,
-    'line_items[0][price]': process.env.STRIPE_PRICE_ID, 'line_items[0][quantity]': 1,
+    'line_items[0][price]': price, 'line_items[0][quantity]': 1,
     'line_items[1][price]': setup, 'line_items[1][quantity]': setup ? 1 : undefined,
     'subscription_data[metadata][tenant_id]': t.id, 'metadata[tenant_id]': t.id,
     success_url: `${appUrl()}/app/admin/assinatura?ok=1`, cancel_url: `${appUrl()}/app/admin/assinatura`,
     locale: 'pt-BR', allow_promotion_codes: 'true',
   }));
   return s.url as string;
+}
+
+/** Troca de plano de quem já assina: muda o preço da assinatura no Stripe (cobrança proporcional no próximo ciclo). */
+export async function changePlan(base: DB, f: Fetch, tenantId: number, plan: Plan) {
+  if (!stripeConfigured()) throw BILLING_OFF();
+  const t = await getTenant(base, tenantId);
+  const price = priceFor(plan);
+  if (!price) throw badRequest('Este plano ainda não está disponível.');
+  if (!t?.stripe_subscription_id || !['active', 'trialing', 'past_due'].includes(t.subscription_status ?? '')) return { url: await checkoutUrl(base, f, tenantId, plan) };
+  const sub = await stripeApi(f, 'GET', `/subscriptions/${t.stripe_subscription_id}`);
+  const item = sub.items?.data?.[0];
+  if (!item) throw badRequest('Assinatura sem item. Fale com o suporte.');
+  if (item.price?.id === price) return { changed: false };
+  const upd = await stripeApi(f, 'POST', `/subscriptions/${sub.id}`, form({ 'items[0][id]': item.id, 'items[0][price]': price, proration_behavior: 'create_prorations' }));
+  await applySubscription(base, upd, tenantId);
+  return { changed: true };
 }
 
 /** Portal do Stripe: trocar cartão, ver faturas, cancelar. */
@@ -99,10 +138,13 @@ async function applySubscription(base: DB, sub: any, tenantHint?: number) {
     || (await base.one('SELECT id FROM tenants WHERE stripe_subscription_id = ? OR stripe_customer_id = ?', [sub.id, sub.customer]))?.id;
   if (!tenantId) return;
   const end = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end;
+  // O plano segue o preço assinado (Essencial ou Pro). Preço desconhecido não muda o plano.
+  const plan = planForPrice(sub.items?.data?.[0]?.price?.id);
+  if (plan) await base.run('UPDATE tenants SET plan = ? WHERE id = ?', [plan, tenantId]);
   await base.run(`UPDATE tenants SET stripe_subscription_id = ?, stripe_customer_id = COALESCE(stripe_customer_id, ?), subscription_status = ?, current_period_end = ?,
       canceled_at = CASE WHEN ? = 'canceled' THEN COALESCE(canceled_at, ?) ELSE NULL END WHERE id = ?`,
     [sub.id, sub.customer, sub.status, end ? new Date(end * 1000).toISOString() : null, sub.status, now(), tenantId]);
-  await platformAudit(base, null, 'billing.subscription', tenantId, { status: sub.status });
+  await platformAudit(base, null, 'billing.subscription', tenantId, { status: sub.status, plan });
 }
 
 /** Processa um evento já validado. Idempotente (o Stripe pode reenviar). */
