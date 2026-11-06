@@ -141,9 +141,13 @@ export function Tour() {
   );
 }
 
+const VIDEO_CAIXA = '/media/tutorial-operador-b44e68bc09.mp4';
+const VIDEO_ADMIN = '/media/tutorial-admin-95be052b9d.mp4';
+
 /** Botão "?" do topo: repetir o tour ou abrir o manual. */
 export function HelpMenu() {
   const [open, setOpen] = useState(false);
+  const { user } = useSession();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -158,6 +162,8 @@ export function HelpMenu() {
         <div className="help-menu" role="menu">
           <button role="menuitem" onClick={() => { setOpen(false); startTour(); }}><b>Fazer o tour</b><span>Passo a passo pelas telas</span></button>
           <a role="menuitem" href="/manual.html" target="_blank" rel="noopener" onClick={() => setOpen(false)}><b>Manual completo</b><span>Tudo explicado, com exemplos</span></a>
+          <a role="menuitem" href={VIDEO_CAIXA} target="_blank" rel="noopener" onClick={() => setOpen(false)}><b>Vídeo do caixa</b><span>Vender, cobrar e fechar o caixa (2 min)</span></a>
+          {user?.role === 'ADMIN' && <a role="menuitem" href={VIDEO_ADMIN} target="_blank" rel="noopener" onClick={() => setOpen(false)}><b>Vídeo do administrador</b><span>Produtos, equipe, relatórios (2 min)</span></a>}
         </div>
       )}
     </div>
