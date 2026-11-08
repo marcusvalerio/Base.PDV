@@ -648,3 +648,5 @@ html { background: var(--bg); }
 .notice-action:hover { filter: brightness(1.08); }
 .notice-hint { font-weight: 600; }
 @media (max-width: 699px) { .notice-action { display: flex; justify-content: center; margin: 8px 0 0; padding: 8px 12px; } }
+.notice-howto { display: inline-block; margin-left: 10px; font-size: 13px; font-weight: 600; color: inherit; text-decoration: underline; }
+@media (max-width: 699px) { .notice-howto { display: block; margin: 6px 0 0; text-align: center; } }

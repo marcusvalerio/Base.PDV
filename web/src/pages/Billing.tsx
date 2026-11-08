@@ -96,6 +96,7 @@ export function BillingPage() {
         {!data.exempt && <BillingActions data={data} />}
         <div><button className="btn ghost sm" onClick={reload}>Atualizar</button></div>
       </div>
+      {!data.exempt && !(data.status === 'active' || data.status === 'trialing') && <a className="btn ghost" style={{ alignSelf: 'flex-start' }} href="/media/como-assinar-7e4606f570.mp4" target="_blank" rel="noopener">▶ Ver como assinar (vídeo de 1 min)</a>}
       <h2>Planos</h2>
       <PlanCards data={data} onChanged={reload} />
     </div>

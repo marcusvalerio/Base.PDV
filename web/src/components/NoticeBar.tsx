@@ -22,6 +22,7 @@ export function NoticeBar() {
     <div key={n.id} className={`notice-bar ${n.kind}`} role="status">
       <div className="msg"><b>{n.title}</b> {n.message}
         {n.action && (!n.action.adminOnly || admin) && <a className="notice-action" href={n.action.href}>{n.action.label} →</a>}
+        {n.action?.adminOnly && admin && <a className="notice-howto" href="/media/como-assinar-7e4606f570.mp4" target="_blank" rel="noopener">Ver como assinar (vídeo de 1 min)</a>}
         {n.action?.adminOnly && !admin && <span className="notice-hint"> Avise o administrador para assinar.</span>}
       </div>
       <button aria-label="Fechar aviso" onClick={() => close(String(n.id))}>×</button>
