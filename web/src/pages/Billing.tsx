@@ -77,6 +77,17 @@ function BillingActions({ data, plans = true }: { data: any; plans?: boolean }) 
   );
 }
 
+const HOWTO = '/media/como-assinar-7e4606f570.mp4';
+/** "Saiba como assinar": vídeo de 1 minuto com o passo a passo do pagamento. */
+function HowTo() {
+  return (
+    <a className="howto" href={HOWTO} target="_blank" rel="noopener">
+      <span className="howto-play" aria-hidden>▶</span>
+      <span><b>Saiba como assinar</b><span className="faint">Vídeo de 1 minuto, passo a passo</span></span>
+    </a>
+  );
+}
+
 /** Administração → Assinatura. */
 export function BillingPage() {
   const { data, loading, error, reload } = useApi<any>('/billing/status');
@@ -87,6 +98,7 @@ export function BillingPage() {
   return (
     <div className="stack" style={{ maxWidth: 820 }}>
       <div className="page-head"><h1>Assinatura</h1></div>
+      {!data.exempt && !(data.status === 'active' || data.status === 'trialing') && <HowTo />}
       {ok && <div className="notice">Pagamento recebido pelo Stripe. A liberação acontece em instantes; se ainda aparecer bloqueado, toque em Atualizar.</div>}
       <div className="card stack">
         <div className="row wrap"><span className="muted">Situação</span><span className="spacer" /><span className={`badge lg ${tone}`}>{label}</span></div>
@@ -120,6 +132,7 @@ export function Blocked() {
             : 'Peça ao administrador do estabelecimento para regularizar a assinatura.'}
         </p>
         {isAdmin && status.data && <BillingActions data={status.data} plans={false} />}
+        {isAdmin && <HowTo />}
         <div className="row"><button className="btn ghost" onClick={() => refreshAccess().catch(() => {})}>Já paguei, verificar</button><span className="spacer" /><button className="btn ghost" onClick={logout}>Sair</button></div>
       </div>
       <SystemFooter />
