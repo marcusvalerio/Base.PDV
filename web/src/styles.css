@@ -650,3 +650,7 @@ html { background: var(--bg); }
 @media (max-width: 699px) { .notice-action { display: flex; justify-content: center; margin: 8px 0 0; padding: 8px 12px; } }
 .notice-howto { display: inline-block; margin-left: 10px; font-size: 13px; font-weight: 600; color: inherit; text-decoration: underline; }
 @media (max-width: 699px) { .notice-howto { display: block; margin: 6px 0 0; text-align: center; } }
+.howto { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); border-radius: var(--radius); border: 1px solid var(--accent); background: var(--accent-soft); color: var(--text); text-decoration: none; }
+.howto:hover { filter: brightness(.98); }
+.howto > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.howto-play { width: 40px; height: 40px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-size: 15px; padding-left: 3px; }
