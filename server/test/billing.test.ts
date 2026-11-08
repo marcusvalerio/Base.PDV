@@ -108,6 +108,21 @@ describe('assinatura (Stripe)', () => {
 });
 
 describe('cadastro pelo site e painel central', () => {
+  it('aviso do teste: com 3 dias ou menos ganha o botão "Assinar agora" (só para o administrador)', async () => {
+    const { base, admin, op, tenantId } = await setup();
+    await base.run('UPDATE tenants SET billing_exempt = 0 WHERE id = ?', [tenantId]);
+    const setDays = (d: number) => base.run('UPDATE tenants SET trial_ends_at = ? WHERE id = ?', [new Date(Date.now() + d * 864e5 - 60e3).toISOString(), tenantId]);
+    await setDays(5);
+    let n = (await admin.get('/api/notices')).body.find((x: any) => String(x.id).startsWith('auto-trial'));
+    expect(n.title).toContain('5 dias'); expect(n.action).toBeUndefined();
+    await setDays(3);
+    n = (await admin.get('/api/notices')).body.find((x: any) => String(x.id).startsWith('auto-trial'));
+    expect(n.title).toContain('3 dias'); expect(n.action).toMatchObject({ label: 'Assinar agora', href: '/app/admin/assinatura', adminOnly: true });
+    await setDays(1);
+    n = (await op.get('/api/notices')).body.find((x: any) => String(x.id).startsWith('auto-trial'));
+    expect(n.title).toBe('Seu teste grátis termina amanhã'); expect(n.action.adminOnly).toBe(true);
+  });
+
   it('com SIGNUP_TRIAL_DAYS=5: entra liberado por 5 dias, sem Stripe; depois bloqueia', async () => {
     process.env.SIGNUP_TRIAL_DAYS = '5';
     try {

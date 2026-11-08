@@ -644,3 +644,7 @@ html { background: var(--bg); }
 .cart-line.with-art > .stepper { grid-column: 2 / -1; justify-self: start; }
 .bc-mini { width: 120px; } .bc-mini svg { width: 100%; height: auto; display: block; }
 @media (max-width: 720px) { .table.responsive.barcodes td .bc-mini { width: 140px; } }
+.notice-action { display: inline-flex; align-items: center; margin-left: 8px; padding: 4px 12px; border-radius: 999px; background: var(--danger); color: #fff !important; font-weight: 700; font-size: 13.5px; white-space: nowrap; text-decoration: none; }
+.notice-action:hover { filter: brightness(1.08); }
+.notice-hint { font-weight: 600; }
+@media (max-width: 699px) { .notice-action { display: flex; justify-content: center; margin: 8px 0 0; padding: 8px 12px; } }

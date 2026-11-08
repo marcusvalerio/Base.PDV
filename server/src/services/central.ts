@@ -11,7 +11,9 @@ import { stripeConfigured, stripeList, Fetch } from './stripe.js';
 // ---------- Avisos ----------
 
 export type NoticeKind = 'info' | 'maintenance' | 'billing' | 'news';
-export interface Notice { id: number | string; tenant_id: number | null; kind: NoticeKind; title: string; message: string; starts_at: string; ends_at: string }
+export interface Notice { id: number | string; tenant_id: number | null; kind: NoticeKind; title: string; message: string; starts_at: string; ends_at: string;
+  /** Botão no aviso (ex.: "Assinar agora"); adminOnly = só o administrador vê o botão. */
+  action?: { label: string; href: string; adminOnly?: boolean } }
 
 export async function createNotice(base: DB, n: Omit<Notice, 'id'>, adminId: number) {
   if (n.tenant_id && !(await getTenant(base, n.tenant_id))) throw notFound('Estabelecimento não encontrado.');
@@ -43,8 +45,12 @@ export async function activeNoticesFor(base: DB, t: Tenant): Promise<Notice[]> {
     const a = access(t);
     if (a.trialEndsAt && !(t.subscription_status === 'active') && days(a.trialEndsAt) <= 5) {
       const d = Math.max(1, days(a.trialEndsAt));
-      out.push({ id: `auto-trial-${a.trialEndsAt.slice(0, 10)}`, tenant_id: t.id, kind: 'billing', title: `Seu teste grátis termina em ${plural(d)}`,
-        message: 'Assine em Administração › Assinatura para continuar usando sem interrupção.', starts_at: at, ends_at: a.trialEndsAt });
+      // Nos 3 últimos dias: botão para assinar já, e o aviso volta todo dia (id muda a cada dia).
+      const last = d <= 3;
+      out.push({ id: last ? `auto-trial-last-${at.slice(0, 10)}` : `auto-trial-${a.trialEndsAt.slice(0, 10)}`, tenant_id: t.id, kind: 'billing',
+        title: d === 1 ? 'Seu teste grátis termina amanhã' : `Seu teste grátis termina em ${plural(d)}`,
+        message: last ? 'Assine agora para continuar usando sem interrupção. Seus dados continuam todos aqui.' : 'Assine em Administração › Assinatura para continuar usando sem interrupção.',
+        starts_at: at, ends_at: a.trialEndsAt, ...(last ? { action: { label: 'Assinar agora', href: '/app/admin/assinatura', adminOnly: true } } : {}) });
     } else if (t.subscription_status === 'active' && t.current_period_end && days(t.current_period_end) <= 3 && days(t.current_period_end) >= 0) {
       const d = Math.max(1, days(t.current_period_end));
       out.push({ id: `auto-renew-${t.current_period_end.slice(0, 10)}`, tenant_id: t.id, kind: 'billing', title: `Sua assinatura renova em ${plural(d)}`,
