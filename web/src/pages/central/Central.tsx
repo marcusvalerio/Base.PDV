@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import { api, ApiError } from '../../lib/api';
 import { useApi, useAction } from '../../lib/hooks';
-import { date, dateTime, money } from '../../lib/format';
+import { date, dateTime, money, parseMoney, centsToInput } from '../../lib/format';
 import { Modal, Loading, ErrorState, Empty, Field, Segmented, Metric, useToast } from '../../components/ui';
 import { SystemFooter } from '../../components/SystemFooter';
 import { ShareButtons, waLink } from '../../components/ShareButtons';
@@ -67,14 +67,22 @@ const SUB: Record<string, string> = { active: 'Em dia', trialing: 'Em teste (Str
 function AccessBadge({ t }: { t: any }) {
   if (t.status === 'SUSPENDED') return <span className="badge danger">Suspenso</span>;
   if (t.billing_exempt) return <span className="badge success">Isento</span>;
-  if (t.access.ok) return <span className="badge success">{t.subscription_status === 'active' ? 'Pago' : `Teste até ${date(t.access.trialEndsAt ?? t.trial_ends_at)}`}</span>;
+  const nowIso = new Date().toISOString();
+  if (t.access.ok) {
+    if (t.subscription_status === 'active') return <span className="badge success">Pago (cartão)</span>;
+    if (t.paid_until && t.paid_until > nowIso) return <span className="badge success">Pix até {date(t.paid_until)}</span>;
+    if (t.pix_grace_until && t.pix_grace_until > nowIso) return <span className="badge warning">Pix a confirmar</span>;
+    const trial = t.access.trialEndsAt ?? t.trial_ends_at;
+    return <span className="badge success">{trial ? `Teste até ${date(trial)}` : 'Liberado'}</span>;
+  }
   return <span className="badge danger">{t.subscription_status ? SUB[t.subscription_status] ?? t.subscription_status : 'Sem assinatura'}</span>;
 }
 
 function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; totp: boolean }; onLogout: () => void }) {
   const [totp, setTotp] = useState(me.totp);
   const [security, setSecurity] = useState(false);
-  const [tab, setTab] = useState<'tenants' | 'finance' | 'notices' | 'growth' | 'audit'>('tenants');
+  const [tab, setTab] = useState<'tenants' | 'pix' | 'finance' | 'notices' | 'growth' | 'audit'>('tenants');
+  const pixPend = useApi<any[]>('/central/pix/pending');
   const [onlyRisk, setOnlyRisk] = useState(false);
   const { data, loading, error, reload } = useApi<any[]>('/central/tenants');
   const ov = useApi<any>('/central/overview');
@@ -96,7 +104,9 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
       </header>
       <main className="content stack">
         <div className="page-head"><h1>Painel central</h1><span className="spacer" /><button className="btn primary" onClick={() => setCreating(true)}>Novo estabelecimento</button></div>
-        <Segmented value={tab} onChange={setTab} options={[{ value: 'tenants', label: 'Estabelecimentos' }, { value: 'finance', label: 'Financeiro' }, { value: 'notices', label: 'Avisos' }, { value: 'growth', label: 'Crescimento' }, { value: 'audit', label: 'Histórico' }]} />
+        <Segmented value={tab} onChange={setTab} options={[{ value: 'tenants', label: 'Estabelecimentos' }, { value: 'pix', label: pixPend.data?.length ? `Pix (${pixPend.data.length} a confirmar)` : 'Pix' }, { value: 'finance', label: 'Financeiro' }, { value: 'notices', label: 'Avisos' }, { value: 'growth', label: 'Crescimento' }, { value: 'audit', label: 'Histórico' }]} />
+        {tab === 'pix' && <PixPanel pending={pixPend} onChanged={() => { pixPend.reload(); reload(); }} />}
+        {tab !== 'pix' && !!pixPend.data?.length && <button className="notice warning row" style={{ border: 0, cursor: 'pointer', textAlign: 'left' }} onClick={() => setTab('pix')}><span><b>{pixPend.data.length} pagamento(s) por Pix para confirmar.</b> Confira no app do banco e confirme aqui.</span></button>}
         {tab === 'finance' && <FinancePanel tenants={data ?? []} />}
         {tab === 'notices' && <NoticesPanel tenants={data ?? []} />}
         {tab === 'growth' && <GrowthPanel />}
@@ -515,5 +525,54 @@ function AuditPanel() {
           <td data-label="O quê">{ACTIONS[a.action] ?? a.action}</td><td data-label="Estabelecimento">{a.tenant_name ?? '—'}</td></tr>)}
       </tbody></table>
     )}</div>
+  );
+}
+
+/** Pix direto: chave de recebimento (só aqui, nunca no código) e pagamentos avisados pelos clientes para confirmar. */
+function PixPanel({ pending, onChanged }: { pending: { data: any[] | null; reload: () => void }; onChanged: () => void }) {
+  const toast = useToast();
+  const cfg = useApi<any>('/central/pix/settings');
+  const [f, setF] = useState<any>(null);
+  useEffect(() => { if (cfg.data && !f) setF({ ...cfg.data, first: centsToInput(cfg.data.first_cents), monthly: centsToInput(cfg.data.monthly_cents) }); }, [cfg.data]);
+  const [save, saving] = useAction(async () => {
+    const first = parseMoney(f.first), monthly = parseMoney(f.monthly);
+    if (!first || !monthly) return toast('Valores inválidos.', 'error');
+    try { await api('/central/pix/settings', { method: 'PUT', body: { pix_key: f.pix_key.trim(), pix_name: f.pix_name.trim().toUpperCase(), pix_city: f.pix_city.trim().toUpperCase(), first_cents: first, monthly_cents: monthly } }); toast('Recebimento por Pix salvo.', 'success'); cfg.reload(); }
+    catch (e: any) { toast(e.message, 'error'); }
+  });
+  const [decide, deciding] = useAction(async (id: number, ok: boolean, name: string) => {
+    if (!window.confirm(ok ? `Confirmar o Pix de ${name}? Confira antes no app do banco. Libera 30 dias.` : `Recusar o aviso de ${name}? O sistema dele volta a ficar bloqueado se não houver outro pagamento.`)) return;
+    try { const r = await api<any>(`/central/pix/${id}/${ok ? 'confirm' : 'reject'}`, { body: {} }); toast(ok ? `Confirmado. Liberado até ${date(r.paidUntil)}.` : 'Aviso recusado.', ok ? 'success' : 'error'); pending.reload(); onChanged(); }
+    catch (e: any) { toast(e.message, 'error'); }
+  });
+  return (
+    <div className="stack">
+      <div className="card stack">
+        <h2>Pix a confirmar</h2>
+        <div className="faint">Quando o cliente toca em "Já paguei", o sistema dele fica liberado por 3 dias. Confira no app do banco e confirme aqui para liberar 30 dias.</div>
+        {!pending.data?.length ? <Empty>Nenhum pagamento esperando confirmação.</Empty> : pending.data.map((p) => (
+          <div key={p.id} className="row wrap pix-pend">
+            <div style={{ flex: 1, minWidth: 200 }}><b>{p.tenant_name}</b><div className="faint">{p.kind === 'first' ? '1ª cobrança' : 'Mensalidade'} · avisado em {dateTime(p.reported_at)}{p.contact_name ? ` · ${p.contact_name}` : ''}</div></div>
+            <b className="num" style={{ fontSize: 18 }}>{money(p.amount_cents)}</b>
+            <button className="btn" disabled={deciding} onClick={() => decide(p.id, false, p.tenant_name)}>Não recebi</button>
+            <button className="btn primary" disabled={deciding} onClick={() => decide(p.id, true, p.tenant_name)}>Recebi, confirmar</button>
+          </div>
+        ))}
+      </div>
+      {f && <div className="card stack">
+        <h2>Chave para receber</h2>
+        <div className="faint">Aparece para os clientes na tela de Assinatura, com o QR Code do valor certo. Use uma <b>chave aleatória</b> para não mostrar seu CPF.</div>
+        <Field label="Chave Pix" hint="Recomendado: chave aleatória (Bradesco › Pix › Minhas chaves › Cadastrar chave)."><input className="input" autoCapitalize="none" value={f.pix_key} onChange={(e) => setF({ ...f, pix_key: e.target.value })} /></Field>
+        <div className="grid2">
+          <Field label="Nome do recebedor" hint="Até 25 letras, como no banco."><input className="input" maxLength={25} value={f.pix_name} onChange={(e) => setF({ ...f, pix_name: e.target.value })} placeholder="MARCUS VALERIO" /></Field>
+          <Field label="Cidade"><input className="input" maxLength={15} value={f.pix_city} onChange={(e) => setF({ ...f, pix_city: e.target.value })} /></Field>
+        </div>
+        <div className="grid2">
+          <Field label="1ª cobrança (instalação + 1º mês)"><input className="input num" inputMode="decimal" value={f.first} onChange={(e) => setF({ ...f, first: e.target.value })} /></Field>
+          <Field label="Mensalidade"><input className="input num" inputMode="decimal" value={f.monthly} onChange={(e) => setF({ ...f, monthly: e.target.value })} /></Field>
+        </div>
+        <div><button className="btn primary" disabled={saving} onClick={save}>Salvar</button></div>
+      </div>}
+    </div>
   );
 }

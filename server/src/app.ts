@@ -7,6 +7,7 @@ import { DB, audit, tenantAware, tenantStore, withSchema } from './db.js';
 import * as platform from './services/platform.js';
 import * as stripe from './services/stripe.js';
 import * as mp from './services/mercadopago.js';
+import * as pixDireto from './services/pixDireto.js';
 import * as centralSvc from './services/central.js';
 import { AppError, forbidden, unauthorized, badRequest } from './errors.js';
 import { UNITS } from './money.js';
@@ -251,6 +252,9 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   });
   const planBody = z.object({ plan: z.enum(['essencial', 'pro']).default('essencial') });
   r.post('/billing/checkout', admin, async (req, res) => res.json({ url: await stripe.checkoutUrl(base, sfetch, req.tenant!.id, planBody.parse(req.body ?? {}).plan) }));
+  // Mensalidade por Pix direto (chave do dono da plataforma; confirmação manual no painel central)
+  r.get('/billing/pix', admin, async (req, res) => res.json(await pixDireto.statusFor(base, (await platform.getTenant(base, req.tenant!.id))!)));
+  r.post('/billing/pix/report', admin, async (req, res) => res.json(await pixDireto.report(base, (await platform.getTenant(base, req.tenant!.id))!, uid(req))));
   r.post('/billing/plan', admin, async (req, res) => res.json(await stripe.changePlan(base, sfetch, req.tenant!.id, planBody.parse(req.body).plan)));
 
   // ---------- Pix automático (plano Pro): conta do Mercado Pago do estabelecimento ----------
@@ -733,6 +737,15 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
   c.get('/finance', central, async (_req, res) => res.json(await centralSvc.finance(base, sfetch)));
   c.get('/growth', central, async (_req, res) => res.json(await centralSvc.growth(base)));
   c.get('/audit', central, async (_req, res) => res.json(await centralSvc.auditLog(base)));
+  c.get('/pix/settings', central, async (_req, res) => res.json(await pixDireto.getSettings(base)));
+  c.put('/pix/settings', central, async (req, res) => {
+    const b = z.object({ pix_key: z.string().trim().max(77), pix_name: z.string().trim().max(25), pix_city: z.string().trim().max(15),
+      first_cents: z.number().int().min(100).max(10_000_00), monthly_cents: z.number().int().min(100).max(10_000_00) }).parse(req.body);
+    await pixDireto.saveSettings(base, b, req.central!.id); res.json({ ok: true });
+  });
+  c.get('/pix/pending', central, async (_req, res) => res.json(await pixDireto.pendingList(base)));
+  c.post('/pix/:id/confirm', central, async (req, res) => res.json(await pixDireto.decide(base, id.parse(req.params.id), true, req.central!.id)));
+  c.post('/pix/:id/reject', central, async (req, res) => res.json(await pixDireto.decide(base, id.parse(req.params.id), false, req.central!.id)));
   c.get('/notices', central, async (_req, res) => res.json(await centralSvc.listNotices(base)));
   c.post('/notices', central, async (req, res) => {
     const b = z.object({
