@@ -5,6 +5,7 @@ import { Loading, ErrorState, useToast } from '../components/ui';
 import { useSession } from '../components/session';
 import { SystemFooter } from '../components/SystemFooter';
 import { NoticeBar } from '../components/NoticeBar';
+import { PixQr } from '../components/PixQr';
 
 const STATUS: Record<string, [string, 'success' | 'warning' | 'danger']> = {
   active: ['Em dia', 'success'], trialing: ['Em teste', 'success'], past_due: ['Pagamento recusado', 'danger'],
@@ -53,7 +54,7 @@ function PlanCards({ data, onChanged }: { data: any; onChanged: () => void }) {
             {data.exempt ? null : off ? <span className="faint">Em breve.</span>
               : !data.configured ? null
               : current ? null
-              : <button className={`btn ${k === 'pro' ? 'primary' : ''} lg block`} disabled={busy} onClick={() => pick(k)}>{valid ? `Mudar para ${PLANS[k].name}` : `Assinar ${PLANS[k].name}`}</button>}
+              : <button className={`btn ${k === 'pro' ? 'primary' : ''} lg block`} disabled={busy} onClick={() => pick(k)}>{valid ? `Mudar para ${PLANS[k].name}` : `Assinar com cartão`}</button>}
           </div>
         );
       })}
@@ -88,6 +89,31 @@ function HowTo() {
   );
 }
 
+/** Mensalidade por Pix direto: QR com o valor certo e "Já paguei" (o sistema libera na hora por 3 dias enquanto o pagamento é conferido). */
+function PixPay({ onPaid }: { onPaid?: () => void }) {
+  const toast = useToast();
+  const { data, reload } = useApi<any>('/billing/pix');
+  const [report, busy] = useAction(async () => {
+    try { await api('/billing/pix/report', { body: {} }); toast('Aviso enviado! O sistema já está liberado enquanto conferimos.', 'success'); reload(); onPaid?.(); }
+    catch (e: any) { toast(e.message, 'error'); }
+  });
+  if (!data?.available) return null;
+  const paidOk = data.paidUntil && data.paidUntil > new Date().toISOString();
+  return (
+    <div className="card stack pix-pay">
+      <div className="row wrap"><h2>Pagar com Pix</h2><span className="spacer" />{paidOk && <span className="badge success">pago até {date(data.paidUntil)}</span>}</div>
+      {data.pending ? (
+        <div className="notice success">Recebemos seu aviso de pagamento de <b>{money(data.pending.amount_cents)}</b>. O sistema está liberado{data.graceUntil ? ` até ${date(data.graceUntil)}` : ''} enquanto conferimos — depois de confirmado, vale por 30 dias.</div>
+      ) : (<>
+        <div className="row"><span className="muted">{data.kind === 'first' ? '1ª cobrança (instalação + 1º mês)' : 'Mensalidade (30 dias)'}</span><span className="spacer" /><b className="num" style={{ fontSize: 22 }}>{money(data.amountCents)}</b></div>
+        {paidOk && <div className="faint">Pagando agora, os 30 dias são somados ao que ainda falta.</div>}
+        <PixQr pix={data.pix} amountCents={data.amountCents} note="Abra o app do seu banco, escolha Pix › Ler QR Code (ou copie o código). O valor já vem preenchido. Depois de pagar, toque em Já paguei." />
+        <button className="btn primary lg block" disabled={busy} onClick={report}>{busy ? 'Enviando…' : 'Já paguei'}</button>
+      </>)}
+    </div>
+  );
+}
+
 /** Administração → Assinatura. */
 export function BillingPage() {
   const { data, loading, error, reload } = useApi<any>('/billing/status');
@@ -109,6 +135,7 @@ export function BillingPage() {
         <div><button className="btn ghost sm" onClick={reload}>Atualizar</button></div>
       </div>
       {!data.exempt && !(data.status === 'active' || data.status === 'trialing') && <a className="btn ghost" style={{ alignSelf: 'flex-start' }} href="/media/como-assinar-7e4606f570.mp4" target="_blank" rel="noopener">▶ Ver como assinar (vídeo de 1 min)</a>}
+      {!data.exempt && !(data.status === 'active' || data.status === 'trialing') && <PixPay onPaid={reload} />}
       <h2>Planos</h2>
       <PlanCards data={data} onChanged={reload} />
     </div>
@@ -133,7 +160,8 @@ export function Blocked() {
         </p>
         {isAdmin && status.data && <BillingActions data={status.data} plans={false} />}
         {isAdmin && <HowTo />}
-        <div className="row"><button className="btn ghost" onClick={() => refreshAccess().catch(() => {})}>Já paguei, verificar</button><span className="spacer" /><button className="btn ghost" onClick={logout}>Sair</button></div>
+        {isAdmin && access?.reason !== 'SUSPENDED' && <PixPay onPaid={() => refreshAccess().catch(() => {})} />}
+        <div className="row"><button className="btn ghost" onClick={() => refreshAccess().catch(() => {})}>Atualizar situação</button><span className="spacer" /><button className="btn ghost" onClick={logout}>Sair</button></div>
       </div>
       <SystemFooter />
     </div>

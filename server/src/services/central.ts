@@ -43,7 +43,8 @@ export async function activeNoticesFor(base: DB, t: Tenant): Promise<Notice[]> {
     [t.id, at, at]);
   if (!t.billing_exempt && t.status === 'ACTIVE') {
     const a = access(t);
-    if (a.trialEndsAt && !(t.subscription_status === 'active') && days(a.trialEndsAt) <= 5) {
+    const pixOk = (t.paid_until && t.paid_until > at) || (t.pix_grace_until && t.pix_grace_until > at);
+    if (a.trialEndsAt && !pixOk && !(t.subscription_status === 'active') && days(a.trialEndsAt) <= 5) {
       const d = Math.max(1, days(a.trialEndsAt));
       // Nos 3 últimos dias: botão para assinar já, e o aviso volta todo dia (id muda a cada dia).
       const last = d <= 3;
@@ -51,6 +52,12 @@ export async function activeNoticesFor(base: DB, t: Tenant): Promise<Notice[]> {
         title: d === 1 ? 'Seu teste grátis termina amanhã' : `Seu teste grátis termina em ${plural(d)}`,
         message: last ? 'Assine agora para continuar usando sem interrupção. Seus dados continuam todos aqui.' : 'Assine em Administração › Assinatura para continuar usando sem interrupção.',
         starts_at: at, ends_at: a.trialEndsAt, ...(last ? { action: { label: 'Assinar agora', href: '/app/admin/assinatura', adminOnly: true } } : {}) });
+    } else if (!(t.subscription_status === 'active') && t.paid_until && days(t.paid_until) <= 3 && days(t.paid_until) >= 0) {
+      // Mensalidade por Pix vencendo: lembrete com botão para pagar (o aviso volta todo dia).
+      const d = Math.max(1, days(t.paid_until));
+      out.push({ id: `auto-pix-${at.slice(0, 10)}`, tenant_id: t.id, kind: 'billing', title: d === 1 ? 'Sua mensalidade vence amanhã' : `Sua mensalidade vence em ${plural(d)}`,
+        message: 'Pague por Pix para continuar usando sem interrupção.', starts_at: at, ends_at: t.paid_until,
+        action: { label: 'Pagar agora', href: '/app/admin/assinatura', adminOnly: true } });
     } else if (t.subscription_status === 'active' && t.current_period_end && days(t.current_period_end) <= 3 && days(t.current_period_end) >= 0) {
       const d = Math.max(1, days(t.current_period_end));
       out.push({ id: `auto-renew-${t.current_period_end.slice(0, 10)}`, tenant_id: t.id, kind: 'billing', title: `Sua assinatura renova em ${plural(d)}`,

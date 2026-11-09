@@ -84,7 +84,7 @@ export function PixAuto({ amountCents, onPaid, onFallback }: { amountCents: numb
 }
 
 /** QR Code Pix com o valor exato da venda (a chave vem das Configurações da loja). */
-export function PixQr({ pix, amountCents, txid }: { pix: { key: string; name: string; city: string }; amountCents: number; txid?: string }) {
+export function PixQr({ pix, amountCents, txid, note }: { pix: { key: string; name: string; city: string }; amountCents: number; txid?: string; note?: string }) {
   const toast = useToast();
   const code = useMemo(() => pixPayload({ ...pix, amountCents, txid }), [pix, amountCents, txid]);
   const svg = useMemo(() => {
@@ -99,8 +99,9 @@ export function PixQr({ pix, amountCents, txid }: { pix: { key: string; name: st
       <div className="pix-qr" dangerouslySetInnerHTML={{ __html: svg }} aria-label={`QR Code Pix de ${money(amountCents)}`} />
       <div className="stack" style={{ gap: 6, minWidth: 0 }}>
         <b>Pix de {money(amountCents)}</b>
+        {note ? <span className="faint">{note}</span> : <>
         <span className="faint">Peça para o cliente apontar a câmera do app do banco. O valor já vem preenchido.</span>
-        <span className="faint">Confira no celular ou na maquininha que o Pix caiu antes de confirmar.</span>
+        <span className="faint">Confira no celular ou na maquininha que o Pix caiu antes de confirmar.</span></>}
         <button className="btn sm" onClick={copy}>Copiar código (copia e cola)</button>
       </div>
     </div>

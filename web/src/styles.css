@@ -654,3 +654,4 @@ html { background: var(--bg); }
 .howto:hover { filter: brightness(.98); }
 .howto > span:last-child { display: flex; flex-direction: column; gap: 2px; }
 .howto-play { width: 40px; height: 40px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; font-size: 15px; padding-left: 3px; }
+.pix-pend { padding: var(--s3) 0; border-top: 1px solid var(--border); }

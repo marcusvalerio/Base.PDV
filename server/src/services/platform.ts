@@ -16,6 +16,7 @@ export interface Tenant {
   trial_ends_at: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null;
   subscription_status: string | null; current_period_end: string | null; created_at: string;
   plan: Plan;
+  paid_until?: string | null; pix_grace_until?: string | null;
 }
 
 export type Plan = 'essencial' | 'pro';
@@ -28,7 +29,10 @@ export type Access = { ok: boolean; reason: 'OK' | 'SUSPENDED' | 'NO_SUBSCRIPTIO
 export function access(t: Tenant, at = new Date()): Access {
   const trial = t.trial_ends_at && t.trial_ends_at > at.toISOString() ? t.trial_ends_at : null;
   if (t.status === 'SUSPENDED') return { ok: false, reason: 'SUSPENDED', trialEndsAt: null };
-  if (t.billing_exempt || (t.subscription_status && PAID.has(t.subscription_status)) || trial) return { ok: true, reason: 'OK', trialEndsAt: trial };
+  const iso = at.toISOString();
+  // Pix direto: mês pago (paid_until) ou carência de 3 dias depois do "Já paguei" (pix_grace_until).
+  const pix = (t.paid_until && t.paid_until > iso) || (t.pix_grace_until && t.pix_grace_until > iso);
+  if (t.billing_exempt || (t.subscription_status && PAID.has(t.subscription_status)) || trial || pix) return { ok: true, reason: 'OK', trialEndsAt: trial };
   return { ok: false, reason: t.subscription_status ? 'UNPAID' : 'NO_SUBSCRIPTION', trialEndsAt: null };
 }
 
