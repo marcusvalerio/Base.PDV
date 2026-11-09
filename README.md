@@ -1,5 +1,7 @@
 # Central.PDV — bar e mercearia
 
+> **Dono da plataforma:** veja o [Guia do dono](docs/GUIA-DO-DONO.md) — pendências, onde fica cada coisa e operação do dia a dia.
+
 PDV operacional (vendas, mesas/comandas, fiado, caixa) e administração (produtos, estoque, clientes, caixas, usuários, painel, análise e lista de reposição).
 
 **Princípio:** simplicidade na operação, profundidade na gestão.
