@@ -1,5 +1,7 @@
 # Pendências que dependem dos proprietários
 
+> Histórico de decisões de produto. A lista atual do que falta fazer está no [Guia do dono](GUIA-DO-DONO.md).
+
 1. **Acréscimo do fiado** — definido: valor configurável **por unidade vendida** (padrão R$ 0,50; chopp/kg contam 1 por item). Sem juros, multas ou cobranças recorrentes.
 2. **Código de caixa** — único da loja ou individual? Ambos estão prontos (Configurações → Caixa).
 3. **Operadoras cadastrando clientes** — hoje permitido (só nome/telefone) para não travar o fiado no balcão. Edição e bloqueio são só do administrador.
