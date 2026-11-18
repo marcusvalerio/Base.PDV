@@ -37,7 +37,7 @@ Atualizado em novembro de 2026.
 |---|---|
 | Site (página de vendas) | https://centralpdv.vercel.app |
 | Sistema dos clientes | https://centralpdv.vercel.app/app |
-| Cadastro com 5 dias grátis | https://centralpdv.vercel.app/app/cadastro |
+| Cadastro pelo site (paga na hora) | https://centralpdv.vercel.app/app/cadastro |
 | **Painel central (seu)** | https://centralpdv.vercel.app/central |
 | Manual completo (com vídeos) | https://centralpdv.vercel.app/manual.html |
 | Código | GitHub `marcusvalerio/Base.PDV` — a branch `main` publica sozinha no Vercel |
@@ -53,7 +53,7 @@ Atualizado em novembro de 2026.
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Cartão (secretos) |
 | `STRIPE_PRICE_ID` | Mensalidade R$ 80 (plano Essencial) |
 | `STRIPE_SETUP_PRICE_ID` | Instalação R$ 170 (1ª cobrança = R$ 250) |
-| `SIGNUP_TRIAL_DAYS` | Dias de teste grátis no cadastro pelo site (hoje **5**; 0 desliga). Se mudar, ajuste também o texto "5 dias grátis" em `web/public/index.html` e `novo.html`. |
+| `SIGNUP_TRIAL_DAYS` | Dias de teste grátis no cadastro pelo site (hoje **0** = sem teste, paga na hora; para ativar teste, use o nº de dias e ajuste os textos de `web/public/index.html` e `novo.html`). |
 | `STRIPE_PRICE_ID_PRO`, `MP_CLIENT_ID`, `MP_CLIENT_SECRET` | Plano Pro (ainda não usados) |
 | `SETUP_TOKEN` | Pode apagar (item 6) |
 
