@@ -783,6 +783,10 @@ export function createApp(base: DB, opts: { cookieSecure?: boolean; staticDir?: 
     await platform.updateTenant(base, tenantId(req), b, req.central!.id);
     res.json({ ok: true });
   });
+  c.post('/tenants/:id/grant', central, async (req, res) => {
+    const b = z.object({ days: z.number().int().min(1).max(3650) }).parse(req.body);
+    res.json({ until: await platform.grantAccess(base, tenantId(req), b.days, req.central!.id) });
+  });
   c.get('/tenants/:id/modules', central, async (req, res) => {
     const t = await getT(req);
     res.json({ modules: await withSchema(base, t.schema_name, (tdb) => modules.getModules(tdb)), labels: modules.MODULES });

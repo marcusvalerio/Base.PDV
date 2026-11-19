@@ -84,6 +84,9 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
   const [tab, setTab] = useState<'tenants' | 'pix' | 'finance' | 'notices' | 'growth' | 'audit'>('tenants');
   const pixPend = useApi<any[]>('/central/pix/pending');
   const [onlyRisk, setOnlyRisk] = useState(false);
+  const [onlyBlocked, setOnlyBlocked] = useState(false);
+  const [q, setQ] = useState('');
+  const [granting, setGranting] = useState<any>(null);
   const { data, loading, error, reload } = useApi<any[]>('/central/tenants');
   const ov = useApi<any>('/central/overview');
   const [showErrors, setShowErrors] = useState(false);
@@ -93,7 +96,9 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
   const isQuiet = (t: any) => t.access.ok && (!t.lastSaleAt || Date.now() - Date.parse(t.lastSaleAt) > 7 * 864e5);
   const quiet = data?.filter(isQuiet).length ?? 0;
   const risky = data?.filter((t) => t.health?.risk === 'risk').length ?? 0;
-  const shown = onlyRisk ? data?.filter((t) => t.health?.risk !== 'ok') : data;
+  const term = q.trim().toLowerCase();
+  const shown = data?.filter((t) => (!onlyRisk || t.health?.risk !== 'ok') && (!onlyBlocked || !t.access.ok)
+    && (!term || `${t.name} ${t.id} ${t.contact_name ?? ''} ${t.contact_phone ?? ''}`.toLowerCase().includes(term)));
   return (
     <div className="shell central-shell">
       <header className="topbar">
@@ -126,19 +131,21 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
         </div>}
         {data && <div className="status-strip">
           <span className="badge lg success">{data.length - blocked} ativo(s)</span>
-          {blocked > 0 && <span className="badge lg danger">{blocked} fora do ar</span>}
+          {blocked > 0 && <button className={`badge lg danger offline-pill`} onClick={() => setOnlyBlocked(!onlyBlocked)}>{onlyBlocked ? 'Mostrando só fora do ar · ver todos' : `${blocked} fora do ar`}</button>}
           {quiet > 0 && <span className="badge lg warning">{quiet} sem vender há 7+ dias</span>}
           {risky > 0 && <button className={`badge lg ${onlyRisk ? 'danger' : 'warning'} offline-pill`} onClick={() => setOnlyRisk(!onlyRisk)}>{onlyRisk ? 'Mostrando só em risco · ver todos' : `${risky} em risco de cancelar`}</button>}
           {ov.data && <button className={`badge lg ${ov.data.errors24h ? 'danger' : 'success'} offline-pill`} onClick={() => setShowErrors(true)}>{ov.data.errors24h ? `${ov.data.errors24h} erro(s) nas últimas 24h` : 'Sem erros nas últimas 24h'}</button>}
         </div>}
+        {data && data.length > 5 && <input className="input" placeholder="Buscar por nome, nº, contato ou telefone…" value={q} onChange={(e) => setQ(e.target.value)} />}
         {error ? <ErrorState message={error} onRetry={reload} /> : loading && !data ? <Loading /> : (
           <div className="card flush">{!data?.length ? <Empty>Nenhum estabelecimento ainda.</Empty> : (
             <table className="table responsive tenants"><thead><tr><th>Estabelecimento</th><th>Situação</th><th>Saúde</th><th className="r">Usuários</th><th className="r">Vendas (30 dias)</th><th>Última venda</th></tr></thead><tbody>
+              {!shown!.length && <tr><td colSpan={6}><Empty>Nenhum estabelecimento com esse filtro.</Empty></td></tr>}
               {shown!.map((t) => (
                 <tr key={t.id} className="click" onClick={() => setSel(t)}>
                   <td data-label="Estabelecimento"><b>{t.name}</b><div className="faint">nº {t.id} · desde {date(t.created_at)}{t.signup_source === 'site' ? ' · pelo site' : ''}</div>
                     {t.contact_phone && <a className="faint" href={waLink(`Olá, ${String(t.contact_name ?? '').split(' ')[0]}! Aqui é do Central.PDV.`, t.contact_phone)} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>{t.contact_name} · {t.contact_phone}</a>}</td>
-                  <td data-label="Situação"><AccessBadge t={t} /></td>
+                  <td data-label="Situação"><AccessBadge t={t} />{!t.access.ok && <div><button className="btn primary sm" onClick={(e) => { e.stopPropagation(); setGranting(t); }}>Liberar acesso</button></div>}</td>
                   <td data-label="Saúde"><HealthBadge h={t.health} /></td>
                   <td data-label="Usuários" className="r num">{t.users}</td>
                   <td data-label="Vendas (30 dias)" className="r num">{t.salesLast30}</td>
@@ -154,7 +161,32 @@ function CentralHome({ me, onLogout }: { me: { admin: Admin; stripe: boolean; to
       {showErrors && <ErrorsModal onClose={() => setShowErrors(false)} />}
       {creating && <NewTenant onClose={() => setCreating(false)} onDone={() => { setCreating(false); reload(); }} />}
       {sel && <TenantModal t={sel} onClose={() => setSel(null)} onChanged={reload} />}
+      {granting && <GrantAccess t={granting} onClose={() => setGranting(null)} onDone={() => { setGranting(null); reload(); }} />}
     </div>
+  );
+}
+
+/** Libera o estabelecimento por um período (reativa se suspenso e estende o "pago até"). */
+function GrantAccess({ t, onClose, onDone }: { t: any; onClose: () => void; onDone: () => void }) {
+  const [days, setDays] = useState('30');
+  const toast = useToast();
+  const n = Number(days);
+  const [go, busy] = useAction(async () => {
+    try {
+      const r = await api<{ until: string }>(`/central/tenants/${t.id}/grant`, { method: 'POST', body: { days: n } });
+      toast(`${t.name} liberado até ${date(r.until)}.`, 'success'); onDone();
+    } catch (e: any) { toast(e.message, 'error'); }
+  });
+  return (
+    <Modal title={`Liberar acesso · ${t.name}`} onClose={onClose}>
+      <div className="stack">
+        <div className="faint">Libera o sistema na hora (reativa se estiver suspenso). Os dias contam a partir de hoje ou do vencimento atual, o que for mais tarde. Use quando o cliente pagou por fora ou para dar uma cortesia.</div>
+        <Segmented value={days} onChange={setDays} options={[{ value: '7', label: '7 dias' }, { value: '15', label: '15 dias' }, { value: '30', label: '30 dias' }, { value: '90', label: '90 dias' }, { value: '365', label: '1 ano' }]} />
+        <Field label="Ou digite os dias"><input className="input num" style={{ maxWidth: 120 }} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ''))} /></Field>
+        <div className="row"><span className="spacer" /><button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn primary" disabled={!n || n > 3650 || busy} onClick={() => go()}>Liberar {n ? `por ${n} dia(s)` : ''}</button></div>
+      </div>
+    </Modal>
   );
 }
 
@@ -218,6 +250,7 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
   const [name, setName] = useState(t.name);
   const [trialDays, setTrialDays] = useState('');
   const [pwFor, setPwFor] = useState<any>(null);
+  const [granting, setGranting] = useState(false);
   const toast = useToast();
   const patch = async (body: any, msg: string) => {
     try { await api(`/central/tenants/${t.id}`, { method: 'PATCH', body }); toast(msg, 'success'); onChanged(); onClose(); } catch (e: any) { toast(e.message, 'error'); }
@@ -230,7 +263,9 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
       <div className="card stack">
         <div className="row wrap"><b>Situação</b><span className="spacer" /><AccessBadge t={t} /></div>
         {t.current_period_end && <div className="faint">Assinatura Stripe: {SUB[t.subscription_status] ?? t.subscription_status} · período até {date(t.current_period_end)}</div>}
+        {t.paid_until && <div className="faint">Liberado manualmente/Pix até {date(t.paid_until)}</div>}
         <div className="row wrap">
+          <button className="btn primary" onClick={() => setGranting(true)}>Liberar acesso</button>
           {t.status === 'SUSPENDED'
             ? <button className="btn primary" onClick={() => patch({ status: 'ACTIVE' }, 'Estabelecimento reativado.')}>Reativar</button>
             : <button className="btn danger" onClick={() => window.confirm(`Suspender ${t.name}? O sistema sai do ar para todos de lá.`) && patch({ status: 'SUSPENDED' }, 'Estabelecimento suspenso.')}>Suspender</button>}
@@ -282,6 +317,7 @@ function TenantModal({ t, onClose, onChanged }: { t: any; onClose: () => void; o
         ))}
       </div>
       {pwFor && <ResetPassword tenantId={t.id} u={pwFor} onClose={() => setPwFor(null)} />}
+      {granting && <GrantAccess t={t} onClose={() => setGranting(false)} onDone={() => { setGranting(false); onChanged(); onClose(); }} />}
     </Modal>
   );
 }

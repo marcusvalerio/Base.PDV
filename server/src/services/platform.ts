@@ -95,6 +95,20 @@ export async function updateTenant(base: DB, id: number, patch: { name?: string;
   await platformAudit(base, actorId, 'tenant.update', id, patch);
 }
 
+/**
+ * Libera o acesso manualmente por N dias (ex.: pagou por fora, cortesia, negociação):
+ * reativa se estiver suspenso e estende o "pago até" a partir de hoje ou do vencimento atual, o que for maior.
+ */
+export async function grantAccess(base: DB, id: number, days: number, actorId: number) {
+  const t = await getTenant(base, id);
+  if (!t) throw notFound('Estabelecimento não encontrado.');
+  const from = Math.max(Date.now(), t.paid_until ? Date.parse(t.paid_until) : 0);
+  const until = new Date(from + days * 864e5).toISOString();
+  await base.run("UPDATE tenants SET status = 'ACTIVE', paid_until = ? WHERE id = ?", [until, id]);
+  await platformAudit(base, actorId, 'tenant.grant_access', id, { days, until });
+  return until;
+}
+
 export async function listTenants(base: DB) {
   const rows = await base.all<Tenant>('SELECT * FROM tenants ORDER BY name');
   const out = [];

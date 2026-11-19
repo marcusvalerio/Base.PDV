@@ -177,3 +177,23 @@ describe('primeiro acesso de estabelecimento novo', () => {
     expect((await dona.get('/api/bootstrap')).body.setupPending).toBe(false);
   });
 });
+
+describe('liberar acesso (admin central)', () => {
+  it('reativa um estabelecimento suspenso e libera por N dias', async () => {
+    const { app, admin, tenantId } = await setup();
+    const sup = await agent(app, 'super', true);
+    await sup.patch(`/api/central/tenants/${tenantId}`, { status: 'SUSPENDED', billing_exempt: false });
+    expect((await admin.get('/api/inventory')).status).not.toBe(200);
+    const r = await sup.post(`/api/central/tenants/${tenantId}/grant`, { days: 30 });
+    expect(r.status).toBe(200);
+    expect(Date.parse(r.body.until) - Date.now()).toBeGreaterThan(29 * 864e5);
+    const t = (await sup.get('/api/central/tenants')).body.find((x: any) => x.id === tenantId);
+    expect(t.status).toBe('ACTIVE');
+    expect(t.access.ok).toBe(true);
+    // Somar de novo estende a partir do vencimento atual.
+    const r2 = await sup.post(`/api/central/tenants/${tenantId}/grant`, { days: 10 });
+    expect(Date.parse(r2.body.until) - Date.parse(r.body.until)).toBeGreaterThan(9.9 * 864e5);
+    expect((await sup.post(`/api/central/tenants/${tenantId}/grant`, { days: 0 })).status).toBe(400);
+    expect((await admin.post(`/api/central/tenants/${tenantId}/grant`, { days: 5 })).status).toBe(401);
+  });
+});
